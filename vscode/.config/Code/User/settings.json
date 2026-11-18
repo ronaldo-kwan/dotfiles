@@ -4,5 +4,6 @@
     "update.showReleaseNotes": false,
     "terminal.integrated.fontFamily": "JetBrainsMono Nerd Font",
     "editor.fontFamily": "JetBrainsMono Nerd Font",
-    "editor.fontLigatures": true
+    "editor.fontLigatures": true,
+    "security.workspace.trust.untrustedFiles": "newWindow"
 }

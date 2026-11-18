@@ -15,6 +15,7 @@ The folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). Eac
 | `lazygit` | `~/.config/lazygit/config.yml` | Catppuccin Mocha and Nerd Font icons |
 | `terminal-default` | `~/.config/xdg-terminals.list` | Makes Ghostty the default terminal |
 | `vscode` | `~/.config/Code/User/settings.json` | Theme, fonts, ligatures |
+| `claude` | `~/.claude/CLAUDE.md` | Personal instructions for Claude Code |
 | `system` | *not linked* | Weekly update script, installed by hand (see below) |
 
 ## Making changes
@@ -54,7 +55,7 @@ Stow won't replace files that already exist, so move the default `.bashrc` out o
 ```bash
 mv ~/.bashrc ~/.bashrc.orig
 cd ~/dotfiles
-stow bash starship ghostty btop lazygit terminal-default vscode
+stow bash starship ghostty btop lazygit terminal-default vscode claude
 ```
 
 ### 4. System extras (optional)
