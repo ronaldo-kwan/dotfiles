@@ -18,12 +18,19 @@ The linked folders are laid out for [GNU Stow](https://www.gnu.org/software/stow
 | `vscode` | `~/.config/Code/User/settings.json` | Theme, fonts, ligatures |
 | `claude` | `~/.claude/CLAUDE.md` | Personal instructions for Claude Code |
 
-These folders aren't linked. Their contents are installed by hand (see below):
+These aren't linked. `install.sh` restores them, or see the manual steps below:
 
-| Folder | What it is |
+| File | What it is |
 |---|---|
-| `setup/` | VS Code extension list, GNOME keyboard shortcuts, GNOME extension list, wallpaper |
-| `system/` | Weekly automatic update script |
+| `install.sh` | Sets up a new computer from this repo (no sudo) |
+| `setup/vscode-extensions.txt` | VS Code extensions (the Catppuccin theme) |
+| `setup/flatpaks.txt` | Flatpak apps: Bitwarden, Discord, Obsidian, Firefox and others |
+| `setup/gnome-shortcuts.dconf` | Custom keyboard shortcuts: Super+C/X/T/E/F/O |
+| `setup/gnome-extension-settings.dconf` | Settings for Caffeine, Clipboard Indicator, Ubuntu Dock, Tiling Assistant |
+| `setup/dock-favorites.txt` | Apps pinned to the dock, in order |
+| `setup/gnome-extensions.txt` | GNOME extensions to install |
+| `setup/wallpaper/` | Desktop wallpaper |
+| `system/` | Weekly automatic update script (needs sudo) |
 
 ## Making changes
 
@@ -35,24 +42,73 @@ git add -A
 git commit -m "Describe the change"
 ```
 
-If you add a VS Code extension or change a keyboard shortcut, refresh the saved lists before committing:
+The files in `setup/` are snapshots, so they don't update themselves. After changing extensions, apps, shortcuts or the dock, refresh them before committing:
 
 ```bash
 code --list-extensions > ~/dotfiles/setup/vscode-extensions.txt
+flatpak list --app --columns=application > ~/dotfiles/setup/flatpaks.txt
 dconf dump /org/gnome/settings-daemon/plugins/media-keys/ > ~/dotfiles/setup/gnome-shortcuts.dconf
+dconf dump /org/gnome/shell/extensions/ > ~/dotfiles/setup/gnome-extension-settings.dconf
+gsettings get org.gnome.shell favorite-apps > ~/dotfiles/setup/dock-favorites.txt
 ```
 
 ## Setting up a new computer
 
-### 1. Install the tools
+### Quick setup
 
 ```bash
-sudo apt install git gh stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit
+sudo apt install git gh stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit flatpak
+gh auth login
+gh repo clone dotfiles ~/dotfiles
+~/dotfiles/install.sh
 ```
 
 `lazygit` comes from Ubuntu Pro's extra app repository (`esm-apps`).
 
-### 2. Install JetBrainsMono Nerd Font
+`install.sh` asks before doing anything. It then:
+- links the config files (keeping any existing ones as `.orig`)
+- installs the Nerd Font, VS Code extensions and Flatpak apps
+- restores keyboard shortcuts, extension settings, dock and wallpaper
+
+It's safe to run again. At the end it lists what's left to do by hand: the apps below, GNOME extensions, and the weekly update script.
+
+### Apps from other sources
+
+These don't come from Ubuntu. Each official download adds its own update source, so they then update with `sudo apt upgrade`.
+
+| App | Where to get it | Package |
+|---|---|---|
+| Google Chrome | google.com/chrome (.deb) | `google-chrome-stable` |
+| VS Code | code.visualstudio.com (.deb) | `code` |
+| Claude Desktop | claude.ai/download | `claude-desktop` |
+| Proton VPN | protonvpn.com/download (Linux, Ubuntu) | `proton-vpn-gnome-desktop` |
+| OBS Studio | `sudo add-apt-repository ppa:obsproject/obs-studio` | `obs-studio` |
+
+### GNOME extensions
+
+Install the extensions in `setup/gnome-extensions.txt` (Alphabetical App Grid, Caffeine, Clipboard Indicator) with Extension Manager:
+
+```bash
+sudo apt install gnome-shell-extension-manager
+```
+
+Their settings are restored by `install.sh`. Run it again after installing them if you installed them afterwards.
+
+### Weekly automatic updates (optional)
+
+First change `DESKTOP_USER=` in the script to the new username, then:
+
+```bash
+sudo cp ~/dotfiles/system/etc/cron.weekly/system-update /etc/cron.weekly/
+sudo chmod +x /etc/cron.weekly/system-update
+```
+
+### Manual setup (instead of install.sh)
+
+<details>
+<summary>Step-by-step commands</summary>
+
+**Nerd Font**
 
 ```bash
 mkdir -p ~/.local/share/fonts/JetBrainsMonoNerdFont
@@ -62,49 +118,31 @@ cp /tmp/jbm/JetBrainsMonoNerdFont-*.ttf ~/.local/share/fonts/JetBrainsMonoNerdFo
 fc-cache -f
 ```
 
-### 3. Get this repo and link the config files
-
-```bash
-gh auth login
-gh repo clone dotfiles ~/dotfiles
-```
-
-Stow won't replace files that already exist. Move the default `.bashrc`, and the `.gitconfig` that `gh auth login` may have created, out of the way first:
+**Link config files.** Stow won't replace files that already exist, so move them aside first:
 
 ```bash
 mv ~/.bashrc ~/.bashrc.orig
 mv ~/.gitconfig ~/.gitconfig.orig 2>/dev/null
 cd ~/dotfiles
-stow bash git starship ghostty btop lazygit terminal-default vscode claude
+stow --no-folding bash git starship ghostty btop lazygit terminal-default vscode claude
 ```
 
-### 4. VS Code extensions
-
-The Catppuccin theme in `settings.json` only works once its extension is installed:
+**VS Code extensions and Flatpak apps**
 
 ```bash
 xargs -n1 code --install-extension < ~/dotfiles/setup/vscode-extensions.txt
+xargs flatpak install -y flathub < ~/dotfiles/setup/flatpaks.txt
 ```
 
-### 5. Keyboard shortcuts
-
-Restores all custom shortcuts: Super+C Chrome, Super+X Claude, Super+T terminal, Super+E VS Code, Super+F Files, Super+O Obsidian. This replaces any custom shortcuts already on the computer.
+**Shortcuts, extension settings and dock.** The shortcuts replace any custom shortcuts already on the computer.
 
 ```bash
 dconf load /org/gnome/settings-daemon/plugins/media-keys/ < ~/dotfiles/setup/gnome-shortcuts.dconf
+dconf load /org/gnome/shell/extensions/ < ~/dotfiles/setup/gnome-extension-settings.dconf
+gsettings set org.gnome.shell favorite-apps "$(cat ~/dotfiles/setup/dock-favorites.txt)"
 ```
 
-The apps themselves (Chrome, Claude, VS Code, Obsidian) need installing separately.
-
-### 6. GNOME extensions
-
-Install the extensions listed in `setup/gnome-extensions.txt` (Alphabetical App Grid, Caffeine, Clipboard Indicator) with Extension Manager:
-
-```bash
-sudo apt install gnome-shell-extension-manager
-```
-
-### 7. Wallpaper
+**Wallpaper and dark mode**
 
 ```bash
 mkdir -p ~/Pictures/Wallpapers/current
@@ -115,17 +153,10 @@ gsettings set org.gnome.desktop.background picture-uri-dark "$W"
 gsettings set org.gnome.desktop.interface color-scheme prefer-dark
 ```
 
-### 8. System extras (optional)
-
-**Weekly automatic updates.** First change `DESKTOP_USER=` in the script to the new username, then:
-
-```bash
-sudo cp ~/dotfiles/system/etc/cron.weekly/system-update /etc/cron.weekly/
-sudo chmod +x /etc/cron.weekly/system-update
-```
-
-**Ptyxis font** (if you still use Ptyxis):
+**Ptyxis font** (if you still use Ptyxis)
 
 ```bash
 gsettings set org.gnome.Ptyxis font-name 'JetBrainsMono Nerd Font 10'
 ```
+
+</details>

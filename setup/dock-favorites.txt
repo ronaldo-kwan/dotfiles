@@ -1,0 +1,1 @@
+['org.gnome.Nautilus.desktop', 'com.microsoft.VSCode.desktop', 'google-chrome.desktop', 'com.mitchellh.ghostty.desktop', 'md.obsidian.Obsidian.desktop', 'com.anthropic.Claude.desktop']

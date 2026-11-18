@@ -1,0 +1,9 @@
+com.bitwarden.desktop
+com.discordapp.Discord
+com.github.tchx84.Flatseal
+md.obsidian.Obsidian
+org.gnome.Calendar
+org.gnome.Decibels
+org.gnome.Music
+org.gnome.Showtime
+org.mozilla.firefox
