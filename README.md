@@ -42,7 +42,13 @@ git add -A
 git commit -m "Describe the change"
 ```
 
-The files in `setup/` are snapshots, so they don't update themselves. After changing extensions, apps, shortcuts or the dock, refresh them before committing:
+The files in `setup/` are snapshots, so they don't update themselves. After changing extensions, apps, shortcuts or the dock, run `dotsave` (defined in `.bashrc`). It refreshes all of them and shows what changed, without committing:
+
+```bash
+dotsave
+```
+
+`dotsave` runs these commands:
 
 ```bash
 code --list-extensions > ~/dotfiles/setup/vscode-extensions.txt

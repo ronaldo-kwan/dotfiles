@@ -123,6 +123,31 @@ fi
 alias update='sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y'   # update everything
 alias c='clear'
 
+# --- My functions ---
+# dotsave: refresh the snapshot files in ~/dotfiles/setup and show what changed.
+# It doesn't commit; commit yourself afterwards.
+dotsave() {
+  local d="${DOTFILES:-$HOME/dotfiles}/setup"
+  [ -d "$d" ] || { echo "dotsave: $d not found"; return 1; }
+  command -v code    >/dev/null && code --list-extensions > "$d/vscode-extensions.txt"
+  command -v flatpak >/dev/null && flatpak list --app --columns=application > "$d/flatpaks.txt"
+  if command -v dconf >/dev/null; then
+    dconf dump /org/gnome/settings-daemon/plugins/media-keys/ > "$d/gnome-shortcuts.dconf"
+    # Leave out extensions' internal records, which shouldn't be restored elsewhere
+    dconf dump /org/gnome/shell/extensions/ \
+      | grep -vE '^(last-version-installed|overridden-settings|check-x11wayland)=' \
+      | sed '/^\[ding\]$/{N;/\n$/d}' > "$d/gnome-extension-settings.dconf"
+  fi
+  command -v gsettings >/dev/null && gsettings get org.gnome.shell favorite-apps > "$d/dock-favorites.txt"
+  echo "Snapshots refreshed."
+  if [ -z "$(git -C "$d/.." status --porcelain)" ]; then
+    echo "Nothing changed in ~/dotfiles."
+  else
+    git -C "$d/.." status --short
+    echo "To save: cd ~/dotfiles && git add -A && git commit -m \"Update settings\" && git push"
+  fi
+}
+
 # --- Terminal customization ---
 # Prompt (Starship), smarter cd (zoxide: `z <name>`), fuzzy search (fzf: Ctrl+R, Ctrl+T, Alt+C)
 command -v starship >/dev/null && eval "$(starship init bash)"
