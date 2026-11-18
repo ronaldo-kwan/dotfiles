@@ -1,4 +1,5 @@
-# Desktop look: theme, icons, fonts, accent, dark mode, window buttons, workspaces
+# Desktop look: theme, icons, fonts, accent, dark mode, window buttons, workspaces,
+# and which GNOME extensions are switched on or off (including Ubuntu's built-in ones)
 # Load with: dconf load /org/gnome/ < gnome-desktop.dconf
 [desktop/interface]
 accent-color='blue'
@@ -14,3 +15,7 @@ num-workspaces=4
 
 [mutter]
 dynamic-workspaces=false
+
+[shell]
+enabled-extensions=['ubuntu-appindicators@ubuntu.com', 'caffeine@patapon.info', 'tiling-assistant@ubuntu.com', 'clipboard-indicator@tudmotu.com', 'snapd-search-provider@canonical.com', 'AlphabeticalAppGrid@stuarthayhurst']
+disabled-extensions=['ding@rastersoft.com', 'ubuntu-dock@ubuntu.com', 'web-search-provider@ubuntu.com']

@@ -145,7 +145,9 @@ restore_gnome_settings() {
     skip "not a GNOME desktop"
     return 0
   fi
-  # Theme, icons, fonts, accent colour, dark mode, window buttons, workspaces
+  # Theme, icons, fonts, accent colour, dark mode, window buttons, workspaces, and
+  # exactly which extensions are on or off (this also switches off Ubuntu's
+  # built-in ones you turned off, like Ubuntu Dock and desktop icons).
   dconf load /org/gnome/ < "$SETUP/gnome-desktop.dconf"
   dconf load /org/gnome/settings-daemon/plugins/media-keys/ < "$SETUP/gnome-shortcuts.dconf"
   dconf load /org/gnome/shell/extensions/ < "$SETUP/gnome-extension-settings.dconf"

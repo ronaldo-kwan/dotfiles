@@ -133,13 +133,18 @@ dotsave() {
   command -v flatpak >/dev/null && flatpak list --app --columns=application > "$d/flatpaks.txt"
   if command -v dconf >/dev/null; then
     {
-      echo "# Desktop look: theme, icons, fonts, accent, dark mode, window buttons, workspaces"
+      echo "# Desktop look: theme, icons, fonts, accent, dark mode, window buttons, workspaces,"
+      echo "# and which GNOME extensions are switched on or off (including Ubuntu's built-in ones)"
       echo "# Load with: dconf load /org/gnome/ < gnome-desktop.dconf"
       dconf dump /org/gnome/desktop/interface/ | sed 's|^\[/\]$|[desktop/interface]|'
       echo
       dconf dump /org/gnome/desktop/wm/preferences/ | sed 's|^\[/\]$|[desktop/wm/preferences]|'
       echo
       printf '[mutter]\ndynamic-workspaces=%s\n' "$(dconf read /org/gnome/mutter/dynamic-workspaces)"
+      echo
+      printf '[shell]\nenabled-extensions=%s\ndisabled-extensions=%s\n' \
+        "$(gsettings get org.gnome.shell enabled-extensions)" \
+        "$(gsettings get org.gnome.shell disabled-extensions)"
     } > "$d/gnome-desktop.dconf"
     dconf dump /org/gnome/settings-daemon/plugins/media-keys/ > "$d/gnome-shortcuts.dconf"
     # Leave out extensions' internal records, which shouldn't be restored elsewhere

@@ -26,7 +26,7 @@ These aren't linked. `install.sh` restores them, or see the manual steps below:
 | `install-apps.sh` | Optional: installs Chrome, VS Code, Claude Desktop, Proton VPN and OBS (uses sudo) |
 | `setup/vscode-extensions.txt` | VS Code extensions (the Catppuccin theme) |
 | `setup/flatpaks.txt` | Flatpak apps: Bitwarden, Discord, Obsidian, Firefox and others |
-| `setup/gnome-desktop.dconf` | Desktop look: Adwaita theme and icons, fonts, dark mode, blue accent, close-only window buttons, 4 fixed workspaces |
+| `setup/gnome-desktop.dconf` | Desktop look: Adwaita theme and icons, fonts, dark mode, blue accent, close-only window buttons, 4 fixed workspaces, and which extensions are on or off (Ubuntu Dock, desktop icons and web search are off) |
 | `setup/gnome-shortcuts.dconf` | Custom keyboard shortcuts: Super+C/X/T/E/F/O |
 | `setup/gnome-extension-settings.dconf` | Settings for Caffeine, Clipboard Indicator, Ubuntu Dock, Tiling Assistant |
 | `setup/dock-favorites.txt` | Apps pinned to the dock, in order |
@@ -108,7 +108,7 @@ Each app comes from its maker's official source, which then keeps it updated wit
 
 ### GNOME extensions
 
-`install.sh` installs and enables the extensions in `setup/gnome-extensions.txt` (Alphabetical App Grid, Caffeine, Clipboard Indicator) and restores their settings. They start after you log out and back in. To add another extension to the list, put its ID (shown on its extensions.gnome.org page or by `gnome-extensions list`) in that file.
+`install.sh` installs and enables the extensions in `setup/gnome-extensions.txt` (Alphabetical App Grid, Caffeine, Clipboard Indicator) and restores their settings. It also applies exactly which extensions are on or off, including Ubuntu's built-in ones: Ubuntu Dock, desktop icons and web search are switched off, as on the original computer. They start after you log out and back in. To add another extension to the list, put its ID (shown on its extensions.gnome.org page or by `gnome-extensions list`) in that file.
 
 ### Weekly automatic updates (optional)
 
