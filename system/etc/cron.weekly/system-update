@@ -1,0 +1,32 @@
+#!/bin/sh
+# Weekly system update. Notifies on failure, if stuck, or if a restart is needed.
+export DEBIAN_FRONTEND=noninteractive
+LOG=/var/log/system-update.log
+DESKTOP_USER=azuretc
+USER_ID=$(id -u "$DESKTOP_USER")
+OPTS='-y -o DPkg::Lock::Timeout=600 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold'
+
+notify() {
+  # $1 = urgency (normal/critical), $2 = title, $3 = message
+  [ -S "/run/user/$USER_ID/bus" ] || return 0
+  sudo -u "$DESKTOP_USER" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$USER_ID/bus" \
+    notify-send -u "$1" -i system-software-update "$2" "$3"
+}
+
+echo "=== $(date) ===" >> "$LOG"
+
+# Warn (without stopping anything) if the update is still running after 1 hour
+( sleep 3600; notify critical "System update looks stuck" "Still running after 1 hour. Check $LOG" ) >/dev/null 2>&1 &
+WATCHDOG=$!
+
+apt-get update >> "$LOG" 2>&1 \
+  && apt-get $OPTS --with-new-pkgs upgrade >> "$LOG" 2>&1
+STATUS=$?
+
+kill "$WATCHDOG" 2>/dev/null
+
+if [ "$STATUS" -ne 0 ]; then
+  notify critical "System update failed" "Error code $STATUS. Details in $LOG"
+elif [ -f /var/run/reboot-required ]; then
+  notify normal "Restart needed" "Updates were installed that need a restart to take effect."
+fi

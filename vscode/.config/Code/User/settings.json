@@ -1,0 +1,8 @@
+{
+    "workbench.startupEditor": "none",
+    "workbench.colorTheme": "Catppuccin Mocha",
+    "update.showReleaseNotes": false,
+    "terminal.integrated.fontFamily": "JetBrainsMono Nerd Font",
+    "editor.fontFamily": "JetBrainsMono Nerd Font",
+    "editor.fontLigatures": true
+}
