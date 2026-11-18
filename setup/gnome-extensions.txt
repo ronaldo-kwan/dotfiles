@@ -1,0 +1,9 @@
+# GNOME Shell extensions I installed (from extensions.gnome.org, e.g. via Extension Manager)
+AlphabeticalAppGrid@stuarthayhurst
+caffeine@patapon.info
+clipboard-indicator@tudmotu.com
+
+# These come with Ubuntu, listed for reference
+# snapd-search-provider@canonical.com
+# tiling-assistant@ubuntu.com
+# ubuntu-appindicators@ubuntu.com
