@@ -18,7 +18,7 @@ have() { command -v "$1" >/dev/null 2>&1; }
 
 echo "This will set up your configs from $DOTFILES:"
 echo "  link config files, install the Nerd Font, VS Code extensions and Flatpak apps,"
-echo "  and restore keyboard shortcuts, extension settings, dock and wallpaper."
+echo "  and restore keyboard shortcuts, extension settings, dock, wallpaper and accent colour."
 echo "Existing files that would be replaced are kept as <name>.orig."
 echo "Keyboard shortcuts replace any custom shortcuts already on this computer."
 read -rp "Continue? [y/N] " answer
@@ -95,8 +95,8 @@ else
   skip "not a GNOME desktop"
 fi
 
-# 6. Wallpaper and dark mode ---------------------------------------------------------
-say "Wallpaper"
+# 6. Wallpaper, dark mode and accent colour -----------------------------------------
+say "Wallpaper, dark mode and accent colour"
 if have gsettings; then
   WALL_DIR="$HOME/Pictures/Wallpapers/current"
   mkdir -p "$WALL_DIR"
@@ -105,6 +105,7 @@ if have gsettings; then
   gsettings set org.gnome.desktop.background picture-uri "$uri"
   gsettings set org.gnome.desktop.background picture-uri-dark "$uri"
   gsettings set org.gnome.desktop.interface color-scheme prefer-dark
+  gsettings set org.gnome.desktop.interface accent-color blue
   echo "    set"
 fi
 

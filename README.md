@@ -68,7 +68,7 @@ gh repo clone dotfiles ~/dotfiles
 `install.sh` asks before doing anything. It then:
 - links the config files (keeping any existing ones as `.orig`)
 - installs the Nerd Font, VS Code extensions and Flatpak apps
-- restores keyboard shortcuts, extension settings, dock and wallpaper
+- restores keyboard shortcuts, extension settings, dock, wallpaper, dark mode and the blue accent colour
 
 It's safe to run again. At the end it lists what's left to do by hand: the apps below, GNOME extensions, and the weekly update script.
 
@@ -142,7 +142,7 @@ dconf load /org/gnome/shell/extensions/ < ~/dotfiles/setup/gnome-extension-setti
 gsettings set org.gnome.shell favorite-apps "$(cat ~/dotfiles/setup/dock-favorites.txt)"
 ```
 
-**Wallpaper and dark mode**
+**Wallpaper, dark mode and accent colour**
 
 ```bash
 mkdir -p ~/Pictures/Wallpapers/current
@@ -151,6 +151,7 @@ W="file://$HOME/Pictures/Wallpapers/current/catppuccin-tropic-island-night.jpg"
 gsettings set org.gnome.desktop.background picture-uri "$W"
 gsettings set org.gnome.desktop.background picture-uri-dark "$W"
 gsettings set org.gnome.desktop.interface color-scheme prefer-dark
+gsettings set org.gnome.desktop.interface accent-color blue
 ```
 
 **Ptyxis font** (if you still use Ptyxis)

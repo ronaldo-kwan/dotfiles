@@ -1,0 +1,19 @@
+# Backups made by install.sh or by hand
+*.orig
+*.bak
+*.bak-*
+
+# Editor leftovers
+*~
+*.swp
+*.swo
+
+# Logs that apps may write next to their config
+*.log
+
+# Never commit secrets (sign-ins, keys, tokens)
+.env
+*.pem
+*.key
+id_rsa*
+id_ed25519*
