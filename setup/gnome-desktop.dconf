@@ -1,0 +1,16 @@
+# Desktop look: theme, icons, fonts, accent, dark mode, window buttons, workspaces
+# Load with: dconf load /org/gnome/ < gnome-desktop.dconf
+[desktop/interface]
+accent-color='blue'
+color-scheme='prefer-dark'
+gtk-theme='Adwaita'
+icon-theme='Adwaita'
+monospace-font-name='Adwaita Mono 11'
+show-battery-percentage=false
+
+[desktop/wm/preferences]
+button-layout='appmenu:close'
+num-workspaces=4
+
+[mutter]
+dynamic-workspaces=false

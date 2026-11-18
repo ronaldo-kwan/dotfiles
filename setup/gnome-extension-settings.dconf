@@ -1,5 +1,4 @@
 [caffeine]
-cli-toggle=false
 indicator-position-max=1
 user-enabled=true
 

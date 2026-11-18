@@ -106,14 +106,16 @@ restore_gnome_settings() {
     skip "not a GNOME desktop"
     return 0
   fi
+  # Theme, icons, fonts, accent colour, dark mode, window buttons, workspaces
+  dconf load /org/gnome/ < "$SETUP/gnome-desktop.dconf"
   dconf load /org/gnome/settings-daemon/plugins/media-keys/ < "$SETUP/gnome-shortcuts.dconf"
   dconf load /org/gnome/shell/extensions/ < "$SETUP/gnome-extension-settings.dconf"
   gsettings set org.gnome.shell favorite-apps "$(cat "$SETUP/dock-favorites.txt")"
   echo "    restored"
 }
 
-# 6. Wallpaper, dark mode and accent colour -----------------------------------------
-set_look() {
+# 6. Wallpaper -----------------------------------------------------------------------
+set_wallpaper() {
   if ! have gsettings; then
     skip "not a GNOME desktop"
     return 0
@@ -125,15 +127,14 @@ set_look() {
   uri="file://$wall_dir/$(basename "$wall")"
   gsettings set org.gnome.desktop.background picture-uri "$uri"
   gsettings set org.gnome.desktop.background picture-uri-dark "$uri"
-  gsettings set org.gnome.desktop.interface color-scheme prefer-dark
-  gsettings set org.gnome.desktop.interface accent-color blue
   echo "    set"
 }
 
 # Main ---------------------------------------------------------------------------------
 echo "This will set up your configs from $DOTFILES:"
 echo "  link config files, install the Nerd Font, VS Code extensions and Flatpak apps,"
-echo "  and restore keyboard shortcuts, extension settings, dock, wallpaper and accent colour."
+echo "  and restore your desktop look (theme, icons, dark mode, accent colour, window buttons,"
+echo "  workspaces), keyboard shortcuts, extension settings, dock and wallpaper."
 echo "Existing files that would be replaced are kept as <name>.orig."
 echo "Keyboard shortcuts replace any custom shortcuts already on this computer."
 read -rp "Continue? [y/N] " answer
@@ -143,8 +144,8 @@ run_step "Linking config files"                          link_configs
 run_step "JetBrainsMono Nerd Font"                       install_font
 run_step "VS Code extensions"                            install_vscode_extensions
 run_step "Flatpak apps"                                  install_flatpaks
-run_step "Keyboard shortcuts, extension settings and dock" restore_gnome_settings
-run_step "Wallpaper, dark mode and accent colour"        set_look
+run_step "Desktop look, shortcuts, extension settings and dock" restore_gnome_settings
+run_step "Wallpaper"                                     set_wallpaper
 
 if (( ${#FAILED[@]} > 0 )); then
   say "Finished with problems. These steps failed (see messages above):"

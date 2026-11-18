@@ -25,6 +25,7 @@ These aren't linked. `install.sh` restores them, or see the manual steps below:
 | `install.sh` | Sets up a new computer from this repo (no sudo) |
 | `setup/vscode-extensions.txt` | VS Code extensions (the Catppuccin theme) |
 | `setup/flatpaks.txt` | Flatpak apps: Bitwarden, Discord, Obsidian, Firefox and others |
+| `setup/gnome-desktop.dconf` | Desktop look: Adwaita theme and icons, fonts, dark mode, blue accent, close-only window buttons, 4 fixed workspaces |
 | `setup/gnome-shortcuts.dconf` | Custom keyboard shortcuts: Super+C/X/T/E/F/O |
 | `setup/gnome-extension-settings.dconf` | Settings for Caffeine, Clipboard Indicator, Ubuntu Dock, Tiling Assistant |
 | `setup/dock-favorites.txt` | Apps pinned to the dock, in order |
@@ -42,13 +43,13 @@ git add -A
 git commit -m "Describe the change"
 ```
 
-The files in `setup/` are snapshots, so they don't update themselves. After changing extensions, apps, shortcuts or the dock, run `dotsave` (defined in `.bashrc`). It refreshes all of them and shows what changed, without committing:
+The files in `setup/` are snapshots, so they don't update themselves. After changing extensions, apps, shortcuts, the dock or desktop settings like the theme, run `dotsave` (defined in `.bashrc`). It refreshes all of them and shows what changed, without committing:
 
 ```bash
 dotsave
 ```
 
-`dotsave` runs these commands:
+`dotsave` runs these commands, plus a snapshot of the desktop look settings into `gnome-desktop.dconf` (see `.bashrc`):
 
 ```bash
 code --list-extensions > ~/dotfiles/setup/vscode-extensions.txt
@@ -74,9 +75,11 @@ gh repo clone dotfiles ~/dotfiles
 `install.sh` asks before doing anything. It then:
 - links the config files (keeping any existing ones as `.orig`)
 - installs the Nerd Font, VS Code extensions and Flatpak apps
-- restores keyboard shortcuts, extension settings, dock, wallpaper, dark mode and the blue accent colour
+- restores your desktop look (theme, icons, dark mode, accent colour, window buttons, workspaces), keyboard shortcuts, extension settings, dock and wallpaper
 
 It's safe to run again. At the end it lists what's left to do by hand: the apps below, GNOME extensions, and the weekly update script.
+
+Display scaling isn't saved, because it depends on the screen. Set it in **Settings → Displays → Scale** if text looks too small or large.
 
 ### Apps from other sources
 
@@ -140,15 +143,16 @@ xargs -n1 code --install-extension < ~/dotfiles/setup/vscode-extensions.txt
 xargs flatpak install -y flathub < ~/dotfiles/setup/flatpaks.txt
 ```
 
-**Shortcuts, extension settings and dock.** The shortcuts replace any custom shortcuts already on the computer.
+**Desktop look, shortcuts, extension settings and dock.** The shortcuts replace any custom shortcuts already on the computer.
 
 ```bash
+dconf load /org/gnome/ < ~/dotfiles/setup/gnome-desktop.dconf
 dconf load /org/gnome/settings-daemon/plugins/media-keys/ < ~/dotfiles/setup/gnome-shortcuts.dconf
 dconf load /org/gnome/shell/extensions/ < ~/dotfiles/setup/gnome-extension-settings.dconf
 gsettings set org.gnome.shell favorite-apps "$(cat ~/dotfiles/setup/dock-favorites.txt)"
 ```
 
-**Wallpaper, dark mode and accent colour**
+**Wallpaper**
 
 ```bash
 mkdir -p ~/Pictures/Wallpapers/current
@@ -156,8 +160,6 @@ cp ~/dotfiles/setup/wallpaper/catppuccin-tropic-island-night.jpg ~/Pictures/Wall
 W="file://$HOME/Pictures/Wallpapers/current/catppuccin-tropic-island-night.jpg"
 gsettings set org.gnome.desktop.background picture-uri "$W"
 gsettings set org.gnome.desktop.background picture-uri-dark "$W"
-gsettings set org.gnome.desktop.interface color-scheme prefer-dark
-gsettings set org.gnome.desktop.interface accent-color blue
 ```
 
 **Ptyxis font** (if you still use Ptyxis)
