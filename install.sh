@@ -100,7 +100,46 @@ install_flatpaks() {
   flatpak install -y --noninteractive flathub "${apps[@]}"
 }
 
-# 5. GNOME settings ----------------------------------------------------------------
+# 5. GNOME extensions ----------------------------------------------------------------
+# Downloads each extension in setup/gnome-extensions.txt from extensions.gnome.org,
+# in the version that matches this computer's GNOME, and marks it as enabled.
+# New extensions start working after you log out and back in.
+install_gnome_extensions() {
+  local missing=()
+  for c in gnome-extensions gnome-shell curl python3; do have "$c" || missing+=("$c"); done
+  if (( ${#missing[@]} > 0 )); then
+    skip "needs ${missing[*]}"
+    return 0
+  fi
+  local shell_version tmp uuid info url
+  shell_version="$(gnome-shell --version | grep -oE '[0-9]+' | head -1)"
+  tmp="$(mktemp -d)"
+  while read -r uuid; do
+    [[ -z "$uuid" || "$uuid" == \#* ]] && continue
+    if gnome-extensions info "$uuid" >/dev/null 2>&1; then
+      echo "    $uuid: already installed"
+    else
+      info="$(curl -fsSG https://extensions.gnome.org/extension-info/ \
+        --data-urlencode "uuid=$uuid" --data-urlencode "shell_version=$shell_version")"
+      url="$(python3 -I -c 'import sys,json; print(json.load(sys.stdin)["download_url"])' <<< "$info")"
+      curl -fsSL -o "$tmp/ext.zip" "https://extensions.gnome.org$url"
+      gnome-extensions install --force "$tmp/ext.zip"
+      echo "    $uuid: installed"
+    fi
+    # Add it to the enabled list (keeps everything already enabled).
+    gsettings set org.gnome.shell enabled-extensions "$(python3 -I -c '
+import sys, ast
+current = ast.literal_eval(sys.argv[1].removeprefix("@as "))
+if sys.argv[2] not in current:
+    current.append(sys.argv[2])
+print(current)' "$(gsettings get org.gnome.shell enabled-extensions)" "$uuid")"
+  done < "$SETUP/gnome-extensions.txt"
+  gsettings set org.gnome.shell disable-user-extensions false
+  rm -rf "$tmp"
+  echo "    enabled (they start after you log out and back in)"
+}
+
+# 6. GNOME settings ----------------------------------------------------------------
 restore_gnome_settings() {
   if ! have dconf || ! have gsettings; then
     skip "not a GNOME desktop"
@@ -114,7 +153,7 @@ restore_gnome_settings() {
   echo "    restored"
 }
 
-# 6. Wallpaper -----------------------------------------------------------------------
+# 7. Wallpaper -----------------------------------------------------------------------
 set_wallpaper() {
   if ! have gsettings; then
     skip "not a GNOME desktop"
@@ -132,7 +171,7 @@ set_wallpaper() {
 
 # Main ---------------------------------------------------------------------------------
 echo "This will set up your configs from $DOTFILES:"
-echo "  link config files, install the Nerd Font, VS Code extensions and Flatpak apps,"
+echo "  link config files, install the Nerd Font, VS Code extensions, Flatpak apps and GNOME extensions,"
 echo "  and restore your desktop look (theme, icons, dark mode, accent colour, window buttons,"
 echo "  workspaces), keyboard shortcuts, extension settings, dock and wallpaper."
 echo "Existing files that would be replaced are kept as <name>.orig."
@@ -144,6 +183,7 @@ run_step "Linking config files"                          link_configs
 run_step "JetBrainsMono Nerd Font"                       install_font
 run_step "VS Code extensions"                            install_vscode_extensions
 run_step "Flatpak apps"                                  install_flatpaks
+run_step "GNOME extensions"                              install_gnome_extensions
 run_step "Desktop look, shortcuts, extension settings and dock" restore_gnome_settings
 run_step "Wallpaper"                                     set_wallpaper
 
@@ -156,11 +196,11 @@ fi
 cat <<'EOF'
 
 Still to do yourself:
-  - Install apps from their own sources: Chrome, VS Code, Claude Desktop,
-    ProtonVPN, OBS (see README, "Apps from other sources").
-  - Install GNOME extensions from setup/gnome-extensions.txt with Extension Manager.
+  - Optional: install Chrome, VS Code, Claude Desktop, Proton VPN and OBS with
+    ~/dotfiles/install-apps.sh (uses sudo, asks before each app).
+    Then run install.sh again to add VS Code's extensions.
   - Optional: weekly updates script in system/ (needs sudo, see README).
-  - Log out and back in, then open a new terminal.
+  - Log out and back in (this also starts the GNOME extensions), then open a new terminal.
 EOF
 
 (( ${#FAILED[@]} == 0 ))

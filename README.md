@@ -23,13 +23,14 @@ These aren't linked. `install.sh` restores them, or see the manual steps below:
 | File | What it is |
 |---|---|
 | `install.sh` | Sets up a new computer from this repo (no sudo) |
+| `install-apps.sh` | Optional: installs Chrome, VS Code, Claude Desktop, Proton VPN and OBS (uses sudo) |
 | `setup/vscode-extensions.txt` | VS Code extensions (the Catppuccin theme) |
 | `setup/flatpaks.txt` | Flatpak apps: Bitwarden, Discord, Obsidian, Firefox and others |
 | `setup/gnome-desktop.dconf` | Desktop look: Adwaita theme and icons, fonts, dark mode, blue accent, close-only window buttons, 4 fixed workspaces |
 | `setup/gnome-shortcuts.dconf` | Custom keyboard shortcuts: Super+C/X/T/E/F/O |
 | `setup/gnome-extension-settings.dconf` | Settings for Caffeine, Clipboard Indicator, Ubuntu Dock, Tiling Assistant |
 | `setup/dock-favorites.txt` | Apps pinned to the dock, in order |
-| `setup/gnome-extensions.txt` | GNOME extensions to install |
+| `setup/gnome-extensions.txt` | GNOME extensions that `install.sh` installs from extensions.gnome.org |
 | `setup/wallpaper/` | Desktop wallpaper |
 | `system/` | Weekly automatic update script (needs sudo) |
 
@@ -68,22 +69,34 @@ sudo apt install git gh curl stow starship eza bat fzf zoxide fastfetch ble.sh g
 gh auth login
 gh repo clone dotfiles ~/dotfiles
 ~/dotfiles/install.sh
+~/dotfiles/install-apps.sh   # optional, see below
+~/dotfiles/install.sh        # again, only if you installed VS Code, to add its extensions
 ```
+
+Then log out and back in.
 
 `lazygit` comes from Ubuntu Pro's extra app repository (`esm-apps`).
 
 `install.sh` asks before doing anything. It then:
 - links the config files (keeping any existing ones as `.orig`)
-- installs the Nerd Font, VS Code extensions and Flatpak apps
+- installs the Nerd Font, VS Code extensions, Flatpak apps and GNOME extensions (the versions matching this computer's GNOME, from extensions.gnome.org)
 - restores your desktop look (theme, icons, dark mode, accent colour, window buttons, workspaces), keyboard shortcuts, extension settings, dock and wallpaper
 
-It's safe to run again. At the end it lists what's left to do by hand: the apps below, GNOME extensions, and the weekly update script.
+It's safe to run again. If a step fails, the others still run, and the failures are listed at the end. GNOME extensions start working after you log out and back in.
 
 Display scaling isn't saved, because it depends on the screen. Set it in **Settings → Displays → Scale** if text looks too small or large.
 
 ### Apps from other sources
 
-These don't come from Ubuntu. Each official download adds its own update source, so they then update with `sudo apt upgrade`.
+These don't come from Ubuntu, so `install.sh` doesn't install them. Run `install-apps.sh` instead. It uses sudo, asks before each app, and skips any already installed:
+
+```bash
+~/dotfiles/install-apps.sh            # asks before each app
+~/dotfiles/install-apps.sh --all      # installs all of them
+DRY_RUN=1 ~/dotfiles/install-apps.sh  # only checks the downloads, installs nothing
+```
+
+Each app comes from its maker's official source, which then keeps it updated with `sudo apt upgrade`. The Claude Desktop signing key's fingerprint and Proton's setup package checksum are checked before installing. If a maker changes its download link, update the script; the table shows the manual way:
 
 | App | Where to get it | Package |
 |---|---|---|
@@ -95,13 +108,7 @@ These don't come from Ubuntu. Each official download adds its own update source,
 
 ### GNOME extensions
 
-Install the extensions in `setup/gnome-extensions.txt` (Alphabetical App Grid, Caffeine, Clipboard Indicator) with Extension Manager:
-
-```bash
-sudo apt install gnome-shell-extension-manager
-```
-
-Their settings are restored by `install.sh`. Run it again after installing them if you installed them afterwards.
+`install.sh` installs and enables the extensions in `setup/gnome-extensions.txt` (Alphabetical App Grid, Caffeine, Clipboard Indicator) and restores their settings. They start after you log out and back in. To add another extension to the list, put its ID (shown on its extensions.gnome.org page or by `gnome-extensions list`) in that file.
 
 ### Weekly automatic updates (optional)
 

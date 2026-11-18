@@ -1,9 +1,10 @@
-# GNOME Shell extensions I installed (from extensions.gnome.org, e.g. via Extension Manager)
+# GNOME Shell extensions to install from extensions.gnome.org.
+# install.sh downloads the version matching this computer's GNOME and enables them.
 AlphabeticalAppGrid@stuarthayhurst
 caffeine@patapon.info
 clipboard-indicator@tudmotu.com
 
-# These come with Ubuntu, listed for reference
+# These come with Ubuntu, so they aren't installed (listed for reference):
 # snapd-search-provider@canonical.com
 # tiling-assistant@ubuntu.com
 # ubuntu-appindicators@ubuntu.com
