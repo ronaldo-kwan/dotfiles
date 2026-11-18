@@ -63,7 +63,7 @@ gsettings get org.gnome.shell favorite-apps > ~/dotfiles/setup/dock-favorites.tx
 ### Quick setup
 
 ```bash
-sudo apt install git gh stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit flatpak
+sudo apt install git gh curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit flatpak
 gh auth login
 gh repo clone dotfiles ~/dotfiles
 ~/dotfiles/install.sh
