@@ -23,7 +23,7 @@ The folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). Eac
 Edit files at their usual place (for example `~/.bashrc`) or in this folder. Both are the same file. Then save the change:
 
 ```bash
-cd ~/.dotfiles
+cd ~/dotfiles
 git add -A
 git commit -m "Describe the change"
 ```
@@ -50,11 +50,11 @@ fc-cache -f
 
 ### 3. Link the config files
 
-Clone this repo to `~/.dotfiles` (`gh repo clone dotfiles ~/.dotfiles`). Stow won't replace files that already exist, so move the default `.bashrc` out of the way first:
+Clone this repo to `~/dotfiles` (`gh repo clone dotfiles ~/dotfiles`). Stow won't replace files that already exist, so move the default `.bashrc` out of the way first:
 
 ```bash
 mv ~/.bashrc ~/.bashrc.orig
-cd ~/.dotfiles
+cd ~/dotfiles
 stow bash starship ghostty btop lazygit terminal-default vscode claude
 ```
 
@@ -63,7 +63,7 @@ stow bash starship ghostty btop lazygit terminal-default vscode claude
 **Weekly automatic updates.** First change `DESKTOP_USER=` in the script to the new username, then:
 
 ```bash
-sudo cp ~/.dotfiles/system/etc/cron.weekly/system-update /etc/cron.weekly/
+sudo cp ~/dotfiles/system/etc/cron.weekly/system-update /etc/cron.weekly/
 sudo chmod +x /etc/cron.weekly/system-update
 ```
 
