@@ -12,9 +12,168 @@ TOOLS=(git gh curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty bto
 # Stow packages: folders here whose files are linked into your home folder
 PACKAGES=(bash git starship ghostty btop lazygit terminal-default vscode claude systemd)
 
-say()  { printf '\n\033[1;35m==>\033[0m %s\n' "$*"; }
-skip() { printf '    skipped: %s\n' "$*"; }
 have() { command -v "$1" >/dev/null 2>&1; }
+
+# --- Look: colours, title box, steps, spinner, summary ------------------------------
+# Colours and symbols only in a terminal; plain text in logs, CI and pipes (and with NO_COLOR).
+if [[ -t 1 && -z "${NO_COLOR:-}" && "${TERM:-dumb}" != dumb ]]; then
+  UI_TTY=1 C_B=$'\e[1m' C_N=$'\e[0m'
+  if [[ "${COLORTERM:-}" == *truecolor* || "${COLORTERM:-}" == *24bit* ]]; then
+    # Catppuccin Mocha: mauve, green, red, yellow, blue, overlay
+    C_ACC=$'\e[38;2;203;166;247m' C_OK=$'\e[38;2;166;227;161m' C_ERR=$'\e[38;2;243;139;168m'
+    C_WARN=$'\e[38;2;249;226;175m' C_INFO=$'\e[38;2;137;180;250m' C_DIM=$'\e[38;2;127;132;156m'
+  else
+    C_ACC=$'\e[35m' C_OK=$'\e[32m' C_ERR=$'\e[31m' C_WARN=$'\e[33m' C_INFO=$'\e[34m' C_DIM=$'\e[2m'
+  fi
+else
+  UI_TTY=0 C_B='' C_N='' C_ACC='' C_OK='' C_ERR='' C_WARN='' C_INFO='' C_DIM=''
+fi
+
+# Scripts started by another script (install.sh from fresh-install.sh) are "nested":
+# no title box, lighter step lines, and a one-line summary.
+if [[ "${UI_PID:-}" != "$$" ]]; then
+  UI_PID=$$ UI_NESTED="${UI_DEPTH:-0}" UI_T0=$SECONDS
+  export UI_DEPTH=$(( UI_NESTED + 1 ))
+  # One log for the whole run (shared with nested scripts): full output of quiet commands.
+  UI_LOG="${UI_LOG:-$HOME/.cache/dotfiles/$(basename "$0" .sh)-$(date +%Y%m%d-%H%M%S).log}"
+  export UI_LOG
+  STEP_N=0 STEP_TOTAL="${STEP_TOTAL:-0}" STEP_TITLE='' STEP_T0=$SECONDS
+  RESULTS=()
+  UI_MARK="${TMPDIR:-/tmp}/dotfiles-skipped-$$"
+fi
+
+fmt_time() { local t="$1"; if (( t < 60 )); then printf '%ss' "$t"; else printf '%dm %02ds' $((t / 60)) $((t % 60)); fi; }
+
+# header "Title" "line"...: the box at the start of a script.
+header() {
+  [[ "$UI_NESTED" == 0 ]] || return 0
+  local title="$1" l w; shift
+  w=${#title}; for l in "$@"; do (( ${#l} > w )) && w=${#l}; done
+  local bar; bar="$(printf '%*s' $((w + 4)) '' | sed 's/ /─/g')"
+  printf '\n%s╭%s╮%s\n' "$C_ACC" "$bar" "$C_N"
+  printf '%s│%s  %s%s%s%*s  %s│%s\n' "$C_ACC" "$C_N" "$C_B" "$title" "$C_N" $((w - ${#title})) '' "$C_ACC" "$C_N"
+  for l in "$@"; do
+    printf '%s│%s  %s%*s  %s│%s\n' "$C_ACC" "$C_N" "$l" $((w - ${#l})) '' "$C_ACC" "$C_N"
+  done
+  printf '%s╰%s╯%s\n' "$C_ACC" "$bar" "$C_N"
+}
+
+# Lines inside a step
+say()  { printf '\n%s%s%s\n' "$C_B" "$*" "$C_N"; }
+note() { printf '    %s•%s %s\n' "$C_INFO" "$C_N" "$*"; }
+warn() { printf '    %s!%s %s\n' "$C_WARN" "$C_N" "$*"; }
+skip() { printf '    %s↷ skipped:%s %s\n' "$C_WARN" "$C_N" "$*"; : > "$UI_MARK" 2>/dev/null || true; }
+
+# step_begin "title" / step_end ok|already|skip|notneeded|fail [detail]
+step_begin() {
+  STEP_TITLE="$1"; STEP_N=$((STEP_N + 1)); STEP_T0=$SECONDS
+  rm -f "$UI_MARK"
+  local count=''; (( STEP_TOTAL > 0 )) && count="[$STEP_N/$STEP_TOTAL] "
+  if [[ "$UI_NESTED" == 0 ]]; then
+    printf '\n%s%s%s%s%s%s\n' "$C_ACC" "$C_B" "$count" "$C_N$C_B" "$STEP_TITLE" "$C_N"
+  else
+    printf '\n  %s%s%s%s\n' "$C_DIM" "$count" "$C_N" "$STEP_TITLE"
+  fi
+}
+step_end() {
+  local st="$1" detail="${2:-}" t=$((SECONDS - STEP_T0)) icon col word quiet_end=0
+  # A step that only skipped things already said why ("↷ skipped: ..."), so no second line.
+  if [[ "$st" == ok && -e "$UI_MARK" ]]; then st=skip quiet_end=1; fi
+  rm -f "$UI_MARK"
+  case "$st" in
+    ok)        icon='✔' col="$C_OK"   word="done" ;;
+    already)   icon='✔' col="$C_DIM"  word="already done" ;;
+    skip)      icon='↷' col="$C_WARN" word="skipped" ;;
+    notneeded) icon='–' col="$C_DIM"  word="not needed" ;;
+    *)         icon='✘' col="$C_ERR"  word="failed" ;;
+  esac
+  local when=''; (( t >= 2 )) && when=" $(fmt_time "$t")"
+  if [[ "$quiet_end" == 0 ]]; then
+    printf '    %s%s %s%s%s%s%s%s\n' "$col" "$icon" "$word" "${detail:+ ($detail)}" "$C_N" "$C_DIM" "$when" "$C_N"
+  fi
+  RESULTS+=("$st|$STEP_TITLE|$t")
+  [[ "$st" == fail ]] && FAILED+=("$STEP_TITLE")
+  return 0
+}
+
+# run_step "title" command...: run one step in a subshell with "stop on error".
+# If it fails, it's marked ✘ and listed at the end; later steps still run.
+run_step() {
+  step_begin "$1"; shift
+  ( set -e; "$@" )
+  local rc=$?
+  if (( rc == 0 )); then step_end ok; else step_end fail "exit code $rc"; fi
+}
+
+# quiet "label" command...: run a noisy command (apt, flatpak) with a spinner instead of
+# its output. The output goes to the log; if it fails, the last lines are shown.
+quiet() {
+  local label="$1"; shift
+  local t0=$SECONDS rc=0 pid i=0 frames='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+  mkdir -p "$(dirname "$UI_LOG")"
+  printf '\n### %s  %s\n' "$(date '+%F %T')" "$*" >> "$UI_LOG"
+  local from; from=$(( $(stat -c %s "$UI_LOG") + 1 ))   # where this command's output starts
+  if [[ "$UI_TTY" == 1 ]]; then
+    "$@" >> "$UI_LOG" 2>&1 < /dev/null &
+    pid=$!
+    trap 'printf "\e[?25h"; kill "$pid" 2>/dev/null' INT TERM
+    printf '\e[?25l'
+    while kill -0 "$pid" 2>/dev/null; do
+      printf '\r    %s%s%s %s %s%s%s\e[K' "$C_ACC" "${frames:i:1}" "$C_N" "$label" "$C_DIM" "$(fmt_time $((SECONDS - t0)))" "$C_N"
+      i=$(( (i + 1) % 10 ))
+      sleep 0.1
+    done
+    wait "$pid" || rc=$?
+    printf '\r\e[K\e[?25h'
+    trap - INT TERM
+  else
+    printf '    … %s\n' "$label"
+    "$@" >> "$UI_LOG" 2>&1 < /dev/null || rc=$?
+  fi
+  if (( rc == 0 )); then
+    printf '    %s✔%s %s %s%s%s\n' "$C_OK" "$C_N" "$label" "$C_DIM" "$(fmt_time $((SECONDS - t0)))" "$C_N"
+  else
+    printf '    %s✘ %s failed%s (exit code %s). Last lines of the log:\n' "$C_ERR" "$label" "$C_N" "$rc"
+    tail -c "+$from" "$UI_LOG" | grep -v '^\s*$' | tail -n 12 | sed "s/^/      ${C_DIM}│${C_N} /"
+    printf '      Full log: %s\n' "${UI_LOG/#$HOME/\~}"
+  fi
+  return "$rc"
+}
+
+# summary: the table of steps at the end. Returns 1 if anything failed.
+summary() {
+  local r st title t icon col n_ok=0 n_skip=0 n_fail=0 w=0 total=$((SECONDS - UI_T0))
+  for r in "${RESULTS[@]}"; do IFS='|' read -r _ title _ <<< "$r"; (( ${#title} > w )) && w=${#title}; done
+  (( w > 46 )) && w=46
+  if [[ "$UI_NESTED" == 0 ]]; then printf '\n%s%s── Summary %s%s\n' "$C_ACC" "$C_B" "$(printf '%*s' $((w + 2)) '' | sed 's/ /─/g')" "$C_N"; fi
+  for r in "${RESULTS[@]}"; do
+    IFS='|' read -r st title t <<< "$r"
+    case "$st" in
+      ok) icon='✔' col="$C_OK"; n_ok=$((n_ok + 1)) ;;
+      already) icon='✔' col="$C_DIM"; n_ok=$((n_ok + 1)) ;;
+      skip) icon='↷' col="$C_WARN"; n_skip=$((n_skip + 1)) ;;
+      notneeded) icon='–' col="$C_DIM" ;;
+      *) icon='✘' col="$C_ERR"; n_fail=$((n_fail + 1)) ;;
+    esac
+    [[ "$UI_NESTED" == 0 ]] || continue
+    (( ${#title} > w )) && title="${title:0:w-1}…"
+    local word; case "$st" in ok) word='';; already) word='already done';; skip) word='skipped';; notneeded) word='not needed';; *) word='FAILED';; esac
+    [[ -z "$word" ]] && (( t >= 2 )) && word="$(fmt_time "$t")"
+    printf '  %s%s%s %s%*s  %s%s%s\n' "$col" "$icon" "$C_N" "$title" $((w - ${#title})) '' "$C_DIM" "$word" "$C_N"
+  done
+  if [[ "$UI_NESTED" != 0 ]]; then
+    printf '\n  %s%s:%s %s done, %s skipped, %s failed %s(%s)%s\n' "$C_DIM" "$(basename "$0")" "$C_N" "$n_ok" "$n_skip" "$n_fail" "$C_DIM" "$(fmt_time "$total")" "$C_N"
+  elif (( n_fail )); then
+    local steps="steps"; (( n_fail == 1 )) && steps="step"
+    printf '\n%s%s✘ %s %s failed.%s Fix the cause (see its messages above) and run it again;\n  finished parts are skipped.' "$C_ERR" "$C_B" "$n_fail" "$steps" "$C_N"
+    printf ' Took %s.\n' "$(fmt_time "$total")"
+  else
+    printf '\n%s%s✔ All done%s in %s.\n' "$C_OK" "$C_B" "$C_N" "$(fmt_time "$total")"
+  fi
+  if [[ "$UI_NESTED" == 0 && -s "$UI_LOG" ]]; then printf '  %sFull output of installs: %s%s\n' "$C_DIM" "${UI_LOG/#$HOME/\~}" "$C_N"; fi
+  (( n_fail == 0 ))
+}
+show_failures() { summary; }
 
 # --- Questions ----------------------------------------------------------------------
 # YES_ALL=1 answers Yes to every question, so a run needs no one at the keyboard.
@@ -34,17 +193,25 @@ yes_flag() {
 choose_answer_mode() {
   [[ -n "$YES_ALL" ]] && return 0
   local a
-  echo
-  read -rp "Answer Yes to every question, so the rest runs by itself? [Y/n] (n = ask each one) " a
-  if [[ "$a" =~ ^[Nn]$ ]]; then YES_ALL=0; else YES_ALL=1; fi
+  printf '\n  %sHow should questions be answered?%s\n' "$C_B" "$C_N"
+  printf '    %sY%s  Yes to everything: it runs by itself  %s(Enter)%s\n' "$C_ACC$C_B" "$C_N" "$C_DIM" "$C_N"
+  printf '    %sn%s  Ask me before each step\n' "$C_ACC$C_B" "$C_N"
+  read -rp "  ${C_ACC}›${C_N} " a
+  if [[ "$a" =~ ^[Nn]$ ]]; then
+    YES_ALL=0; printf '  %s✔%s I'"'"'ll ask before each step %s(Enter = yes)%s\n' "$C_OK" "$C_N" "$C_DIM" "$C_N"
+  else
+    YES_ALL=1; printf '  %s✔%s Yes to everything: you can leave it running\n' "$C_OK" "$C_N"
+  fi
   export YES_ALL
 }
 
 # ask "Question?": true unless the answer is n/N (Enter means yes). With YES_ALL=1
 # it shows the question with the answer and doesn't wait.
 ask() {
-  if [[ "$YES_ALL" == 1 ]]; then printf '    %s [Y/n] y (yes to all)\n' "$1"; return 0; fi
-  local a; read -rp "    $1 [Y/n] " a; [[ ! "$a" =~ ^[Nn]$ ]]
+  if [[ "$YES_ALL" == 1 ]]; then
+    printf '    %s?%s %s %s› yes%s\n' "$C_INFO" "$C_N" "$1" "$C_DIM" "$C_N"; return 0
+  fi
+  local a; read -rp "    ${C_INFO}?${C_N} $1 ${C_DIM}[Y/n]${C_N} " a; [[ ! "$a" =~ ^[Nn]$ ]]
 }
 
 # keep_sudo: ask for the password once, then keep sudo signed in until this script
@@ -58,30 +225,6 @@ keep_sudo() {
 
 # installed <package>: is this apt package installed?
 installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"; }
-
-# run_step "title" command...: run one step in a subshell with "stop on error".
-# If it fails, say so and add the title to FAILED; later steps still run.
-run_step() {
-  local title="$1"; shift
-  say "$title"
-  ( set -e; "$@" )
-  local rc=$?
-  if (( rc != 0 )); then
-    printf '    \033[1;31mfailed\033[0m (exit code %s)\n' "$rc"
-    FAILED+=("$title")
-  fi
-  return 0
-}
-
-# show_failures: list FAILED steps, or say "Done."; returns 1 if anything failed.
-show_failures() {
-  if (( ${#FAILED[@]} > 0 )); then
-    say "Finished with problems. These steps failed (see messages above):"
-    printf '  - %s\n' "${FAILED[@]}"
-    return 1
-  fi
-  say "Done."
-}
 
 # Is the JetBrainsMono Nerd Font installed? (Not `fc-list | grep -q`: with pipefail
 # that fails when grep stops reading fc-list's long output early.)

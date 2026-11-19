@@ -66,9 +66,10 @@ reenable_sources() {
 
 # 2. Update everything -----------------------------------------------------------------
 update_all() {
-  $SUDO apt-get -o DPkg::Lock::Timeout=300 update
-  $SUDO apt-get -o DPkg::Lock::Timeout=300 -y full-upgrade
-  if have flatpak; then flatpak update -y --noninteractive; fi
+  quiet "Refreshing package lists" $SUDO apt-get -o DPkg::Lock::Timeout=300 update
+  quiet "Upgrading all packages" $SUDO env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 \
+    -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold -y full-upgrade
+  if have flatpak; then quiet "Updating Flatpak apps" flatpak update -y --noninteractive; fi
 }
 
 # 5. NVIDIA ------------------------------------------------------------------------------
@@ -88,34 +89,32 @@ check_nvidia() {
 
 # Main -------------------------------------------------------------------------------------
 if [[ "${1:-}" == "--sources-only" ]]; then
-  say "Switching app update sources back on"
-  reenable_sources
+  STEP_TOTAL=1
+  run_step "Switch app update sources back on" reenable_sources
+  summary
   exit 0
 fi
 
-echo "After an Ubuntu upgrade: switch app update sources back on, update everything,"
-echo "put back apps and settings, and check the NVIDIA driver. Uses sudo."
+header "After an Ubuntu upgrade" \
+  "Switches app update sources back on, updates everything, puts back apps" \
+  "and settings, reinstalls GNOME extensions for the new GNOME, and checks" \
+  "the NVIDIA driver. Uses sudo."
+STEP_TOTAL=5
 yes_flag "$@"
 choose_answer_mode
 ask "Continue?" || { echo "Nothing changed."; exit 0; }
 [[ -z "$SUDO" ]] || keep_sudo || exit 1
 
-run_step "1. Switching app update sources back on" reenable_sources
-run_step "2. Updating everything (apt and Flatpak)" update_all
-run_step "3. install-apps.sh (apps, Snap Firefox, NVIDIA, weekly jobs)" "$DOTFILES/install-apps.sh"
-run_step "4. install.sh (configs, settings, GNOME extensions for the new GNOME)" \
+run_step "Switch app update sources back on" reenable_sources
+run_step "Update everything (apt and Flatpak)" update_all
+run_step "Apps, Snap Firefox, NVIDIA, weekly jobs (install-apps.sh)" "$DOTFILES/install-apps.sh"
+run_step "Configs, settings, GNOME extensions (install.sh)" \
   env REINSTALL_EXTENSIONS=1 "$DOTFILES/install.sh" --yes
-run_step "5. NVIDIA driver" check_nvidia
+run_step "NVIDIA driver" check_nvidia
 
-say "Health check"
+summary; ok=$?
 "$DOTFILES/check.sh" || true
-
-show_failures
-cat <<'EOF'
-
-Next:
-  - Restart, then log out and back in once more if any GNOME extension is missing
-    (Extensions app: switch on any that show as off).
-  - If the NVIDIA driver wasn't running, run ~/dotfiles/post-upgrade.sh again after the restart.
-EOF
-(( ${#FAILED[@]} == 0 ))
+printf '\n%sNext%s\n' "$C_B" "$C_N"
+note "Restart. If a GNOME extension is still off afterwards, switch it on in the Extensions app."
+note "If the NVIDIA driver wasn't running, run ~/dotfiles/post-upgrade.sh again after the restart."
+exit "$ok"

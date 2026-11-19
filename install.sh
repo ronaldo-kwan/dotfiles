@@ -53,7 +53,6 @@ install_font() {
   cp "$tmp"/extract/JetBrainsMonoNerdFont-*.ttf "$font_dir/"
   rm -rf "$tmp"
   fc-cache -f "$font_dir"
-  echo "    installed"
 }
 
 # 3. VS Code extensions --------------------------------------------------------------
@@ -80,7 +79,8 @@ install_flatpaks() {
   fi
   local -a apps
   mapfile -t apps < <(grep -v '^\s*$' "$SETUP/flatpaks.txt")
-  flatpak install -y --noninteractive flathub "${apps[@]}"
+  quiet "Installing ${#apps[@]} Flatpak apps (already installed ones are skipped)" \
+    flatpak install -y --noninteractive flathub "${apps[@]}"
 }
 
 # 5. GNOME extensions ----------------------------------------------------------------
@@ -198,7 +198,7 @@ restore_app_settings() {
       done
     fi
   fi
-  echo "    done (apps that start at login apply from your next login)"
+  note "apps that start at login apply from your next login"
 }
 
 # 9. Obsidian -----------------------------------------------------------------------
@@ -299,15 +299,12 @@ setup_safety_checks() {
 }
 
 # Main ---------------------------------------------------------------------------------
-echo "This will set up your configs from $DOTFILES:"
-echo "  link config files, install the Nerd Font, VS Code extensions, Flatpak apps and GNOME extensions,"
-echo "  and restore your desktop look (theme, icons, dark mode, accent colour, window buttons,"
-echo "  workspaces, fonts), keyboard shortcuts, power, Files and dialog settings, backups settings,"
-echo "  extension settings, dock, wallpaper, lock screen, apps that start at login,"
-echo "  default apps and qBittorrent settings; and switch on a secret check before commits"
-echo "  and a weekly reminder to save settings (it never commits)."
-echo "Existing files that would be replaced are kept as <name>.orig."
-echo "Keyboard shortcuts replace any custom shortcuts already on this computer."
+header "Set up configs and desktop" \
+  "Config links, Nerd Font, VS Code extensions, Flatpak apps, GNOME extensions," \
+  "desktop look, shortcuts and settings, wallpaper, app settings, Obsidian," \
+  "secret check before commits and a weekly reminder. No sudo needed." \
+  "Files it replaces are kept as <name>.orig."
+STEP_TOTAL=10
 # -y / --yes (used by fresh-install.sh), or Yes to everything chosen earlier, skips this.
 yes_flag "$@"
 ask "Continue?" || { echo "Nothing changed."; exit 0; }
@@ -323,16 +320,11 @@ run_step "App settings (login apps, default apps, qBittorrent)" restore_app_sett
 run_step "Obsidian vault and settings"                   restore_obsidian
 run_step "Secret check before commits and weekly reminder" setup_safety_checks
 
-show_failures
-cat <<'EOF'
-
-Still to do yourself:
-  - Run ~/dotfiles/install-apps.sh (uses sudo): Chrome, VS Code, Claude Desktop,
-    Proton VPN, OBS, ONLYOFFICE, Steam, Ubuntu apps, the NVIDIA driver if needed,
-    and weekly automatic updates. Then run install.sh again to add VS Code's
-    extensions and set up Obsidian.
-  - Log out and back in (this also starts the GNOME extensions), then open a new terminal.
-  - Sign in to your apps (Steam, browsers, Discord, Bitwarden, Backups/Google Drive).
-EOF
-
-(( ${#FAILED[@]} == 0 ))
+summary; ok=$?
+if [[ "$UI_NESTED" == 0 ]]; then
+  printf '\n%sStill to do yourself%s\n' "$C_B" "$C_N"
+  note "Run ~/dotfiles/install-apps.sh (apps, NVIDIA driver, weekly updates), then this again for VS Code's extensions and Obsidian"
+  note "Log out and back in (starts the GNOME extensions), then open a new terminal"
+  note "Sign in to your apps (Steam, browsers, Discord, Bitwarden, Backups/Google Drive)"
+fi
+exit "$ok"

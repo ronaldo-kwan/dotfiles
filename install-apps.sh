@@ -115,7 +115,21 @@ apt_wait() {
 
 # apt-get, after waiting for other updates to finish. DPkg::Lock::Timeout also
 # makes apt itself wait (up to 5 minutes) if something starts in between.
-apt_get() { apt_wait; run sudo apt-get -o DPkg::Lock::Timeout=300 "$@"; }
+# apt_get <apt-get arguments>: with a spinner and a short label; full output in the log.
+apt_get() {
+  apt_wait
+  if [[ "$DRY_RUN" == 1 ]]; then run sudo apt-get "$@"; return 0; fi
+  local label a pkgs=()
+  for a in "$@"; do [[ "$a" == -* || "$a" == install || "$a" == remove || "$a" == update ]] || pkgs+=("${a##*/}"); done
+  case " $* " in
+    *" update "*)  label="Refreshing package lists" ;;
+    *" remove "*)  label="Removing ${pkgs[*]}" ;;
+    *)             label="Installing ${pkgs[*]}" ;;
+  esac
+  (( ${#label} > 60 )) && label="${label:0:57}..."
+  quiet "$label" sudo env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 \
+    -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold "$@"
+}
 
 # Run a command, or only print it in dry-run mode.
 run() {
@@ -297,9 +311,8 @@ install_steam() {
     run sudo dpkg --add-architecture i386
   fi
   apt_get update
-  # Non-interactive skips an information note the installer shows on some NVIDIA setups.
-  apt_wait
-  run sudo env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install -y steam-installer
+  # (apt_get runs non-interactively, which skips a note Steam shows on some NVIDIA setups.)
+  apt_get install -y steam-installer
 }
 
 # --- Clock check -------------------------------------------------------------------
@@ -323,8 +336,8 @@ check_clock() {
 
 clock_step() {
   check_clock && return 0
-  say "Clock"
-  echo "    This computer's clock is $CLOCK_OFF the real time."
+  printf '\n%sClock%s\n' "$C_B" "$C_N"
+  warn "This computer's clock is $CLOCK_OFF the real time."
   echo "    Installs would fail with \"Release file ... is not valid yet\"."
   if [[ "$DRY_RUN" == 1 ]]; then
     if command -v chronyc >/dev/null; then
@@ -385,10 +398,15 @@ for tool in curl gpg sha256sum; do
   command -v "$tool" >/dev/null || { echo "Needs $tool first: sudo apt install $tool"; exit 1; }
 done
 
-[[ "$DRY_RUN" == 1 ]] && echo "Dry run: downloads are checked, but nothing is installed."
+title="Apps and system jobs"; [[ "$DRY_RUN" == 1 ]] && title+=" (dry run: installs nothing)"
+header "$title" \
+  "Apps from their makers' official sources, kept updated by apt:" \
+  "Chrome, VS Code, Claude, Proton VPN, OBS, ONLYOFFICE, Steam, Ubuntu apps;" \
+  "the NVIDIA driver, weekly updates, monthly clean-up, no Snap Firefox." \
+  "Uses sudo. Yes to everything also accepts the Microsoft fonts licence."
+STEP_TOTAL=${#APPS[@]}
+[[ "$DRY_RUN" == 1 ]] && note "Dry run: downloads are checked, but nothing is installed."
 if [[ "$DRY_RUN" != 1 ]]; then
-  echo "This installs apps from their makers' official sources and needs your password (sudo)."
-  echo "Yes to everything also accepts the Microsoft fonts licence that the codecs need."
   yes_flag "$@"
   choose_answer_mode
   keep_sudo || exit 1
@@ -398,37 +416,25 @@ clock_step
 for entry in "${APPS[@]}"; do
   IFS='|' read -r name check fn verb <<< "$entry"
   verb="${verb:-Install}"
-  case "$verb" in Remove) done_word=removed ;; "Set up") done_word="set up" ;; *) done_word=installed ;; esac
-  say "$verb: $name"
+  step_begin "$verb: $name"
   NOT_NEEDED=0
   if is_done "$check"; then
-    (( NOT_NEEDED )) && continue
-    if [[ "$DRY_RUN" == 1 ]]; then
-      echo "    already $done_word (checking it anyway)"
-    else
-      echo "    already $done_word"
-      continue
-    fi
+    if (( NOT_NEEDED )); then step_end notneeded; continue; fi
+    if [[ "$DRY_RUN" != 1 ]]; then step_end already; continue; fi
+    note "already done (checking the download anyway)"
   fi
-  if [[ "$DRY_RUN" != 1 ]]; then
-    ask "$verb $name?" || { skip "you chose not to"; continue; }
+  if [[ "$DRY_RUN" != 1 ]] && ! ask "$verb $name?"; then
+    step_end skip "you chose not to"; continue
   fi
   ( set -e; "$fn" )
   rc=$?
-  if (( rc != 0 )); then
-    printf '    \033[1;31mfailed\033[0m (exit code %s)\n' "$rc"
-    FAILED+=("$name")
-  elif [[ "$DRY_RUN" != 1 ]]; then
-    echo "    $done_word"
-  fi
+  if (( rc != 0 )); then step_end fail "exit code $rc"; else step_end ok; fi
 done
 
-if (( ${#FAILED[@]} > 0 )); then
-  say "Finished with problems. These apps failed (see messages above):"
-  printf '  - %s\n' "${FAILED[@]}"
-  exit 1
+summary; ok=$?
+if [[ "$DRY_RUN" != 1 && "$UI_NESTED" == 0 ]]; then
+  echo
+  note "Installed VS Code? Run ~/dotfiles/install.sh again to add its extensions."
+  note "Installed Steam? Its first start downloads the rest of Steam, then you sign in."
 fi
-say "Done."
-[[ "$DRY_RUN" != 1 ]] && echo "If you installed VS Code, run ~/dotfiles/install.sh again to add its extensions."
-[[ "$DRY_RUN" != 1 ]] && echo "If you installed Steam, its first start downloads the rest of Steam, then you sign in."
-exit 0
+exit "$ok"

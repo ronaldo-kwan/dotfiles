@@ -16,13 +16,10 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # have, installed, TOOLS, PACKA
 MODE=full; [[ "${1:-}" == "--notify" ]] && MODE=notify
 VAULT="$HOME/Documents/Obsidian Vault"
 PROBLEMS=0
-# Colours only in a terminal (plain text in logs and when piped)
-if [[ -t 1 ]]; then G=$'\e[32m' R=$'\e[31m' D=$'\e[2m' P=$'\e[1;35m' B=$'\e[1m' N=$'\e[0m'
-else G='' R='' D='' P='' B='' N=''; fi
-ok()   { printf '  %s✔%s %s\n' "$G" "$N" "$*"; }
-bad()  { printf '  %s✘%s %s\n' "$R" "$N" "$*"; PROBLEMS=$((PROBLEMS + 1)); }
-info() { printf '  %s–%s %s\n' "$D" "$N" "$*"; }
-section() { printf '\n%s%s%s\n' "$P" "$*" "$N"; }
+ok()   { printf '  %s✔%s %s\n' "$C_OK" "$C_N" "$*"; }
+bad()  { printf '  %s✘%s %s\n' "$C_ERR" "$C_N" "$*"; PROBLEMS=$((PROBLEMS + 1)); }
+info() { printf '  %s–%s %s\n' "$C_DIM" "$C_N" "$*"; }
+section() { printf '\n%s%s%s%s\n' "$C_ACC" "$C_B" "$*" "$C_N"; }
 # list_missing <description> <items...>: ok if nothing given, else one ✘ line
 list_missing() {
   local what="$1"; shift
@@ -68,6 +65,7 @@ Nothing was committed. Details: dotcheck"
 fi
 
 # --- Full check -------------------------------------------------------------------------
+header "Health check" "Is this computer still set up the way ~/dotfiles says? Changes nothing."
 section "Config links (stow)"
 broken=()
 for pkg in "${PACKAGES[@]}"; do
@@ -141,11 +139,13 @@ else ok "snapshots match this computer"; fi
 for d in "$DOTFILES" "$VAULT"; do
   [[ -d "$d/.git" ]] || continue
   s="$(repo_state "$d" | paste -sd' ' | sed 's/ / and /')"
-  [[ -z "$s" ]] && ok "${d/#$HOME/\~}: everything committed and pushed" || bad "${d/#$HOME/\~}: $s changes"
+  [[ -z "$s" ]] && ok "${d/#$HOME/\~}: everything committed and pushed" \
+    || bad "${d/#$HOME/\~}: $s changes (cd ${d/#$HOME/\~} && git add -A && git commit && git push)"
 done
 
 echo
 if (( PROBLEMS )); then
-  printf '%s%s%s thing(s) need attention.%s\n' "$B" "$R" "$PROBLEMS" "$N"; exit 1
+  things="things need"; (( PROBLEMS == 1 )) && things="thing needs"
+  printf '%s%s✘ %s %s attention.%s Each ✘ line says what fixes it.\n' "$C_ERR" "$C_B" "$PROBLEMS" "$things" "$C_N"; exit 1
 fi
-printf '%s%sAll good.%s\n' "$B" "$G" "$N"
+printf '%s%s✔ All good.%s\n' "$C_OK" "$C_B" "$C_N"

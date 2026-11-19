@@ -28,7 +28,9 @@ gh repo clone dotfiles ~/dotfiles
 
 **One question at the start:** "Answer Yes to every question, so the rest runs by itself?" Press <kbd>Enter</kbd> (Yes), then type your password once; you can walk away. Yes to everything means: install every app, update firmware if the charger is in, accept the Microsoft fonts licence that the codecs need, and restart at the end (after a 15-second countdown; <kbd>Ctrl</kbd> + <kbd>C</kbd> stays). The scripts it runs get the same answer and don't ask again. Type <kbd>n</kbd> instead to be asked before each step and app (Enter still means Yes). To skip even the first question: `~/dotfiles/fresh-install.sh --yes`.
 
-If a step fails, the rest still run and the failures are listed at the end. Fix the cause and run it again; finished parts are skipped.
+**What you see:** each step is numbered (`[3/6]`) and ends with ✔ done, ↷ skipped (with the reason) or ✘ failed. Long installs show a spinner and a timer instead of pages of apt output; the full output is saved in `~/.cache/dotfiles/` and, if something fails, its last lines are shown right there. A summary table at the end lists every step.
+
+If a step fails, the rest still run. Fix the cause and run it again; finished parts are skipped.
 
 **One screen may still need you:**
 - **NVIDIA with Secure Boot:** if asked, make up a short password (letters and numbers). After the restart, a blue **MOK management** screen appears: Enroll MOK → Continue → Yes → type that password → Reboot. Then `nvidia-smi` should list the RTX 5060.
