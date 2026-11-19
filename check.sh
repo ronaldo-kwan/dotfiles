@@ -16,10 +16,13 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # have, installed, TOOLS, PACKA
 MODE=full; [[ "${1:-}" == "--notify" ]] && MODE=notify
 VAULT="$HOME/Documents/Obsidian Vault"
 PROBLEMS=0
-ok()   { printf '  \033[32m✔\033[0m %s\n' "$*"; }
-bad()  { printf '  \033[31m✘\033[0m %s\n' "$*"; PROBLEMS=$((PROBLEMS + 1)); }
-info() { printf '  \033[2m–\033[0m %s\n' "$*"; }
-section() { printf '\n\033[1;35m%s\033[0m\n' "$*"; }
+# Colours only in a terminal (plain text in logs and when piped)
+if [[ -t 1 ]]; then G=$'\e[32m' R=$'\e[31m' D=$'\e[2m' P=$'\e[1;35m' B=$'\e[1m' N=$'\e[0m'
+else G='' R='' D='' P='' B='' N=''; fi
+ok()   { printf '  %s✔%s %s\n' "$G" "$N" "$*"; }
+bad()  { printf '  %s✘%s %s\n' "$R" "$N" "$*"; PROBLEMS=$((PROBLEMS + 1)); }
+info() { printf '  %s–%s %s\n' "$D" "$N" "$*"; }
+section() { printf '\n%s%s%s\n' "$P" "$*" "$N"; }
 # list_missing <description> <items...>: ok if nothing given, else one ✘ line
 list_missing() {
   local what="$1"; shift
@@ -143,6 +146,6 @@ done
 
 echo
 if (( PROBLEMS )); then
-  printf '\033[1;31m%s thing(s) need attention.\033[0m\n' "$PROBLEMS"; exit 1
+  printf '%s%s%s thing(s) need attention.%s\n' "$B" "$R" "$PROBLEMS" "$N"; exit 1
 fi
-printf '\033[1;32mAll good.\033[0m\n'
+printf '%s%sAll good.%s\n' "$B" "$G" "$N"

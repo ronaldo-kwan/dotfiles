@@ -15,7 +15,7 @@ jobs:
     name: shellcheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Syntax check (bash -n)
         run: |
           for f in *.sh scripts/*.sh .githooks/pre-commit bash/.bashrc; do bash -n "$f"; done
@@ -35,8 +35,9 @@ jobs:
           apt-get update -qq
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
             git stow curl ca-certificates python3 fontconfig xz-utils gpg >/dev/null
-          git config --global --add safe.directory '*'
-      - uses: actions/checkout@v4
+          # System-wide, because install.sh replaces ~/.gitconfig with the one in this repo
+          git config --system --add safe.directory '*'
+      - uses: actions/checkout@v5
       - name: install.sh
         run: ./install.sh --yes
       - name: install.sh again (must be safe to run twice)
