@@ -97,7 +97,9 @@ These need sudo and extra setup, so `install.sh` doesn't install them. Run `inst
 DRY_RUN=1 ~/dotfiles/install-apps.sh  # only checks the downloads, installs nothing
 ```
 
-Each app comes from its maker's official source, which then keeps it updated with `sudo apt upgrade`. The Claude Desktop and ONLYOFFICE signing keys' fingerprints and Proton's setup package checksum are checked before installing. If ONLYOFFICE is installed without its update source (for example from a downloaded `.deb`), the script offers to add the source so it gets updates. If a maker changes its download link, update the script; the table shows the manual way:
+Each app comes from its maker's official source, which then keeps it updated with `sudo apt upgrade`. The Claude Desktop and ONLYOFFICE signing keys' fingerprints and Proton's setup package checksum are checked before installing. If ONLYOFFICE is installed without its update source (for example from a downloaded `.deb`), the script offers to add the source so it gets updates.
+
+It first checks the computer's clock against the internet. If it's more than 5 minutes off (common in a VM resumed from a saved state), installs would fail with "Release file … is not valid yet", so it offers to fix the clock (`sudo systemctl restart systemd-timesyncd`) before going on. If a maker changes its download link, update the script; the table shows the manual way:
 
 | App | Where to get it | Package |
 |---|---|---|

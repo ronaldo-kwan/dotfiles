@@ -155,6 +155,44 @@ install_steam() {
   run sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y steam-installer
 }
 
+# --- Clock check -------------------------------------------------------------------
+# apt refuses update sources whose release files look like they're "from the future",
+# which happens when the clock is wrong (for example a VM resumed from a saved state).
+# Compares this computer's clock with GitHub's; fails if they differ by over 5 minutes.
+CLOCK_OFF=""
+check_clock() {
+  local server now diff
+  server="$(curl -fsSI --max-time 10 https://github.com 2>/dev/null \
+    | tr -d '\r' | awk -F': ' 'tolower($1)=="date"{print $2; exit}')"
+  [[ -n "$server" ]] || return 0                 # offline: can't check, carry on
+  server="$(date -d "$server" +%s 2>/dev/null)" || return 0
+  now="$(date +%s)"; diff=$(( now - server )); diff=${diff#-}
+  (( diff <= 300 )) && return 0
+  CLOCK_OFF="$(( diff / 3600 ))h $(( diff % 3600 / 60 ))min $([[ $now -lt $server ]] && echo behind || echo ahead of)"
+  return 1
+}
+
+clock_step() {
+  check_clock && return 0
+  say "Clock"
+  echo "    This computer's clock is $CLOCK_OFF the real time."
+  echo "    Installs would fail with \"Release file ... is not valid yet\"."
+  if [[ "$DRY_RUN" == 1 ]]; then
+    echo "    would offer to fix it: sudo systemctl restart systemd-timesyncd"
+    return 0
+  fi
+  local answer=y
+  (( ASK )) && read -rp "    Fix the clock now? [Y/n] " answer
+  if [[ ! "$answer" =~ ^[Nn]$ ]]; then
+    sudo systemctl restart systemd-timesyncd
+    for _ in $(seq 1 15); do sleep 2; check_clock && { echo "    clock fixed"; return 0; }; done
+    echo "    The clock is still $CLOCK_OFF. Check: timedatectl"
+  fi
+  answer=n
+  (( ASK )) && read -rp "    Continue anyway? Installs will probably fail. [y/N] " answer
+  [[ "$answer" =~ ^[Yy]$ ]] || { echo "Stopped. Nothing was installed."; exit 1; }
+}
+
 # --- Main --------------------------------------------------------------------------
 
 APPS=(
@@ -177,6 +215,7 @@ if [[ "$DRY_RUN" != 1 ]]; then
   echo "This installs apps from their makers' official sources and needs your password (sudo)."
   sudo -v || exit 1
 fi
+clock_step
 
 for entry in "${APPS[@]}"; do
   IFS='|' read -r name check fn <<< "$entry"
