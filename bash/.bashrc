@@ -151,6 +151,8 @@ dotsave() {
     dconf dump /org/gnome/shell/extensions/ \
       | grep -vE '^(last-version-installed|overridden-settings|check-x11wayland|cli-toggle)=' \
       | sed '/^\[ding\]$/{N;/\n$/d}' > "$d/gnome-extension-settings.dconf"
+    # Shortcuts, power, sound, Files, file dialogs, search order, backups, app settings
+    bash "$d/../scripts/dump-desktop-settings.sh" > "$d/desktop-settings.dconf"
   fi
   command -v gsettings >/dev/null && gsettings get org.gnome.shell favorite-apps > "$d/dock-favorites.txt"
   echo "Snapshots refreshed."

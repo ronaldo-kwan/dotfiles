@@ -1,0 +1,82 @@
+# More desktop settings: window and screenshot shortcuts, power, sound, Files,
+# file dialogs, search order, backups and app settings.
+# Load with: dconf load / < desktop-settings.dconf
+
+[org/gnome/desktop/wm/keybindings]
+close=['<Super>w']
+move-to-workspace-1=['<Super><Shift>1', '<Super><Shift>Home']
+move-to-workspace-2=['<Super><Shift>2']
+move-to-workspace-3=['<Super><Shift>3']
+move-to-workspace-4=['<Super><Shift>4']
+switch-to-workspace-1=['<Super>1', '<Super>Home']
+switch-to-workspace-2=['<Super>2']
+switch-to-workspace-3=['<Super>3']
+switch-to-workspace-4=['<Super>4']
+
+[org/gnome/shell/keybindings]
+show-screenshot-ui=['Print', '<Shift><Super>s']
+switch-to-application-1=@as []
+switch-to-application-2=@as []
+switch-to-application-3=@as []
+switch-to-application-4=@as []
+toggle-message-tray=['<Super>m']
+
+[org/gnome/shell]
+last-selected-power-profile='performance'
+remember-mount-password=true
+
+[org/gnome/settings-daemon/plugins/power]
+sleep-inactive-ac-timeout=3600
+sleep-inactive-ac-type='nothing'
+
+[org/gnome/desktop/sound]
+theme-name='freedesktop'
+
+[org/gnome/nautilus/preferences]
+default-folder-viewer='list-view'
+migrated-gtk-settings=true
+
+[org/gnome/nautilus/list-view]
+default-column-order=['name', 'size', 'type', 'owner', 'group', 'permissions', 'date_modified', 'date_accessed', 'date_created', 'recency', 'detailed_type']
+default-visible-columns=['name', 'size', 'date_modified']
+
+[org/gtk/settings/file-chooser]
+date-format='regular'
+location-mode='path-bar'
+show-hidden=true
+show-size-column=true
+show-type-column=true
+sort-column='name'
+sort-directories-first=false
+sort-order='ascending'
+type-format='category'
+
+[org/gtk/gtk4/settings/file-chooser]
+show-hidden=false
+sort-directories-first=true
+
+[org/gnome/desktop/search-providers]
+sort-order=['org.gnome.Settings.desktop', 'org.gnome.Contacts.desktop', 'org.gnome.Nautilus.desktop']
+
+[org/gnome/deja-dup]
+backend='google'
+delete-after=0
+periodic-period=7
+
+[org/gnome/deja-dup/google]
+folder='Laptop'
+
+[org/gnome/deja-dup/local]
+folder='Laptop'
+
+[org/gnome/TextEditor]
+style-scheme='catppuccin-mocha'
+
+[org/gnome/Ptyxis]
+use-system-font=false
+font-name='JetBrainsMono Nerd Font 10'
+
+[com/ubuntu/update-notifier]
+show-livepatch-status-icon=false
+
+# ptyxis-palette='Catppuccin Mocha'

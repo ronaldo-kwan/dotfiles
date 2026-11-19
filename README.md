@@ -28,12 +28,14 @@ These aren't linked. `install.sh` restores them, or see the manual steps below:
 | `setup/apt-packages.txt` | Ubuntu apps I installed myself: VLC, qBittorrent, Tweaks, Extension Manager, Backups, Software. Edit by hand. |
 | `setup/flatpaks.txt` | Flatpak apps: Bitwarden, Discord, Obsidian, Firefox and others |
 | `setup/gnome-desktop.dconf` | Desktop look: Adwaita theme and icons, fonts, dark mode, blue accent, close-only window buttons, 4 fixed workspaces, and which extensions are on or off (Ubuntu Dock, desktop icons and web search are off) |
+| `setup/desktop-settings.dconf` | Window shortcuts (Super+W, Super+1–4 workspaces), screenshot shortcut, power (never sleep on AC), sound theme, Files list view, file dialogs, search order, Backups schedule, Text Editor and Ptyxis settings |
 | `setup/gnome-shortcuts.dconf` | Custom keyboard shortcuts: Super+C/X/T/E/F/O |
 | `setup/gnome-extension-settings.dconf` | Settings for Caffeine, Clipboard Indicator, Ubuntu Dock, Tiling Assistant |
 | `setup/dock-favorites.txt` | Apps pinned to the dock, in order |
 | `setup/gnome-extensions.txt` | GNOME extensions that `install.sh` installs from extensions.gnome.org |
 | `setup/wallpaper/` | Desktop wallpaper |
 | `system/` | Weekly automatic update script (needs sudo) |
+| `scripts/dump-desktop-settings.sh` | Used by `dotsave` to write `setup/desktop-settings.dconf` |
 
 ## Making changes
 
@@ -59,7 +61,10 @@ flatpak list --app --columns=application > ~/dotfiles/setup/flatpaks.txt
 dconf dump /org/gnome/settings-daemon/plugins/media-keys/ > ~/dotfiles/setup/gnome-shortcuts.dconf
 dconf dump /org/gnome/shell/extensions/ > ~/dotfiles/setup/gnome-extension-settings.dconf
 gsettings get org.gnome.shell favorite-apps > ~/dotfiles/setup/dock-favorites.txt
+bash ~/dotfiles/scripts/dump-desktop-settings.sh > ~/dotfiles/setup/desktop-settings.dconf
 ```
+
+Things GNOME remembers by itself (window sizes, last-used folders, timestamps) are deliberately left out of the snapshots.
 
 ## Setting up a new computer
 
@@ -84,6 +89,8 @@ Then log out and back in.
 - restores your desktop look (theme, icons, dark mode, accent colour, window buttons, workspaces), keyboard shortcuts, extension settings, dock and wallpaper
 
 It's safe to run again. If a step fails, the others still run, and the failures are listed at the end. GNOME extensions start working after you log out and back in.
+
+**Backups:** the schedule and folder are restored, but your Google sign-in isn't stored anywhere in this repo. Open **Backups** once and connect Google Drive.
 
 Display scaling isn't saved, because it depends on the screen. Set it in **Settings → Displays → Scale** if text looks too small or large.
 

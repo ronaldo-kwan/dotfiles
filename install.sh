@@ -152,6 +152,18 @@ restore_gnome_settings() {
   dconf load /org/gnome/settings-daemon/plugins/media-keys/ < "$SETUP/gnome-shortcuts.dconf"
   dconf load /org/gnome/shell/extensions/ < "$SETUP/gnome-extension-settings.dconf"
   gsettings set org.gnome.shell favorite-apps "$(cat "$SETUP/dock-favorites.txt")"
+  # Window and screenshot shortcuts, power, sound, Files, file dialogs, search order,
+  # backups and app settings.
+  if [[ -f "$SETUP/desktop-settings.dconf" ]]; then
+    dconf load / < "$SETUP/desktop-settings.dconf"
+    # Ptyxis keeps its colours in a profile with a different ID on each computer.
+    local palette uuid
+    palette="$(sed -n 's/^# ptyxis-palette=//p' "$SETUP/desktop-settings.dconf")"
+    uuid="$(dconf read /org/gnome/Ptyxis/default-profile-uuid | tr -d "'")"
+    if [[ -n "$palette" && -n "$uuid" ]]; then
+      dconf write "/org/gnome/Ptyxis/Profiles/$uuid/palette" "$palette"
+    fi
+  fi
   echo "    restored"
 }
 
@@ -168,6 +180,7 @@ set_wallpaper() {
   uri="file://$wall_dir/$(basename "$wall")"
   gsettings set org.gnome.desktop.background picture-uri "$uri"
   gsettings set org.gnome.desktop.background picture-uri-dark "$uri"
+  gsettings set org.gnome.desktop.screensaver picture-uri "$uri"   # lock screen
   echo "    set"
 }
 
@@ -175,7 +188,8 @@ set_wallpaper() {
 echo "This will set up your configs from $DOTFILES:"
 echo "  link config files, install the Nerd Font, VS Code extensions, Flatpak apps and GNOME extensions,"
 echo "  and restore your desktop look (theme, icons, dark mode, accent colour, window buttons,"
-echo "  workspaces), keyboard shortcuts, extension settings, dock and wallpaper."
+echo "  workspaces, fonts), keyboard shortcuts, power, Files and dialog settings, backups settings,"
+echo "  extension settings, dock, wallpaper and lock screen."
 echo "Existing files that would be replaced are kept as <name>.orig."
 echo "Keyboard shortcuts replace any custom shortcuts already on this computer."
 read -rp "Continue? [y/N] " answer
@@ -186,8 +200,8 @@ run_step "JetBrainsMono Nerd Font"                       install_font
 run_step "VS Code extensions"                            install_vscode_extensions
 run_step "Flatpak apps"                                  install_flatpaks
 run_step "GNOME extensions"                              install_gnome_extensions
-run_step "Desktop look, shortcuts, extension settings and dock" restore_gnome_settings
-run_step "Wallpaper"                                     set_wallpaper
+run_step "Desktop look, shortcuts and settings, extension settings and dock" restore_gnome_settings
+run_step "Wallpaper and lock screen"                     set_wallpaper
 
 if (( ${#FAILED[@]} > 0 )); then
   say "Finished with problems. These steps failed (see messages above):"
