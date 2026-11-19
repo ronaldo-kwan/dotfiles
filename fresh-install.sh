@@ -29,9 +29,12 @@ This sets up this computer from $DOTFILES:
   1. update the system      2. update firmware (optional)    3. install terminal tools
   4. install.sh             5. install-apps.sh               6. install.sh again
 It uses sudo, takes a while (downloads), and ends with a restart.
+Yes to everything also accepts the Microsoft fonts licence (codecs) and restarts at the end.
 EOF
+yes_flag "$@"
+choose_answer_mode
 ask "Start?" || { echo "Nothing changed."; exit 0; }
-sudo -v || exit 1
+keep_sudo || exit 1
 
 # 1. Update the system --------------------------------------------------------------
 update_system() {
@@ -84,4 +87,10 @@ After the restart:
   - Sign in to your apps (Steam, browsers, Discord, Bitwarden).
   - Open Backups, connect Google Drive, and turn on "Back Up Automatically".
 EOF
-ask "Restart now?" && sudo reboot
+if ask "Restart now?"; then
+  if [[ "$YES_ALL" == 1 ]]; then
+    echo "    Restarting in 15 seconds. Press Ctrl+C to stay."
+    sleep 15
+  fi
+  sudo reboot
+fi

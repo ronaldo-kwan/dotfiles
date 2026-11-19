@@ -13,7 +13,7 @@ gh repo clone dotfiles ~/dotfiles
 ~/dotfiles/fresh-install.sh
 ```
 
-Press <kbd>Enter</kbd> for every question. It updates the system, installs everything and ends with a restart. Details, the two screens that need you, and what to do after: [docs/new-computer.md](docs/new-computer.md).
+It asks one question at the start: press <kbd>Enter</kbd> for **Yes to everything**, type your password once, and it runs by itself: it updates the system, installs everything and restarts at the end. Details and what to do after: [docs/new-computer.md](docs/new-computer.md).
 
 ## Everyday
 

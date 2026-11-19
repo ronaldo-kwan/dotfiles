@@ -9,14 +9,13 @@
 #
 # Uses sudo. Asks before each app, and skips apps that are already installed.
 #
-#   ~/dotfiles/install-apps.sh            install, asking before each app
-#   ~/dotfiles/install-apps.sh --all      install all of them without asking
+#   ~/dotfiles/install-apps.sh            asks once: Yes to everything, or ask before each app
+#   ~/dotfiles/install-apps.sh --yes      Yes to everything without asking (--all and -y too)
 #   DRY_RUN=1 ~/dotfiles/install-apps.sh  only show what would happen
 
 set -uo pipefail
 
 DRY_RUN="${DRY_RUN:-0}"
-ASK=1; [[ "${1:-}" == "--all" ]] && ASK=0
 # shellcheck source=lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, skip, ask, installed, fill_user, SETUP
 
@@ -221,6 +220,14 @@ install_ubuntu_apps() {
     return 0
   fi
   echo "    installing: ${missing[*]}"
+  # The codecs bring Microsoft's fonts, whose installer stops on a licence screen.
+  # Answer it here instead (Yes to everything counts as accepting it).
+  if printf '%s\n' "${missing[@]}" | grep -qx ubuntu-restricted-extras; then
+    if ask "Accept the Microsoft fonts licence (needed for the codecs)?"; then
+      echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" > "$TMP/fonts.debconf"
+      run sudo debconf-set-selections "$TMP/fonts.debconf"
+    fi
+  fi
   apt_get install -y "${missing[@]}"
 }
 
@@ -328,9 +335,7 @@ clock_step() {
     echo "    (and if that doesn't work, set the clock from the internet time)"
     return 0
   fi
-  local answer=y
-  (( ASK )) && read -rp "    Fix the clock now? [Y/n] " answer
-  if [[ ! "$answer" =~ ^[Nn]$ ]]; then
+  if ask "Fix the clock now?"; then
     # 1. Ask the time service to correct the clock right away.
     if command -v chronyc >/dev/null; then
       # Ubuntu 25.10+ uses chrony. "makestep" jumps straight to the right time
@@ -349,9 +354,7 @@ clock_step() {
     fi
     echo "    The clock is still $CLOCK_OFF. Check: timedatectl"
   fi
-  answer=y
-  (( ASK )) && read -rp "    Continue anyway? Installs will probably fail. [Y/n] " answer
-  [[ "$answer" =~ ^[Nn]$ ]] && { echo "Stopped. Nothing was installed."; exit 1; }
+  ask "Continue anyway? Installs will probably fail." || { echo "Stopped. Nothing was installed."; exit 1; }
 }
 
 # --- Main --------------------------------------------------------------------------
@@ -385,7 +388,10 @@ done
 [[ "$DRY_RUN" == 1 ]] && echo "Dry run: downloads are checked, but nothing is installed."
 if [[ "$DRY_RUN" != 1 ]]; then
   echo "This installs apps from their makers' official sources and needs your password (sudo)."
-  sudo -v || exit 1
+  echo "Yes to everything also accepts the Microsoft fonts licence that the codecs need."
+  yes_flag "$@"
+  choose_answer_mode
+  keep_sudo || exit 1
 fi
 clock_step
 
@@ -404,9 +410,8 @@ for entry in "${APPS[@]}"; do
       continue
     fi
   fi
-  if (( ASK )) && [[ "$DRY_RUN" != 1 ]]; then
-    read -rp "    $verb $name? [Y/n] " answer
-    [[ "$answer" =~ ^[Nn]$ ]] && { skip "you chose not to"; continue; }
+  if [[ "$DRY_RUN" != 1 ]]; then
+    ask "$verb $name?" || { skip "you chose not to"; continue; }
   fi
   ( set -e; "$fn" )
   rc=$?

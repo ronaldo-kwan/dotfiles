@@ -2,11 +2,11 @@
 
 ## Apps from other sources (`install-apps.sh`)
 
-These need sudo and extra setup, so `install.sh` doesn't install them. `install-apps.sh` uses sudo, asks before each app, and skips any already installed:
+These need sudo and extra setup, so `install.sh` doesn't install them. `install-apps.sh` uses sudo and skips any already installed. It first asks whether to answer Yes to everything; type <kbd>n</kbd> to be asked before each app instead:
 
 ```bash
-~/dotfiles/install-apps.sh            # asks before each app
-~/dotfiles/install-apps.sh --all      # installs all of them
+~/dotfiles/install-apps.sh            # one question: Yes to everything, or ask each
+~/dotfiles/install-apps.sh --yes      # Yes to everything without asking (--all and -y work too)
 DRY_RUN=1 ~/dotfiles/install-apps.sh  # only checks the downloads, installs nothing
 ```
 
@@ -31,7 +31,7 @@ It also sets up the [weekly updates and monthly clean-up](maintenance.md#weekly-
 
 - **NVIDIA graphics driver:** only on computers with an NVIDIA card. It runs Ubuntu's `sudo ubuntu-drivers install`, which picks the right driver for the card and works with Secure Boot. Restart afterwards.
 - **Steam on the NVIDIA card:** installs the 32-bit NVIDIA library that matches the driver (many games need it), and a copy of Steam's shortcut that asks for the NVIDIA card, so games run on it. Quit Steam fully first if it's open.
-- **Codecs** (`ubuntu-restricted-extras`, in the Ubuntu apps list) shows a font licence screen: press <kbd>Tab</kbd> to `<Ok>` and <kbd>Enter</kbd>, then choose `<Yes>`.
+- **Codecs** (`ubuntu-restricted-extras`, in the Ubuntu apps list) include Microsoft's fonts, whose licence normally stops the install with a full-screen prompt. The script asks about the licence as a normal question instead (Yes to everything accepts it) and passes the answer to the installer.
 - **Removes Ubuntu's Snap Firefox**, because this setup uses the Flatpak Firefox (in `setup/flatpaks.txt`). It removes both the Snap and Ubuntu's `firefox` package, which only exists to install the Snap and would bring it back on an update. It only does this if the Flatpak Firefox is installed. By hand: `sudo snap remove firefox && sudo apt remove firefox`.
 
 ## Steam

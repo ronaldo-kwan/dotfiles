@@ -20,16 +20,17 @@ gh repo clone dotfiles ~/dotfiles
 `fresh-install.sh` does everything in the right order and ends with a restart:
 
 1. **Updates the system** (`apt full-upgrade`).
-2. **Updates firmware** (BIOS, SSD, devices) with `fwupdmgr`, only if the charger is plugged in. It asks first.
+2. **Updates firmware** (BIOS, SSD, devices) with `fwupdmgr`, only if the charger is plugged in.
 3. **Installs the terminal tools** (Starship, eza, bat, fzf, zoxide, ble.sh, Ghostty, btop, lazygit, ...) and adds Flathub.
 4. Runs **`install.sh`**: configs, fonts, Flatpak apps, GNOME extensions, desktop and app settings, the secret check and the weekly reminder.
 5. Runs **`install-apps.sh`**: Chrome, VS Code, Claude Desktop, Proton VPN, OBS, ONLYOFFICE, Steam, Ubuntu apps, the NVIDIA driver, weekly updates, monthly clean-up.
 6. Runs **`install.sh` again**, for VS Code's extensions and Obsidian now that those apps exist.
 
-Every question defaults to **Yes**, so press <kbd>Enter</kbd> to go on. If a step fails, the rest still run and the failures are listed at the end. Fix the cause and run it again; finished parts are skipped.
+**One question at the start:** "Answer Yes to every question, so the rest runs by itself?" Press <kbd>Enter</kbd> (Yes), then type your password once; you can walk away. Yes to everything means: install every app, update firmware if the charger is in, accept the Microsoft fonts licence that the codecs need, and restart at the end (after a 15-second countdown; <kbd>Ctrl</kbd> + <kbd>C</kbd> stays). The scripts it runs get the same answer and don't ask again. Type <kbd>n</kbd> instead to be asked before each step and app (Enter still means Yes). To skip even the first question: `~/dotfiles/fresh-install.sh --yes`.
 
-**Two screens need you:**
-- **Font licence** (codecs): press <kbd>Tab</kbd> to `<Ok>` and <kbd>Enter</kbd>, then choose `<Yes>`.
+If a step fails, the rest still run and the failures are listed at the end. Fix the cause and run it again; finished parts are skipped.
+
+**One screen may still need you:**
 - **NVIDIA with Secure Boot:** if asked, make up a short password (letters and numbers). After the restart, a blue **MOK management** screen appears: Enroll MOK → Continue → Yes → type that password → Reboot. Then `nvidia-smi` should list the RTX 5060.
 
 **After the restart:** sign in to your apps (Steam, browsers, Discord, Bitwarden). Open **Backups**, connect Google Drive, and turn on **Back Up Automatically**. Keep the backup encryption password somewhere safe; without it the backups can't be restored. Then run `dotcheck` to see that everything is in place.

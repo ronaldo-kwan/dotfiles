@@ -11,7 +11,8 @@
 #   4. runs install.sh, reinstalling GNOME extensions for the new GNOME version
 #   5. checks the NVIDIA driver and runs check.sh
 #
-#   ~/dotfiles/post-upgrade.sh
+#   ~/dotfiles/post-upgrade.sh                  one question: Yes to everything, or ask each
+#   ~/dotfiles/post-upgrade.sh --yes            Yes to everything without asking
 #   ~/dotfiles/post-upgrade.sh --sources-only   only step 1
 # For testing: SOURCES_DIR=<folder> SUDO= ./post-upgrade.sh --sources-only
 
@@ -94,8 +95,10 @@ fi
 
 echo "After an Ubuntu upgrade: switch app update sources back on, update everything,"
 echo "put back apps and settings, and check the NVIDIA driver. Uses sudo."
+yes_flag "$@"
+choose_answer_mode
 ask "Continue?" || { echo "Nothing changed."; exit 0; }
-[[ -z "$SUDO" ]] || $SUDO -v || exit 1
+[[ -z "$SUDO" ]] || keep_sudo || exit 1
 
 run_step "1. Switching app update sources back on" reenable_sources
 run_step "2. Updating everything (apt and Flatpak)" update_all

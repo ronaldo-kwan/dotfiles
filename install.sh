@@ -308,11 +308,9 @@ echo "  default apps and qBittorrent settings; and switch on a secret check befo
 echo "  and a weekly reminder to save settings (it never commits)."
 echo "Existing files that would be replaced are kept as <name>.orig."
 echo "Keyboard shortcuts replace any custom shortcuts already on this computer."
-# --yes (used by fresh-install.sh) skips this question.
-if [[ "${1:-}" != "--yes" ]]; then
-  read -rp "Continue? [Y/n] " answer
-  [[ "$answer" =~ ^[Nn]$ ]] && { echo "Nothing changed."; exit 0; }
-fi
+# -y / --yes (used by fresh-install.sh), or Yes to everything chosen earlier, skips this.
+yes_flag "$@"
+ask "Continue?" || { echo "Nothing changed."; exit 0; }
 
 run_step "Linking config files"                          link_configs
 run_step "JetBrainsMono Nerd Font"                       install_font
