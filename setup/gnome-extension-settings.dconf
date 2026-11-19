@@ -1,5 +1,5 @@
 [caffeine]
-indicator-position-max=1
+indicator-position-max=4
 user-enabled=true
 
 [clipboard-indicator]
