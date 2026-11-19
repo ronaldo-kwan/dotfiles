@@ -40,6 +40,24 @@ check_onlyoffice() {
 }
 is_done() { if [[ "$1" == check_* ]]; then "$1"; else installed "$1"; fi; }
 
+# Wait while another program (such as Ubuntu's automatic updates) is using apt.
+# Only one program can install or refresh package lists at a time.
+APT_LOCKS=(/var/lib/apt/lists/lock /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/cache/apt/archives/lock)
+apt_wait() {
+  [[ "$DRY_RUN" == 1 ]] && return 0
+  command -v fuser >/dev/null || return 0
+  local waited=0
+  while sudo fuser "${APT_LOCKS[@]}" >/dev/null 2>&1; do
+    (( waited == 0 )) && echo "    waiting for another software update to finish (often Ubuntu's automatic updates)..."
+    sleep 5; waited=$(( waited + 5 ))
+    if (( waited >= 900 )); then echo "    still busy after 15 minutes; trying anyway"; break; fi
+  done
+}
+
+# apt-get, after waiting for other updates to finish. DPkg::Lock::Timeout also
+# makes apt itself wait (up to 5 minutes) if something starts in between.
+apt_get() { apt_wait; run sudo apt-get -o DPkg::Lock::Timeout=300 "$@"; }
+
 # Run a command, or only print it in dry-run mode.
 run() {
   if [[ "$DRY_RUN" == 1 ]]; then printf '    would run: %s\n' "$*"; else "$@"; fi
@@ -72,7 +90,7 @@ repo_lookup() { # repo_lookup <Packages URL> <package>  -> prints "path sha256"
 install_chrome() {
   # Google's .deb adds Google's update source itself.
   fetch_big "$TMP/chrome.deb" https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-  run sudo apt-get install -y "$TMP/chrome.deb"
+  apt_get install -y "$TMP/chrome.deb"
 }
 
 install_vscode() {
@@ -80,7 +98,7 @@ install_vscode() {
   echo "code code/add-microsoft-repo boolean true" > "$TMP/code.debconf"
   run sudo debconf-set-selections "$TMP/code.debconf"
   fetch_big "$TMP/code.deb" "https://code.visualstudio.com/sha/download?build=stable&os=linux-deb-x64"
-  run sudo apt-get install -y "$TMP/code.deb"
+  apt_get install -y "$TMP/code.deb"
 }
 
 install_claude() {
@@ -95,8 +113,8 @@ install_claude() {
   echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/claude-desktop-archive-keyring.asc] https://downloads.claude.ai/claude-desktop/apt/stable stable main" > "$TMP/claude.list"
   run sudo install -m 644 "$TMP/claude.asc" /usr/share/keyrings/claude-desktop-archive-keyring.asc
   run sudo install -m 644 "$TMP/claude.list" /etc/apt/sources.list.d/claude-desktop.list
-  run sudo apt-get update
-  run sudo apt-get install -y claude-desktop
+  apt_get update
+  apt_get install -y claude-desktop
 }
 
 install_protonvpn() {
@@ -107,14 +125,15 @@ install_protonvpn() {
   [[ -n "$path" && -n "$sha" ]] || { echo "    couldn't find Proton's setup package" >&2; return 1; }
   fetch "$TMP/protonvpn-release.deb" "$base/$path"
   echo "$sha  $TMP/protonvpn-release.deb" | sha256sum -c --quiet - || { echo "    checksum didn't match. Not installing." >&2; return 1; }
-  run sudo apt-get install -y "$TMP/protonvpn-release.deb"
-  run sudo apt-get update
-  run sudo apt-get install -y proton-vpn-gnome-desktop
+  apt_get install -y "$TMP/protonvpn-release.deb"
+  apt_get update
+  apt_get install -y proton-vpn-gnome-desktop
 }
 
 install_obs() {
+  apt_wait
   run sudo add-apt-repository -y ppa:obsproject/obs-studio
-  run sudo apt-get install -y obs-studio
+  apt_get install -y obs-studio
 }
 
 install_onlyoffice() {
@@ -130,8 +149,8 @@ install_onlyoffice() {
   echo "deb [signed-by=/usr/share/keyrings/onlyoffice.gpg] https://download.onlyoffice.com/repo/debian squeeze main" > "$TMP/onlyoffice.list"
   run sudo install -m 644 "$TMP/onlyoffice.gpg" /usr/share/keyrings/onlyoffice.gpg
   run sudo install -m 644 "$TMP/onlyoffice.list" /etc/apt/sources.list.d/onlyoffice.list
-  run sudo apt-get update
-  run sudo apt-get install -y onlyoffice-desktopeditors
+  apt_get update
+  apt_get install -y onlyoffice-desktopeditors
 }
 
 install_ubuntu_apps() {
@@ -142,7 +161,7 @@ install_ubuntu_apps() {
     return 0
   fi
   echo "    installing: ${missing[*]}"
-  run sudo apt-get install -y "${missing[@]}"
+  apt_get install -y "${missing[@]}"
 }
 
 install_steam() {
@@ -150,9 +169,10 @@ install_steam() {
   if ! dpkg --print-foreign-architectures | grep -qx i386; then
     run sudo dpkg --add-architecture i386
   fi
-  run sudo apt-get update
+  apt_get update
   # Non-interactive skips an information note the installer shows on some NVIDIA setups.
-  run sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y steam-installer
+  apt_wait
+  run sudo env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install -y steam-installer
 }
 
 # --- Clock check -------------------------------------------------------------------
