@@ -35,7 +35,7 @@ If a step fails, the rest still run. Fix the cause and run it again; finished pa
 **One screen may still need you:**
 - **NVIDIA with Secure Boot:** if asked, make up a short password (letters and numbers). After the restart, a blue **MOK management** screen appears: Enroll MOK → Continue → Yes → type that password → Reboot. Then `nvidia-smi` should list the RTX 5060.
 
-**After the restart:** sign in to your apps (Steam, browsers, Discord, Bitwarden). Open **Backups**, connect Google Drive, and turn on **Back Up Automatically**. Keep the backup encryption password somewhere safe; without it the backups can't be restored. Then run `dot ssh` (signed commits, one approval in the browser) and `dot check` to see that everything is in place.
+**After the restart:** sign in to your apps (Steam, browsers, Discord, Bitwarden). Open **Backups**, connect Google Drive, and turn on **Back Up Automatically**. Keep the backup encryption password somewhere safe; without it the backups can't be restored. Then run `dot ssh` (signed commits, one approval in the browser) and `dot check` to see that everything is in place (`dot check --fix` offers to fix anything that isn't).
 
 Display scaling isn't saved, because it depends on the screen. Set it in **Settings → Displays → Scale** if text looks too small or large.
 

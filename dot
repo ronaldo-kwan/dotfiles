@@ -20,6 +20,7 @@ usage() {
   done <<'EOF'
 dot save|Refresh the snapshots in setup/ and show what changed
 dot check|Health check: is everything still set up? Changes nothing
+dot check --fix|The same, then offers to fix each problem (asks first)
 dot status|What changed since your last push
 dot push [message]|Save to GitHub: commit everything and push (secret check first)
 dot notes [message]|Same for your Obsidian notes

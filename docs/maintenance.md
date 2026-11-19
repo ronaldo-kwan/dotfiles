@@ -18,11 +18,15 @@ Things GNOME remembers by itself (window sizes, last-used folders, timestamps) a
 
 `dot check` (or `dotcheck`, or `~/dotfiles/check.sh`) checks that this computer still matches the repo: config links, terminal tools, the Nerd Font, every app and system job from `install-apps.sh`, the NVIDIA driver, Flatpaks, GNOME and VS Code extensions, the firewall, the Obsidian vault, the secret check, signed commits, the reminder, whether the snapshots are out of date, Ubuntu apps you installed that aren't in `setup/apt-packages.txt`, and whether anything isn't committed or pushed.
 
-**Ubuntu apps you installed yourself** (with apt, App Center or a `.deb`) are read from apt's history; Ubuntu's own installs are left out. Add each one it lists to `setup/apt-packages.txt` so a new computer gets it, or write it as `-name` (for example `-cowsay   # just trying it`) to keep it off new computers and stop the reminder. It changes nothing; each ✘ line says which script fixes it.
+**Ubuntu apps you installed yourself** (with apt, App Center or a `.deb`) are read from apt's history; Ubuntu's own installs are left out. Add each one it lists to `setup/apt-packages.txt` so a new computer gets it, or write it as `-name` (for example `-cowsay   # just trying it`) to keep it off new computers and stop the reminder. It changes nothing; each ✘ line ends with what fixes it (→ `dot apps`, → `dot save`, ...).
+
+`dot check --fix` runs the same check, then offers each fix in a sensible order, asking first (Enter = yes, n = skip): missing tools, `dot apps`, `dot install`, `dot ssh`, adding unsaved Ubuntu apps to `setup/apt-packages.txt`, opening Backups, `dot save`, and last `dot push` / `dot notes` for anything those changed. A summary shows what was fixed; run `dot check` again to confirm.
+
+**Automatic backups** count as part of the setup: `dot check` shows ✘ while Backups' "Back Up Automatically" is off. Turn it on (and connect Google Drive), then run `dot save`, so new computers get it switched on too.
 
 ## Weekly reminder
 
-A systemd user timer (`systemd/.config/systemd/user/dotfiles-reminder.timer`, linked by `install.sh`) runs `check.sh --notify` on Sunday at 19:00, or at your next login if the computer was off. It shows a notification only if settings changed since your last `dot save`, you installed Ubuntu apps that aren't in `setup/apt-packages.txt`, or `~/dotfiles` / your notes have changes that aren't committed or pushed. It never commits.
+A systemd user timer (`systemd/.config/systemd/user/dotfiles-reminder.timer`, linked by `install.sh`) runs `check.sh --notify` on Sunday at 19:00, or at your next login if the computer was off. It shows a notification only if settings changed since your last `dot save`, you installed Ubuntu apps that aren't in `setup/apt-packages.txt`, automatic backups are off, or `~/dotfiles` / your notes have changes that aren't committed or pushed. It never commits.
 
 ```bash
 systemctl --user list-timers dotfiles-reminder.timer   # when it runs next

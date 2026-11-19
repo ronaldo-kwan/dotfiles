@@ -24,14 +24,15 @@ Everything goes through one command, `dot` (`dot help` lists it all; <kbd>Tab</k
 | `dot save` | Refreshes the snapshots in `setup/` (apps, extensions, dock, desktop settings) and shows what changed |
 | `dot push "message"` | Saves to GitHub: commits everything and pushes (the secret check runs first) |
 | `dot notes` | Same for your Obsidian notes |
-| `dot check` | Health check: links, tools, apps, extensions, firewall, signing, unsaved changes. Changes nothing |
+| `dot check` | Health check: links, tools, apps, extensions, firewall, signing, backups, unsaved changes. Changes nothing; each ✘ says what fixes it |
+| `dot check --fix` | The same, then offers to fix each problem in order (asks first; Enter = yes) |
 | `dot status` / `dot cd` / `dot edit` | What changed / go to `~/dotfiles` / open it in VS Code |
 | `dot install`, `dot apps`, `dot fresh`, `dot upgrade`, `dot ssh` | The setup scripts (see below) |
 | `update` | Updates Ubuntu packages now (it also happens weekly by itself) |
 
 `dotsave` and `dotcheck` still work as before.
 
-Config files like `~/.bashrc` are links into this folder, so editing either place edits the same file. A **weekly reminder** (Sunday evening, or your next login) tells you if settings changed since the last `dot save`, you installed Ubuntu apps that aren't saved, or changes aren't committed. It never commits anything.
+Config files like `~/.bashrc` are links into this folder, so editing either place edits the same file. A **weekly reminder** (Sunday evening, or your next login) tells you if settings changed since the last `dot save`, you installed Ubuntu apps that aren't saved, automatic backups are off, or changes aren't committed. It never commits anything.
 
 A **secret check** runs before every commit here and in your notes repo, and stops the commit if something looks like a password, token or key. False alarm? `git commit --no-verify`.
 
