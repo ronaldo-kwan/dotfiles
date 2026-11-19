@@ -9,26 +9,8 @@
 
 set -uo pipefail
 
-DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SETUP="$DOTFILES/setup"
-PACKAGES=(bash git starship ghostty btop lazygit terminal-default vscode claude)
-FAILED=()
-
-say()  { printf '\n\033[1;35m==>\033[0m %s\n' "$*"; }
-skip() { printf '    skipped: %s\n' "$*"; }
-have() { command -v "$1" >/dev/null 2>&1; }
-
-# Run one step in a subshell with "stop on error", and record it if it fails.
-run_step() {
-  local title="$1"; shift
-  say "$title"
-  ( set -e; "$@" )
-  local rc=$?
-  if (( rc != 0 )); then
-    printf '    \033[1;31mfailed\033[0m (exit code %s)\n' "$rc"
-    FAILED+=("$title")
-  fi
-}
+# shellcheck source=lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, skip, have, run_step, DOTFILES, SETUP
 
 # 1. Link config files with stow ------------------------------------------------
 link_configs() {
@@ -55,7 +37,7 @@ link_configs() {
 # 2. JetBrainsMono Nerd Font -----------------------------------------------------
 install_font() {
   local font_dir="$HOME/.local/share/fonts/JetBrainsMonoNerdFont" tmp
-  if fc-list | grep -qi "JetBrainsMono Nerd Font"; then
+  if has_nerd_font; then
     echo "    already installed"
     return 0
   fi
@@ -96,6 +78,7 @@ install_flatpaks() {
     skip "Flathub isn't set up. Run: sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo"
     return 0
   fi
+  local -a apps
   mapfile -t apps < <(grep -v '^\s*$' "$SETUP/flatpaks.txt")
   flatpak install -y --noninteractive flathub "${apps[@]}"
 }
@@ -104,6 +87,8 @@ install_flatpaks() {
 # Downloads each extension in setup/gnome-extensions.txt from extensions.gnome.org,
 # in the version that matches this computer's GNOME, and marks it as enabled.
 # New extensions start working after you log out and back in.
+# REINSTALL_EXTENSIONS=1 downloads them again even if installed (post-upgrade.sh uses
+# this after a new Ubuntu release, which brings a new GNOME version).
 install_gnome_extensions() {
   local missing=()
   for c in gnome-extensions gnome-shell curl python3; do have "$c" || missing+=("$c"); done
@@ -116,7 +101,7 @@ install_gnome_extensions() {
   tmp="$(mktemp -d)"
   while read -r uuid; do
     [[ -z "$uuid" || "$uuid" == \#* ]] && continue
-    if gnome-extensions info "$uuid" >/dev/null 2>&1; then
+    if [[ "${REINSTALL_EXTENSIONS:-0}" != 1 ]] && gnome-extensions info "$uuid" >/dev/null 2>&1; then
       echo "    $uuid: already installed"
     else
       info="$(curl -fsSG https://extensions.gnome.org/extension-info/ \
@@ -197,18 +182,18 @@ put_file() { # put_file <saved file> <destination>: copy, turning @HOME@ into th
 }
 
 restore_app_settings() {
-  local apps="$SETUP/apps" f
-  [[ -d "$apps" ]] || { skip "no saved app settings"; return 0; }
-  for f in "$apps"/autostart/*.desktop; do
+  local saved="$SETUP/apps" f
+  [[ -d "$saved" ]] || { skip "no saved app settings"; return 0; }
+  for f in "$saved"/autostart/*.desktop; do
     [[ -f "$f" ]] && put_file "$f" "$HOME/.config/autostart/$(basename "$f")"
   done
-  [[ -f "$apps/mimeapps.list" ]] && put_file "$apps/mimeapps.list" "$HOME/.config/mimeapps.list"
-  if [[ -f "$apps/qBittorrent/qBittorrent.conf" ]]; then
+  [[ -f "$saved/mimeapps.list" ]] && put_file "$saved/mimeapps.list" "$HOME/.config/mimeapps.list"
+  if [[ -f "$saved/qBittorrent/qBittorrent.conf" ]]; then
     if pgrep -x qbittorrent >/dev/null; then
       skip "qBittorrent is open; close it and run install.sh again (it saves its settings on exit)"
     else
-      put_file "$apps/qBittorrent/qBittorrent.conf" "$HOME/.config/qBittorrent/qBittorrent.conf"
-      for f in "$apps"/qBittorrent/themes/*; do
+      put_file "$saved/qBittorrent/qBittorrent.conf" "$HOME/.config/qBittorrent/qBittorrent.conf"
+      for f in "$saved"/qBittorrent/themes/*; do
         [[ -f "$f" ]] && put_file "$f" "$HOME/.config/qBittorrent/themes/$(basename "$f")"
       done
     fi
@@ -241,7 +226,9 @@ restore_obsidian() {
   else
     echo "    vault already there: ${OBSIDIAN_VAULT/#$HOME/\~}"
   fi
-  if [[ -d "$SETUP/apps/obsidian" && ! -f "$OBSIDIAN_VAULT/.obsidian/appearance.json" ]]; then
+  # Only into a vault that's there: creating the folder here would stop the notes
+  # from being cloned on a later run.
+  if [[ -d "$SETUP/apps/obsidian" && -d "$OBSIDIAN_VAULT" && ! -f "$OBSIDIAN_VAULT/.obsidian/appearance.json" ]]; then
     mkdir -p "$OBSIDIAN_VAULT/.obsidian"
     cp -r --update=none "$SETUP/apps/obsidian/." "$OBSIDIAN_VAULT/.obsidian/"
     echo "    Obsidian settings and Catppuccin theme added to the vault"
@@ -291,13 +278,34 @@ json.dump(data, open(path, "w"))
 ' "$list" "$OBSIDIAN_VAULT"
 }
 
+# 10. Safety checks ---------------------------------------------------------------------
+# Secret check before commits (in ~/dotfiles and the vault), and a weekly reminder
+# (Sunday evening, or the next login) when settings changed since the last dotsave or
+# changes aren't committed. The reminder only notifies; it never commits.
+setup_safety_checks() {
+  local d
+  for d in "$DOTFILES" "$OBSIDIAN_VAULT"; do
+    [[ -d "$d/.git" ]] || continue
+    git -C "$d" config core.hooksPath "$DOTFILES/.githooks"
+    echo "    secret check before commits: ${d/#$HOME/\~}"
+  done
+  if have systemctl && systemctl --user show-environment >/dev/null 2>&1; then
+    systemctl --user daemon-reload
+    systemctl --user enable --now dotfiles-reminder.timer 2>/dev/null
+    echo "    weekly reminder on (see: systemctl --user list-timers dotfiles-reminder.timer)"
+  else
+    skip "no systemd user session, so the weekly reminder isn't switched on"
+  fi
+}
+
 # Main ---------------------------------------------------------------------------------
 echo "This will set up your configs from $DOTFILES:"
 echo "  link config files, install the Nerd Font, VS Code extensions, Flatpak apps and GNOME extensions,"
 echo "  and restore your desktop look (theme, icons, dark mode, accent colour, window buttons,"
 echo "  workspaces, fonts), keyboard shortcuts, power, Files and dialog settings, backups settings,"
 echo "  extension settings, dock, wallpaper, lock screen, apps that start at login,"
-echo "  default apps and qBittorrent settings."
+echo "  default apps and qBittorrent settings; and switch on a secret check before commits"
+echo "  and a weekly reminder to save settings (it never commits)."
 echo "Existing files that would be replaced are kept as <name>.orig."
 echo "Keyboard shortcuts replace any custom shortcuts already on this computer."
 # --yes (used by fresh-install.sh) skips this question.
@@ -315,13 +323,9 @@ run_step "Desktop look, shortcuts and settings, extension settings and dock" res
 run_step "Wallpaper and lock screen"                     set_wallpaper
 run_step "App settings (login apps, default apps, qBittorrent)" restore_app_settings
 run_step "Obsidian vault and settings"                   restore_obsidian
+run_step "Secret check before commits and weekly reminder" setup_safety_checks
 
-if (( ${#FAILED[@]} > 0 )); then
-  say "Finished with problems. These steps failed (see messages above):"
-  printf '  - %s\n' "${FAILED[@]}"
-else
-  say "Done."
-fi
+show_failures
 cat <<'EOF'
 
 Still to do yourself:

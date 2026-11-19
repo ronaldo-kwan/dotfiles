@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Secret check before each commit: stops the commit if what's being committed looks
+# like a password, token, private key or sign-in file. Used by ~/dotfiles and the
+# Obsidian vault (install.sh points both at this folder with core.hooksPath).
+#
+# It shows only file and line, never the value itself.
+# If it's a false alarm: git commit --no-verify
+
+set -uo pipefail
+found=0
+flag() { printf '  \033[31m✘\033[0m %s\n' "$*"; found=1; }
+
+# 1. Files that should never be in a repo
+while IFS= read -r -d '' f; do
+  case "${f##*/}" in
+    .env|.env.*|*.pem|*.key|*.p12|*.pfx|*.kdbx|id_rsa*|id_ed25519*|id_ecdsa*|.netrc|.git-credentials|\
+    Cookies|cookies.sqlite|Login\ Data|logins.json|key4.db|hosts.yml)
+      flag "$f: this kind of file holds keys or sign-ins" ;;
+  esac
+done < <(git diff --cached --name-only --diff-filter=AM -z)
+
+# 2. Lines being added that look like secrets
+# Known token formats (standing on their own, not inside a longer string such as an
+# embedded font), private keys, and settings that assign a password, token or key
+# (values like true/false/none/placeholders don't count).
+patterns='(^|[^A-Za-z0-9+/_-])(gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|sk-ant-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{32,}'
+patterns+='|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[abprs]-[A-Za-z0-9-]{10,}|glpat-[A-Za-z0-9_-]{20})([^A-Za-z0-9_-]|$)'
+patterns+='|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+patterns+='|(password|passwd|secret|token|api[_-]?key|stream[_-]?key|auth[_-]?key)["'"'"']?[[:space:]]*[:=][[:space:]]*["'"'"']?[^"'"'"'[:space:],}]{6,}'
+ignore_values='[:=][[:space:]]*["'"'"']?(true|false|none|null|nil|yes|no|0|1|\$\{?[A-Za-z_]+\}?|<[^>]*>|@[A-Z]+@|x{3,}|\*{3,}|\.{3})["'"'"']?[[:space:],}]*$'
+
+file='' line=0
+while IFS= read -r l; do
+  case "$l" in
+    '+++ b/'*) file="${l#+++ b/}"; continue ;;
+    '+++ '*|'--- '*) continue ;;
+    '@@ '*) line="$(sed -E 's/^@@ -[0-9,]+ \+([0-9]+).*/\1/' <<< "$l")"; continue ;;
+    '+'*)
+      text="${l:1}"
+      if grep -qiE -- "$patterns" <<< "$text" && ! grep -qiE -- "$ignore_values" <<< "$text"; then
+        m="$(grep -oiE -- "$patterns" <<< "$text" | head -1)"
+        if [[ "$m" == *[:=]* ]]; then kind="a ${m%%[[:space:]\"\':=]*} setting"; else kind="a token or private key"; fi
+        flag "$file:$line looks like $kind"
+      fi
+      line=$((line + 1)) ;;
+    ' '*) line=$((line + 1)) ;;
+  esac
+done < <(git diff --cached -U0 --no-color --diff-filter=AM)
+
+if (( found )); then
+  echo
+  echo "Commit stopped: the lines above look like passwords, tokens or keys."
+  echo "Remove them (git restore --staged <file> to unstage a file),"
+  echo "or if it's a false alarm: git commit --no-verify"
+  exit 1
+fi
+exit 0

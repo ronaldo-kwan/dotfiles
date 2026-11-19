@@ -3,7 +3,7 @@
 # window and screenshot shortcuts, power, sound, Files, file dialogs,
 # search order, backups, and a few app settings.
 #
-# Used by `dotsave` to write setup/desktop-settings.dconf.
+# Used by scripts/snapshot.sh to write setup/desktop-settings.dconf.
 # Restore with: dconf load / < setup/desktop-settings.dconf
 #
 # Things GNOME remembers by itself (window sizes, last folders, timestamps) are

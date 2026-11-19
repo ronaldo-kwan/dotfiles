@@ -125,46 +125,19 @@ alias c='clear'
 
 # --- My functions ---
 # dotsave: refresh the snapshot files in ~/dotfiles/setup and show what changed.
-# It doesn't commit; commit yourself afterwards.
+# It doesn't commit; commit yourself afterwards. (dotcheck: health check, changes nothing)
 dotsave() {
-  local d="${DOTFILES:-$HOME/dotfiles}/setup"
-  [ -d "$d" ] || { echo "dotsave: $d not found"; return 1; }
-  command -v code    >/dev/null && code --list-extensions > "$d/vscode-extensions.txt"
-  command -v flatpak >/dev/null && flatpak list --app --columns=application > "$d/flatpaks.txt"
-  if command -v dconf >/dev/null; then
-    {
-      echo "# Desktop look: theme, icons, fonts, accent, dark mode, window buttons, workspaces,"
-      echo "# and which GNOME extensions are switched on or off (including Ubuntu's built-in ones)"
-      echo "# Load with: dconf load /org/gnome/ < gnome-desktop.dconf"
-      dconf dump /org/gnome/desktop/interface/ | sed 's|^\[/\]$|[desktop/interface]|'
-      echo
-      dconf dump /org/gnome/desktop/wm/preferences/ | sed 's|^\[/\]$|[desktop/wm/preferences]|'
-      echo
-      printf '[mutter]\ndynamic-workspaces=%s\n' "$(dconf read /org/gnome/mutter/dynamic-workspaces)"
-      echo
-      printf '[shell]\nenabled-extensions=%s\ndisabled-extensions=%s\n' \
-        "$(gsettings get org.gnome.shell enabled-extensions)" \
-        "$(gsettings get org.gnome.shell disabled-extensions)"
-    } > "$d/gnome-desktop.dconf"
-    dconf dump /org/gnome/settings-daemon/plugins/media-keys/ > "$d/gnome-shortcuts.dconf"
-    # Leave out extensions' internal records, which shouldn't be restored elsewhere
-    dconf dump /org/gnome/shell/extensions/ \
-      | grep -vE '^(last-version-installed|overridden-settings|check-x11wayland|cli-toggle)=' \
-      | sed '/^\[ding\]$/{N;/\n$/d}' > "$d/gnome-extension-settings.dconf"
-    # Shortcuts, power, sound, Files, file dialogs, search order, backups, app settings
-    bash "$d/../scripts/dump-desktop-settings.sh" > "$d/desktop-settings.dconf"
-  fi
-  # Apps that start at login, default apps, qBittorrent
-  bash "$d/../scripts/save-app-settings.sh"
-  command -v gsettings >/dev/null && gsettings get org.gnome.shell favorite-apps > "$d/dock-favorites.txt"
+  local repo="${DOTFILES:-$HOME/dotfiles}"
+  bash "$repo/scripts/snapshot.sh" || return 1
   echo "Snapshots refreshed."
-  if [ -z "$(git -C "$d/.." status --porcelain)" ]; then
+  if [ -z "$(git -C "$repo" status --porcelain)" ]; then
     echo "Nothing changed in ~/dotfiles."
   else
-    git -C "$d/.." status --short
+    git -C "$repo" status --short
     echo "To save: cd ~/dotfiles && git add -A && git commit -m \"Update settings\" && git push"
   fi
 }
+alias dotcheck='"${DOTFILES:-$HOME/dotfiles}/check.sh"'
 
 # --- Terminal customization ---
 # Prompt (Starship), smarter cd (zoxide: `z <name>`), fuzzy search (fzf: Ctrl+R, Ctrl+T, Alt+C)

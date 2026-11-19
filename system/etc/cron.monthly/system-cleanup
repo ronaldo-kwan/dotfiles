@@ -3,7 +3,7 @@
 # Notifies if it fails. Installed by install-apps.sh (with DESKTOP_USER filled in).
 export DEBIAN_FRONTEND=noninteractive
 LOG=/var/log/system-cleanup.log
-DESKTOP_USER=azuretc
+DESKTOP_USER=@USER@   # filled in by install-apps.sh
 USER_ID=$(id -u "$DESKTOP_USER")
 
 notify() {

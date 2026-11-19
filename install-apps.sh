@@ -17,15 +17,9 @@ set -uo pipefail
 
 DRY_RUN="${DRY_RUN:-0}"
 ASK=1; [[ "${1:-}" == "--all" ]] && ASK=0
-FAILED=()
-TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
-chmod 755 "$TMP"   # lets apt's download user read the .deb files
+# shellcheck source=lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, skip, ask, installed, fill_user, SETUP
 
-SETUP="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/setup"
-
-say()  { printf '\n\033[1;35m==>\033[0m %s\n' "$*"; }
-skip() { printf '    skipped: %s\n' "$*"; }
-installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"; }
 
 # Packages from setup/apt-packages.txt (comments and blank lines ignored).
 ubuntu_apps() { sed 's/#.*//' "$SETUP/apt-packages.txt" | awk 'NF{print $1}'; }
@@ -43,8 +37,7 @@ check_onlyoffice() {
 }
 # The weekly update script from system/, with this computer's username filled in.
 weekly_script() {
-  sed -E "s/^DESKTOP_USER=.*/DESKTOP_USER=$(id -un)/" \
-    "$SETUP/../system/etc/cron.weekly/system-update"
+  fill_user "$DOTFILES/system/etc/cron.weekly/system-update"
 }
 check_weekly_updates() {
   [[ -f /etc/cron.weekly/system-update ]] || return 1
@@ -56,8 +49,7 @@ check_weekly_updates() {
 
 # The monthly clean-up script from system/, with this computer's username filled in.
 cleanup_script() {
-  sed -E "s/^DESKTOP_USER=.*/DESKTOP_USER=$(id -un)/" \
-    "$SETUP/../system/etc/cron.monthly/system-cleanup"
+  fill_user "$DOTFILES/system/etc/cron.monthly/system-cleanup"
 }
 check_monthly_cleanup() {
   [[ -f /etc/cron.monthly/system-cleanup ]] || return 1
@@ -379,6 +371,12 @@ APPS=(
   "monthly clean-up of unused packages (/etc/cron.monthly/system-cleanup)|check_monthly_cleanup|setup_monthly_cleanup|Set up"
   "Ubuntu's Snap Firefox (you use the Flatpak one)|check_no_snap_firefox|remove_snap_firefox|Remove"
 )
+
+# check.sh loads this file only for APPS and the check_* functions above.
+[[ "${BASH_SOURCE[0]}" != "$0" ]] && return 0
+
+TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
+chmod 755 "$TMP"   # lets apt's download user read the .deb files
 
 for tool in curl gpg sha256sum; do
   command -v "$tool" >/dev/null || { echo "Needs $tool first: sudo apt install $tool"; exit 1; }

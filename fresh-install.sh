@@ -16,18 +16,8 @@
 
 set -uo pipefail
 
-DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TOOLS=(git gh curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit flatpak)
-FAILED=()
-
-say()  { printf '\n\033[1;35m==>\033[0m \033[1m%s\033[0m\n' "$*"; }
-ask()  { local a; read -rp "    $1 [Y/n] " a; [[ ! "$a" =~ ^[Nn]$ ]]; }
-step() { # step "title" command...: run a step, keep going if it fails
-  local title="$1"; shift
-  say "$title"
-  "$@"; local rc=$?
-  (( rc == 0 )) || { printf '    \033[1;31mfailed\033[0m (exit code %s)\n' "$rc"; FAILED+=("$title"); }
-}
+# shellcheck source=lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, ask, run_step, show_failures, DOTFILES
 # Plugged in? A computer without a battery (a desktop) always counts as plugged in.
 on_charger() {
   compgen -G '/sys/class/power_supply/BAT*' >/dev/null || return 0
@@ -47,7 +37,7 @@ sudo -v || exit 1
 update_system() {
   sudo apt-get update && sudo apt-get -y full-upgrade
 }
-step "1. Updating the system" update_system
+run_step "1. Updating the system" update_system
 
 # 2. Firmware (BIOS, SSD, devices) ---------------------------------------------------
 update_firmware() {
@@ -58,24 +48,24 @@ update_firmware() {
     return 0
   fi
   ask "Check for and install firmware updates (BIOS, SSD, devices)? Keep the charger in." || return 0
-  sudo fwupdmgr refresh --force >/dev/null 2>&1
-  sudo fwupdmgr update --assume-yes --no-reboot-check
-  local rc=$?
+  sudo fwupdmgr refresh --force >/dev/null 2>&1 || true
+  local rc=0
+  sudo fwupdmgr update --assume-yes --no-reboot-check || rc=$?
   (( rc == 0 || rc == 2 )) || return "$rc"   # 2 means "nothing to update"
 }
-step "2. Firmware updates" update_firmware
+run_step "2. Firmware updates" update_firmware
 
 # 3. Terminal tools and Flathub ---------------------------------------------------------
 install_tools() {
   sudo apt-get install -y "${TOOLS[@]}" || return 1
   sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 }
-step "3. Installing terminal tools and Flathub" install_tools
+run_step "3. Installing terminal tools and Flathub" install_tools
 
 # 4-6. The dotfiles scripts -------------------------------------------------------------
-step "4. install.sh (configs, fonts, Flatpak apps, extensions, settings)" "$DOTFILES/install.sh" --yes
-step "5. install-apps.sh (apps, NVIDIA driver, weekly updates)" "$DOTFILES/install-apps.sh"
-step "6. install.sh again (VS Code extensions, Obsidian)" "$DOTFILES/install.sh" --yes
+run_step "4. install.sh (configs, fonts, Flatpak apps, extensions, settings)" "$DOTFILES/install.sh" --yes
+run_step "5. install-apps.sh (apps, NVIDIA driver, weekly updates)" "$DOTFILES/install-apps.sh"
+run_step "6. install.sh again (VS Code extensions, Obsidian)" "$DOTFILES/install.sh" --yes
 
 # 7. Done -----------------------------------------------------------------------------
 if (( ${#FAILED[@]} > 0 )); then

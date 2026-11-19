@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copy app settings worth keeping into setup/apps/ (used by `dotsave`):
+# Copy app settings worth keeping into setup/apps/ (used by scripts/snapshot.sh):
 #   - apps that start at login        (~/.config/autostart/)
 #   - default apps (browser, video...) (~/.config/mimeapps.list)
 #   - qBittorrent settings and theme   (~/.config/qBittorrent/)
@@ -11,7 +11,7 @@
 set -euo pipefail
 
 DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT="$DOTFILES/setup/apps"
+OUT="${1:-$DOTFILES/setup}/apps"   # optional argument: a different setup folder
 CFG="$HOME/.config"
 
 mkdir -p "$OUT"

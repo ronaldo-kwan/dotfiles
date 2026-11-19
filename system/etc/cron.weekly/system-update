@@ -3,7 +3,7 @@
 # Notifies on failure, if stuck, or if a restart is needed.
 export DEBIAN_FRONTEND=noninteractive
 LOG=/var/log/system-update.log
-DESKTOP_USER=azuretc
+DESKTOP_USER=@USER@   # filled in by install-apps.sh
 USER_ID=$(id -u "$DESKTOP_USER")
 OPTS='-y -o DPkg::Lock::Timeout=600 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold'
 
