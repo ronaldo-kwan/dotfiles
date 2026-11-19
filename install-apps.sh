@@ -21,7 +21,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, skip, ask, installed, fi
 
 
 # Packages from setup/apt-packages.txt (comments and blank lines ignored).
-ubuntu_apps() { sed 's/#.*//' "$SETUP/apt-packages.txt" | awk 'NF{print $1}'; }
+ubuntu_apps() { sed 's/#.*//' "$SETUP/apt-packages.txt" | awk 'NF && $1 !~ /^-/ {print $1}'; }
 
 # "Already done?" checks for entries that need more than one package installed.
 check_ubuntu_apps() {
@@ -92,6 +92,23 @@ check_steam_nvidia() {
   local major; major="$(nvidia_major)"
   [[ -n "$major" ]] && installed "libnvidia-gl-$major:i386" \
     && grep -q '^PrefersNonDefaultGPU=true' "$STEAM_SHORTCUT" 2>/dev/null
+}
+
+# Firewall: block connections from outside (nothing you start yourself is affected).
+check_firewall() { grep -qx 'ENABLED=yes' /etc/ufw/ufw.conf 2>/dev/null; }
+setup_firewall() {
+  installed ufw || apt_get install -y ufw
+  run sudo ufw default deny incoming
+  run sudo ufw default allow outgoing
+  # qBittorrent shares faster when other people can connect to it: open its port.
+  local port
+  port="$(sed -n 's/^Session\\Port=//p' "$HOME/.config/qBittorrent/qBittorrent.conf" 2>/dev/null | head -1)"
+  if [[ "$port" =~ ^[0-9]+$ ]]; then
+    run sudo ufw allow "$port" comment qBittorrent
+    note "port $port left open for qBittorrent"
+  fi
+  run sudo ufw --force enable
+  note "on; see the rules: sudo ufw status verbose"
 }
 
 check_no_snap_firefox() {
@@ -385,6 +402,7 @@ APPS=(
   "Steam on the NVIDIA card (32-bit library, shortcut)|check_steam_nvidia|setup_steam_nvidia|Set up"
   "weekly automatic updates (/etc/cron.weekly/system-update)|check_weekly_updates|setup_weekly_updates|Set up"
   "monthly clean-up of unused packages (/etc/cron.monthly/system-cleanup)|check_monthly_cleanup|setup_monthly_cleanup|Set up"
+  "the firewall (ufw), blocking connections from outside|check_firewall|setup_firewall|Switch on"
   "Ubuntu's Snap Firefox (you use the Flatpak one)|check_no_snap_firefox|remove_snap_firefox|Remove"
 )
 

@@ -289,6 +289,8 @@ setup_safety_checks() {
     git -C "$d" config core.hooksPath "$DOTFILES/.githooks"
     echo "    secret check before commits: ${d/#$HOME/\~}"
   done
+  # Signed commits, if this computer has an SSH key (dot ssh creates one).
+  bash "$DOTFILES/scripts/ssh-setup.sh" --signing-only
   if have systemctl && systemctl --user show-environment >/dev/null 2>&1; then
     systemctl --user daemon-reload
     systemctl --user enable --now dotfiles-reminder.timer 2>/dev/null
@@ -318,7 +320,7 @@ run_step "Desktop look, shortcuts and settings, extension settings and dock" res
 run_step "Wallpaper and lock screen"                     set_wallpaper
 run_step "App settings (login apps, default apps, qBittorrent)" restore_app_settings
 run_step "Obsidian vault and settings"                   restore_obsidian
-run_step "Secret check before commits and weekly reminder" setup_safety_checks
+run_step "Secret check, signed commits and weekly reminder" setup_safety_checks
 
 summary; ok=$?
 if [[ "$UI_NESTED" == 0 ]]; then

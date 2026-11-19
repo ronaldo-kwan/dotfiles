@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# dot: one command for everything in ~/dotfiles. Run `dot help` for the list.
+# (`dot cd` is handled by the dot() function in .bashrc, since a script can't
+# change your terminal's folder.)
+
+set -uo pipefail
+# shellcheck source=lib.sh
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib.sh"
+VAULT="$HOME/Documents/Obsidian Vault"
+
+usage() {
+  printf '\n%sdot%s: your dotfiles in one command\n\n' "$C_ACC$C_B" "$C_N"
+  while IFS='|' read -r cmd what; do
+    if [[ -z "$cmd" ]]; then printf '\n'; continue; fi
+    printf '  %s%-20s%s %s\n' "$C_B" "$cmd" "$C_N" "$what"
+  done <<'EOF'
+dot save|Refresh the snapshots in setup/ and show what changed
+dot check|Health check: is everything still set up? Changes nothing
+dot status|What changed since your last push
+dot push [message]|Save to GitHub: commit everything and push (secret check first)
+dot notes [message]|Same for your Obsidian notes
+|
+dot install|Configs, fonts, Flatpak apps, extensions, settings (install.sh)
+dot apps|Apps, NVIDIA driver, weekly updates, firewall (install-apps.sh)
+dot fresh|Set up a freshly installed Ubuntu (fresh-install.sh)
+dot upgrade|After upgrading Ubuntu to a new release (post-upgrade.sh)
+dot ssh|SSH key for this computer, and signed (Verified) commits
+|
+dot cd|Go to ~/dotfiles
+dot edit|Open ~/dotfiles in VS Code
+EOF
+  printf '\n  %sOptions go to the script: dot apps --yes, dot install --yes%s\n\n' "$C_DIM" "$C_N"
+}
+
+# push_repo <folder> <default message> [message...]
+push_repo() {
+  local dir="$1" default="$2"; shift 2
+  local msg="${*:-$default}"
+  if [[ -z "$(git -C "$dir" status --porcelain)" ]]; then
+    if [[ -n "$(git -C "$dir" log --oneline '@{u}..' 2>/dev/null)" ]]; then
+      git -C "$dir" push && printf '%s✔%s pushed\n' "$C_OK" "$C_N"
+    else
+      printf '%s✔%s nothing to save in %s\n' "$C_OK" "$C_N" "${dir/#$HOME/\~}"
+    fi
+    return
+  fi
+  git -C "$dir" status --short
+  git -C "$dir" add -A && git -C "$dir" commit -q -m "$msg" && git -C "$dir" push -q \
+    && printf '%s✔%s saved to GitHub: %s\n' "$C_OK" "$C_N" "$(git -C "$dir" log --format='%h %s' -1)"
+}
+
+cmd="${1:-help}"; [[ $# -gt 0 ]] && shift
+case "$cmd" in
+  save)
+    bash "$DOTFILES/scripts/snapshot.sh" || exit 1
+    if [[ -z "$(git -C "$DOTFILES" status --porcelain)" ]]; then
+      printf '%s✔%s snapshots refreshed; nothing changed\n' "$C_OK" "$C_N"
+    else
+      printf '%s✔%s snapshots refreshed. Changed:\n' "$C_OK" "$C_N"
+      git -C "$DOTFILES" status --short
+      printf '%sTo save them to GitHub: dot push%s\n' "$C_DIM" "$C_N"
+    fi ;;
+  check)   exec "$DOTFILES/check.sh" "$@" ;;
+  status)
+    git -C "$DOTFILES" status --short --branch
+    git -C "$DOTFILES" --no-pager diff --stat ;;
+  push)    push_repo "$DOTFILES" "Update settings" "$@" ;;
+  notes)
+    [[ -d "$VAULT/.git" ]] || { echo "No notes repo at ${VAULT/#$HOME/\~} (run: dot install)"; exit 1; }
+    push_repo "$VAULT" "Update notes" "$@" ;;
+  install) exec "$DOTFILES/install.sh" "$@" ;;
+  apps)    exec "$DOTFILES/install-apps.sh" "$@" ;;
+  fresh)   exec "$DOTFILES/fresh-install.sh" "$@" ;;
+  upgrade) exec "$DOTFILES/post-upgrade.sh" "$@" ;;
+  ssh)     exec "$DOTFILES/scripts/ssh-setup.sh" "$@" ;;
+  edit)    exec code "$DOTFILES" ;;
+  cd)      echo "dot cd works from the dot() function in ~/.bashrc; open a new terminal" ;;
+  help|-h|--help) usage ;;
+  *) printf '%s✘%s unknown command: %s\n' "$C_ERR" "$C_N" "$cmd"; usage; exit 1 ;;
+esac

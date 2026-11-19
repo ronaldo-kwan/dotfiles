@@ -230,5 +230,36 @@ installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install o
 # that fails when grep stops reading fc-list's long output early.)
 has_nerd_font() { [[ "$(fc-list 2>/dev/null)" == *"JetBrainsMono Nerd Font"* ]]; }
 
+# Packages that install-apps.sh installs itself (not from setup/apt-packages.txt).
+APP_PACKAGES=(google-chrome-stable code claude-desktop protonvpn-stable-release proton-vpn-gnome-desktop
+  obs-studio onlyoffice-desktopeditors steam-installer 'nvidia-driver-*' 'libnvidia-gl-*'
+  'linux-modules-nvidia-*' ufw)
+# Added by Ubuntu itself (language support adds dictionaries for your languages).
+UBUNTU_AUTO_PACKAGES=('language-pack-*' 'hunspell-*' 'hyphen-*' 'mythes-*' wbritish wamerican)
+
+# unsaved_apt_packages: Ubuntu packages you installed yourself (apt, App Center, a .deb)
+# that are still installed but in none of the dotfiles lists, so a new computer
+# wouldn't get them. Read from apt's history; Ubuntu's installer is left out.
+# A line "-name" in setup/apt-packages.txt marks one as "on purpose, not for new computers".
+unsaved_apt_packages() {
+  local known manual
+  known="$( { printf '%s\n' "${TOOLS[@]}" "${APP_PACKAGES[@]}" "${UBUNTU_AUTO_PACKAGES[@]}"
+              sed 's/#.*//' "$SETUP/apt-packages.txt" | awk 'NF{sub(/^-/, "", $1); print $1}'; } )"
+  manual="$(apt-mark showmanual 2>/dev/null)"
+  { cat /var/log/apt/history.log 2>/dev/null; zcat /var/log/apt/history.log.*.gz 2>/dev/null; } | awk '
+    /^Commandline:/ { mine = !/force-unsafe-io|pkgDepCache::AutoInstall|unattended-upgrade/; next }
+    /^Install:/ && mine {
+      sub(/^Install: /, ""); n = split($0, parts, /\), /)
+      for (i = 1; i <= n; i++) if (parts[i] !~ /automatic/) { split(parts[i], w, /[: ]/); print w[1] }
+    }' | sort -u | while read -r p; do
+      grep -qxF "$p" <<< "$manual" || continue                 # removed, or only a dependency
+      local k hit=0
+      # shellcheck disable=SC2053  # $k may be a pattern like nvidia-driver-*
+      while read -r k; do [[ -n "$k" && "$p" == $k ]] && { hit=1; break; }; done <<< "$known"
+      (( hit )) || echo "$p"
+    done
+  return 0
+}
+
 # fill_user <file>: print a system/ script with @USER@ replaced by this user's name.
 fill_user() { sed "s/@USER@/$(id -un)/g" "$1"; }

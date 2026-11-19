@@ -35,7 +35,7 @@ If a step fails, the rest still run. Fix the cause and run it again; finished pa
 **One screen may still need you:**
 - **NVIDIA with Secure Boot:** if asked, make up a short password (letters and numbers). After the restart, a blue **MOK management** screen appears: Enroll MOK → Continue → Yes → type that password → Reboot. Then `nvidia-smi` should list the RTX 5060.
 
-**After the restart:** sign in to your apps (Steam, browsers, Discord, Bitwarden). Open **Backups**, connect Google Drive, and turn on **Back Up Automatically**. Keep the backup encryption password somewhere safe; without it the backups can't be restored. Then run `dotcheck` to see that everything is in place.
+**After the restart:** sign in to your apps (Steam, browsers, Discord, Bitwarden). Open **Backups**, connect Google Drive, and turn on **Back Up Automatically**. Keep the backup encryption password somewhere safe; without it the backups can't be restored. Then run `dot ssh` (signed commits, one approval in the browser) and `dot check` to see that everything is in place.
 
 Display scaling isn't saved, because it depends on the screen. Set it in **Settings → Displays → Scale** if text looks too small or large.
 
@@ -52,7 +52,7 @@ The scripts can also be run on their own, for example on a computer that's alrea
 - `~/dotfiles/install.sh` (no sudo): links config files (keeping existing ones as `.orig`). It installs the Nerd Font, VS Code extensions, Flatpak apps and GNOME extensions (the versions matching this computer's GNOME). It restores your desktop look, shortcuts, settings, extension settings, dock, wallpaper, app settings and the Obsidian vault, and switches on the secret check and weekly reminder. GNOME extensions start after you log out and back in.
 - `~/dotfiles/install-apps.sh` (sudo): apps and system parts, see [apps.md](apps.md).
 - `~/dotfiles/fresh-install.sh` (sudo): all of the above, plus the system and firmware update.
-- `~/dotfiles/check.sh` (or `dotcheck`): shows what's missing. Changes nothing.
+- `~/dotfiles/check.sh` (or `dot check`): shows what's missing. Changes nothing.
 
 ## Manual setup (instead of install.sh)
 

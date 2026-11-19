@@ -45,7 +45,9 @@ repo_state() { # repo_state <dir>: prints "uncommitted" and/or "unpushed"
 if [[ "$MODE" == notify ]]; then
   msgs=()
   mapfile -t stale < <(stale_snapshots)
-  (( ${#stale[@]} )) && msgs+=("Settings changed since your last dotsave (${#stale[@]} files). Run: dotsave")
+  (( ${#stale[@]} )) && msgs+=("Settings changed since your last save (${#stale[@]} files). Run: dot save")
+  mapfile -t unsaved < <(unsaved_apt_packages)
+  (( ${#unsaved[@]} )) && msgs+=("Ubuntu apps not in apt-packages.txt: ${unsaved[*]}")
   for d in "$DOTFILES" "$VAULT"; do
     [[ -d "$d/.git" ]] || continue
     s="$(repo_state "$d" | paste -sd' ' | sed 's/ / and /')"
@@ -53,7 +55,7 @@ if [[ "$MODE" == notify ]]; then
   done
   if (( ${#msgs[@]} )); then
     body="$(printf '%s\n' "${msgs[@]}")
-Nothing was committed. Details: dotcheck"
+Nothing was committed. Details: dot check"
     if have notify-send; then
       notify-send -i emblem-synchronizing "Dotfiles: things to save" "$body"
     fi
@@ -125,6 +127,9 @@ for d in "$DOTFILES" "$VAULT"; do
     && ok "secret check before commits: ${d/#$HOME/\~}" \
     || bad "secret check not switched on for ${d/#$HOME/\~} (run install.sh)"
 done
+if [[ -f "$HOME/.config/git/signing.gitconfig" && -f "$HOME/.ssh/id_ed25519.pub" ]]; then
+  ok "commits signed with this computer's SSH key"
+else bad "commits aren't signed (run: dot ssh)"; fi
 if have systemctl; then
   systemctl --user is-enabled dotfiles-reminder.timer >/dev/null 2>&1 \
     && ok "weekly reminder to save settings (dotfiles-reminder.timer)" \
@@ -132,6 +137,10 @@ if have systemctl; then
 fi
 
 section "Saved settings"
+mapfile -t unsaved < <(unsaved_apt_packages)
+if (( ${#unsaved[@]} )); then
+  bad "Ubuntu apps you installed that a new computer wouldn't get: ${unsaved[*]} (add them to setup/apt-packages.txt, or as -name to keep them off new computers)"
+else ok "every Ubuntu app you installed is in setup/apt-packages.txt"; fi
 mapfile -t stale < <(stale_snapshots)
 if (( ${#stale[@]} )); then
   bad "snapshots out of date, run dotsave: $(printf '%s, ' "${stale[@]}" | sed 's/, $//')"
@@ -140,7 +149,7 @@ for d in "$DOTFILES" "$VAULT"; do
   [[ -d "$d/.git" ]] || continue
   s="$(repo_state "$d" | paste -sd' ' | sed 's/ / and /')"
   [[ -z "$s" ]] && ok "${d/#$HOME/\~}: everything committed and pushed" \
-    || bad "${d/#$HOME/\~}: $s changes (cd ${d/#$HOME/\~} && git add -A && git commit && git push)"
+    || bad "${d/#$HOME/\~}: $s changes ($([[ "$d" == "$DOTFILES" ]] && echo "dot push" || echo "dot notes"))"
 done
 
 echo

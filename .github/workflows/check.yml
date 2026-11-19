@@ -1,11 +1,16 @@
 # Checks every push: script mistakes (shellcheck), and that install.sh works on a
 # clean Ubuntu 26.04 (a container without a desktop, so desktop steps are skipped).
+# Also runs every Monday, so a maker changing a download link or signing key
+# (Chrome, VS Code, Claude, Proton VPN, ONLYOFFICE) shows up as a failed run and an
+# email from GitHub, not on the day you set up a new computer.
 name: check
 
 on:
   push:
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "17 2 * * 1"   # Mondays 02:17 UTC
 
 permissions:
   contents: read
@@ -18,12 +23,12 @@ jobs:
       - uses: actions/checkout@v5
       - name: Syntax check (bash -n)
         run: |
-          for f in *.sh scripts/*.sh .githooks/pre-commit bash/.bashrc; do bash -n "$f"; done
+          for f in *.sh dot scripts/*.sh .githooks/pre-commit bash/.bashrc; do bash -n "$f"; done
           for f in system/etc/cron.*/*; do sh -n "$f"; done
       - name: shellcheck (warnings and errors)
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
-          shellcheck -x -S warning *.sh scripts/*.sh .githooks/pre-commit system/etc/cron.*/*
+          shellcheck -x -S warning *.sh dot scripts/*.sh .githooks/pre-commit system/etc/cron.*/*
 
   install:
     name: install.sh on a clean Ubuntu 26.04
@@ -48,6 +53,8 @@ jobs:
           grep -q '✔ all config files linked' check.txt
           grep -q '✔ JetBrainsMono Nerd Font' check.txt
           test "$(git config core.hooksPath)" = "$PWD/.githooks"
+      - name: dot command works
+        run: ./dot help && ./dot status
       - name: install-apps.sh dry run (checks every download source, installs nothing)
         run: DRY_RUN=1 ./install-apps.sh
       - name: post-upgrade.sh on a copy of apt sources made to look upgraded

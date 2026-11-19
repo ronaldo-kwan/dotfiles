@@ -124,20 +124,14 @@ alias update='sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y' 
 alias c='clear'
 
 # --- My functions ---
-# dotsave: refresh the snapshot files in ~/dotfiles/setup and show what changed.
-# It doesn't commit; commit yourself afterwards. (dotcheck: health check, changes nothing)
-dotsave() {
-  local repo="${DOTFILES:-$HOME/dotfiles}"
-  bash "$repo/scripts/snapshot.sh" || return 1
-  echo "Snapshots refreshed."
-  if [ -z "$(git -C "$repo" status --porcelain)" ]; then
-    echo "Nothing changed in ~/dotfiles."
-  else
-    git -C "$repo" status --short
-    echo "To save: cd ~/dotfiles && git add -A && git commit -m \"Update settings\" && git push"
-  fi
+# dot: one command for the dotfiles (dot help). `dot cd` needs to be a function,
+# because only the shell itself can change its folder.
+dot() {
+  if [ "${1:-}" = cd ]; then cd "${DOTFILES:-$HOME/dotfiles}" || return
+  else "${DOTFILES:-$HOME/dotfiles}/dot" "$@"; fi
 }
-alias dotcheck='"${DOTFILES:-$HOME/dotfiles}/check.sh"'
+complete -W "save check status push notes install apps fresh upgrade ssh cd edit help" dot
+alias dotsave='dot save' dotcheck='dot check'   # the old names still work
 
 # --- Terminal customization ---
 # Prompt (Starship), smarter cd (zoxide: `z <name>`), fuzzy search (fzf: Ctrl+R, Ctrl+T, Alt+C)
