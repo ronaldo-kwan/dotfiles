@@ -5,6 +5,10 @@
 1. **GPU mode: Hybrid.** In Windows, open Lenovo Legion Space (or Vantage) and set the GPU mode to **Hybrid**. Without Windows: restart, press <kbd>F2</kbd> for the BIOS, and set **GPU Working Mode** to Hybrid. "Hybrid-iGPU only" hides the RTX 5060 from Ubuntu.
 2. **Leave Secure Boot on.** Ubuntu's NVIDIA driver works with it.
 3. Boot the Ubuntu 26.04 USB stick (<kbd>F12</kbd> at startup) and, in the installer, tick **Install third-party software for graphics and Wi-Fi hardware**.
+4. **Encrypt the disk** (recommended if the laptop leaves home; only possible during install): **Erase disk and install Ubuntu → Advanced features → Use LVM and encryption** (wording may vary). Choose a passphrase, not TPM (problems with NVIDIA).
+   - Protects files, notes, browser sessions and sign-in tokens if the laptop is lost or stolen; the login password alone doesn't.
+   - The passphrase is asked once per start-up, before Ubuntu loads; not at login, unlock or wake. For one password per start-up, see [below](#one-password-at-start-up-encrypted-disk).
+   - Save the passphrase and the installer's recovery key in Bitwarden: without them the disk is unreadable and only Backups can bring your files back.
 
 ## Fresh install: one script
 
@@ -38,6 +42,24 @@ If a step fails, the rest still run. Fix the cause and run it again; finished pa
 **After the restart:** sign in to your apps (Steam, browsers, Discord, Bitwarden). Open **Backups**, connect Google Drive, and turn on **Back Up Automatically**. Keep the backup encryption password somewhere safe; without it the backups can't be restored. Then run `dot ssh` (signed commits, one approval in the browser) and `dot check` to see that everything is in place (`dot check --fix` offers to fix anything that isn't).
 
 Display scaling isn't saved, because it depends on the screen. Set it in **Settings → Displays → Scale** if text looks too small or large.
+
+## One password at start-up (encrypted disk)
+
+Start-up asks for the disk passphrase, then your login password. The passphrase already protects everything, so skip the second:
+
+1. **Settings → System → Users → Unlock** (your password) → **Automatic Login** on.
+2. Empty the login keyring's password, or it asks for it after every start-up (it holds Chrome, Wi-Fi and SSH-key passwords and normally unlocks at login): **Passwords and Keys** (`sudo apt install seahorse` if missing) → right-click **Login** → **Change Password** → current password, new one empty. Ignore the "unencrypted" warning: the disk is encrypted.
+3. Restart to check.
+
+| When | Asks for |
+|---|---|
+| Start-up or restart | Disk passphrase only, then the desktop |
+| Waking from sleep | Your password ("Lock Screen on Suspend" stays on) |
+| <kbd>Super</kbd> + <kbd>L</kbd> or 5 minutes idle | Your password |
+
+`sudo` and Settings still ask for your password. Tip: use the same password for the disk and login.
+
+**Only with an encrypted disk:** otherwise anyone who switches the laptop on gets your desktop and saved passwords. Undo: Automatic Login off, and set the Login keyring's password back to your login password.
 
 ## Using the RTX 5060
 
