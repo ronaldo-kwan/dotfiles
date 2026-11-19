@@ -41,6 +41,7 @@ fix_hint() {
     push)    echo "dot push" ;;
     notes)   echo "dot notes" ;;
     restart) echo "restart; with Secure Boot, enrol the key on the blue MOK screen" ;;
+    ghkeys)  echo "gh auth refresh -h github.com --remove-scopes $GH_KEY_SCOPES" ;;
   esac
 }
 # Backups (Déjà Dup): is "Back Up Automatically" on?
@@ -158,6 +159,10 @@ done
 if [[ -f "$HOME/.config/git/signing.gitconfig" && -f "$HOME/.ssh/id_ed25519.pub" ]]; then
   ok "commits signed with this computer's SSH key"
 else bad "commits aren't signed" ssh; fi
+if have gh && gh auth status >/dev/null 2>&1; then
+  if gh_key_admin; then bad "the GitHub CLI can still add SSH keys to your account" ghkeys
+  else ok "the GitHub CLI can't add SSH keys to your account"; fi
+fi
 case "$(backups_state)" in
   on)  ok "automatic backups (every $(gsettings get org.gnome.DejaDup periodic-period) days)" ;;
   off) bad "automatic backups are off" backups ;;
@@ -222,6 +227,8 @@ has_fix install && fix_step "Links, extensions, settings, safety checks" "Run do
 has_fix ssh     && fix_step "SSH key and signed commits" "Run dot ssh?" "$DOTFILES/scripts/ssh-setup.sh"
 has_fix addapt  && fix_step "Ubuntu apps not saved" "Add ${unsaved[*]} to setup/apt-packages.txt?" add_unsaved
 has_fix backups && fix_step "Automatic backups" "Open Backups to turn them on?" open_backups
+has_fix ghkeys  && fix_step "GitHub CLI permissions" "Remove its permission to add SSH keys (approve in the browser)?" \
+                     gh auth refresh -h github.com --remove-scopes "$GH_KEY_SCOPES"
 has_fix restart && warn "The NVIDIA driver needs a restart (and with Secure Boot, the blue MOK screen)."
 # Save last, after anything above that changed files.
 has_fix save    && fix_step "Snapshots" "Refresh them (dot save)?" "$DOTFILES/dot" save

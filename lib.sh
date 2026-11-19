@@ -277,6 +277,15 @@ repo_state() {
   return 0
 }
 
+# gh_key_admin: can the GitHub CLI's sign-in add or remove SSH keys on your account?
+# dot ssh needs that briefly; left in place, a leaked gh token could add someone else's key.
+GH_KEY_SCOPES="admin:public_key,admin:ssh_signing_key"
+gh_key_admin() {
+  have gh || return 1
+  local scopes; scopes="$(gh api -i user 2>/dev/null | tr -d '\r' | grep -i '^x-oauth-scopes:')"
+  [[ "$scopes" == *admin:public_key* || "$scopes" == *admin:ssh_signing_key* ]]
+}
+
 # --- Live progress panel ---------------------------------------------------------------
 # The step list pinned at the top of the terminal, updating in place, while the output
 # scrolls underneath (a terminal scroll region). Prompts still work: they show in the

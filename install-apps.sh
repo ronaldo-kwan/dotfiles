@@ -165,8 +165,18 @@ fetch_big() {
   fi
 }
 
-# Fingerprint of the first key in an ASCII-armoured key file.
-key_fingerprint() { gpg --show-keys --with-colons "$1" 2>/dev/null | awk -F: '$1=="fpr"{print $10; exit}'; }
+# key_ok <key file> <expected fingerprint>: the file must hold exactly one key, and
+# it must be that one. (apt trusts every key in a signing-key file, so a file with an
+# extra key added would otherwise pass a check of only the first one.)
+key_ok() {
+  local keys n fpr
+  keys="$(gpg --show-keys --with-colons "$1" 2>/dev/null)"
+  n="$(grep -c '^pub' <<< "$keys")"
+  fpr="$(awk -F: '$1=="fpr"{print $10; exit}' <<< "$keys")"
+  [[ "$n" == 1 && "$fpr" == "$2" ]] && return 0
+  echo "    the signing key file holds $n key(s) (first: ${fpr:-none}); expected only $2. Not installing." >&2
+  return 1
+}
 
 # Look up a package's file path and SHA-256 in an apt repository's package index.
 repo_lookup() { # repo_lookup <Packages URL> <package>  -> prints "path sha256"
@@ -195,11 +205,7 @@ install_claude() {
   # Anthropic's update source, signed with this key:
   local expected=31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
   fetch "$TMP/claude.asc" https://downloads.claude.ai/claude-desktop/key.asc
-  local got; got="$(key_fingerprint "$TMP/claude.asc")"
-  if [[ "$got" != "$expected" ]]; then
-    echo "    signing key fingerprint is $got, expected $expected. Not installing." >&2
-    return 1
-  fi
+  key_ok "$TMP/claude.asc" "$expected" || return 1
   echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/claude-desktop-archive-keyring.asc] https://downloads.claude.ai/claude-desktop/apt/stable stable main" > "$TMP/claude.list"
   run sudo install -m 644 "$TMP/claude.asc" /usr/share/keyrings/claude-desktop-archive-keyring.asc
   run sudo install -m 644 "$TMP/claude.list" /etc/apt/sources.list.d/claude-desktop.list
@@ -230,11 +236,7 @@ install_onlyoffice() {
   # ONLYOFFICE's update source, signed with this key (same key as on Ubuntu's keyserver):
   local expected=E09CA29F6E178040EF22B4098320CA65CB2DE8E5
   fetch "$TMP/onlyoffice.asc" https://download.onlyoffice.com/GPG-KEY-ONLYOFFICE
-  local got; got="$(key_fingerprint "$TMP/onlyoffice.asc")"
-  if [[ "$got" != "$expected" ]]; then
-    echo "    signing key fingerprint is $got, expected $expected. Not installing." >&2
-    return 1
-  fi
+  key_ok "$TMP/onlyoffice.asc" "$expected" || return 1
   gpg --dearmor < "$TMP/onlyoffice.asc" > "$TMP/onlyoffice.gpg"
   echo "deb [signed-by=/usr/share/keyrings/onlyoffice.gpg] https://download.onlyoffice.com/repo/debian squeeze main" > "$TMP/onlyoffice.list"
   run sudo install -m 644 "$TMP/onlyoffice.gpg" /usr/share/keyrings/onlyoffice.gpg

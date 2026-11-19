@@ -71,13 +71,19 @@ add_to_github() {
   # Adding keys needs two extra permissions for gh; ask GitHub for them once.
   if ! gh api user/keys >/dev/null 2>&1 || ! gh api user/ssh_signing_keys >/dev/null 2>&1; then
     note "gh needs permission to add keys: approve it in the browser that opens"
-    gh auth refresh -h github.com -s admin:public_key,admin:ssh_signing_key
+    gh auth refresh -h github.com -s "$GH_KEY_SCOPES"
   fi
   local title; title="$(hostname) ($(date +%Y-%m))"
   if key_on_github keys; then note "already on GitHub for signing in"
   else gh ssh-key add "$KEY.pub" --type authentication --title "$title"; fi
   if key_on_github ssh_signing_keys; then note "already on GitHub for Verified commits"
   else gh ssh-key add "$KEY.pub" --type signing --title "$title"; fi
+  # Done: take that permission away again, so a leaked gh sign-in can't be used to
+  # add someone else's key to your account.
+  if gh_key_admin; then
+    note "removing gh's permission to add keys again: approve once more in the browser"
+    gh auth refresh -h github.com --remove-scopes "$GH_KEY_SCOPES"
+  fi
 }
 
 if [[ "$SIGNING_ONLY" == 1 ]]; then signing_config; exit; fi
