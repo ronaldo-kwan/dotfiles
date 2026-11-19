@@ -228,6 +228,16 @@ restore_obsidian() {
     else
       skip "no obsidian-vault repo found on GitHub (or gh isn't signed in), so no notes cloned"
     fi
+  elif [[ -d "$OBSIDIAN_VAULT/.git" ]] && ! git -C "$OBSIDIAN_VAULT" rev-parse -q --verify HEAD >/dev/null; then
+    # The vault was cloned while the notes repo was still empty: fetch the notes now.
+    if git -C "$OBSIDIAN_VAULT" fetch -q origin 2>/dev/null \
+       && git -C "$OBSIDIAN_VAULT" rev-parse -q --verify origin/main >/dev/null; then
+      git -C "$OBSIDIAN_VAULT" checkout -q -f -B main origin/main
+      git -C "$OBSIDIAN_VAULT" branch -q -u origin/main
+      echo "    notes fetched into ${OBSIDIAN_VAULT/#$HOME/\~}"
+    else
+      echo "    vault already there; the notes repo is still empty"
+    fi
   else
     echo "    vault already there: ${OBSIDIAN_VAULT/#$HOME/\~}"
   fi
