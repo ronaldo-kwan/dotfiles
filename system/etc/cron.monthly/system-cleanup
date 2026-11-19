@@ -1,0 +1,25 @@
+#!/bin/sh
+# Monthly clean-up: remove packages and Flatpak runtimes that nothing uses any more.
+# Notifies if it fails. Installed by install-apps.sh (with DESKTOP_USER filled in).
+export DEBIAN_FRONTEND=noninteractive
+LOG=/var/log/system-cleanup.log
+DESKTOP_USER=azuretc
+USER_ID=$(id -u "$DESKTOP_USER")
+
+notify() {
+  # $1 = urgency (normal/critical), $2 = title, $3 = message
+  [ -S "/run/user/$USER_ID/bus" ] || return 0
+  sudo -u "$DESKTOP_USER" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$USER_ID/bus" \
+    notify-send -u "$1" -i system-software-update "$2" "$3"
+}
+
+echo "=== $(date) ===" >> "$LOG"
+
+# Packages installed only as dependencies that nothing needs now (old kernels, ...).
+apt-get -y -o DPkg::Lock::Timeout=600 autoremove >> "$LOG" 2>&1 \
+  && { ! command -v flatpak >/dev/null || flatpak uninstall --unused -y --noninteractive >> "$LOG" 2>&1; }
+STATUS=$?
+
+if [ "$STATUS" -ne 0 ]; then
+  notify critical "Monthly clean-up failed" "Error code $STATUS. Details in $LOG"
+fi

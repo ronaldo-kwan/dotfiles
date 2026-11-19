@@ -1,8 +1,14 @@
 # Apps from Ubuntu's own repositories that I installed myself.
 # install-apps.sh installs any of these that are missing. Edit by hand.
 deja-dup                       # Backups
+rclone                         # lets Backups reach Google Drive
 gnome-shell-extension-manager  # Extension Manager
-gnome-software                 # Software
+gnome-software                 # Software (GNOME's app store)
+gnome-software-plugin-flatpak  # shows Flathub apps in Software
 gnome-tweaks                   # Tweaks
+gnome-backgrounds              # GNOME's own wallpapers
+sound-theme-freedesktop        # GNOME's sounds (the "freedesktop" sound theme)
 qbittorrent                    # qBittorrent
 vlc                            # VLC media player
+vainfo                         # checks video hardware acceleration
+ubuntu-restricted-extras       # codecs and Microsoft fonts (asks you to accept a font licence)

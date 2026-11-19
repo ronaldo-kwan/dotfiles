@@ -300,8 +300,11 @@ echo "  extension settings, dock, wallpaper, lock screen, apps that start at log
 echo "  default apps and qBittorrent settings."
 echo "Existing files that would be replaced are kept as <name>.orig."
 echo "Keyboard shortcuts replace any custom shortcuts already on this computer."
-read -rp "Continue? [Y/n] " answer
-[[ "$answer" =~ ^[Nn]$ ]] && { echo "Nothing changed."; exit 0; }
+# --yes (used by fresh-install.sh) skips this question.
+if [[ "${1:-}" != "--yes" ]]; then
+  read -rp "Continue? [Y/n] " answer
+  [[ "$answer" =~ ^[Nn]$ ]] && { echo "Nothing changed."; exit 0; }
+fi
 
 run_step "Linking config files"                          link_configs
 run_step "JetBrainsMono Nerd Font"                       install_font

@@ -22,10 +22,11 @@ These aren't linked. `install.sh` restores them, or see the manual steps below:
 
 | File | What it is |
 |---|---|
-| `install.sh` | Sets up a new computer from this repo (no sudo) |
-| `install-apps.sh` | Optional: installs Chrome, VS Code, Claude Desktop, Proton VPN, OBS, ONLYOFFICE, Steam, the Ubuntu apps below and the NVIDIA driver; sets up weekly updates (uses sudo) |
+| `fresh-install.sh` | Sets up a freshly installed Ubuntu in one go: system and firmware update, tools, then both scripts below |
+| `install.sh` | Configs, fonts, Flatpak apps, extensions and settings (no sudo) |
+| `install-apps.sh` | Optional: installs Chrome, VS Code, Claude Desktop, Proton VPN, OBS, ONLYOFFICE, Steam, the Ubuntu apps below and the NVIDIA driver (plus Steam's 32-bit NVIDIA library and RTX shortcut); sets up weekly updates (uses sudo) |
 | `setup/vscode-extensions.txt` | VS Code extensions (the Catppuccin theme) |
-| `setup/apt-packages.txt` | Ubuntu apps I installed myself: VLC, qBittorrent, Tweaks, Extension Manager, Backups, Software. Edit by hand. |
+| `setup/apt-packages.txt` | Ubuntu packages I installed myself: VLC, qBittorrent, Tweaks, Extension Manager, Backups and rclone (for Google Drive), Software with Flathub, GNOME wallpapers and sounds, codecs, vainfo. Edit by hand. |
 | `setup/flatpaks.txt` | Flatpak apps: Bitwarden, Discord, Obsidian, Firefox and others |
 | `setup/gnome-desktop.dconf` | Desktop look: Adwaita theme and icons, fonts, dark mode, blue accent, close-only window buttons, 4 fixed workspaces, and which extensions are on or off (Ubuntu Dock, desktop icons and web search are off) |
 | `setup/desktop-settings.dconf` | Window shortcuts (Super+W, Super+1–4 workspaces), screenshot shortcut, power (never sleep on AC), sound theme, Files list view, file dialogs, search order, Backups schedule, Text Editor and Ptyxis settings |
@@ -35,7 +36,7 @@ These aren't linked. `install.sh` restores them, or see the manual steps below:
 | `setup/gnome-extensions.txt` | GNOME extensions that `install.sh` installs from extensions.gnome.org |
 | `setup/wallpaper/` | Desktop wallpaper |
 | `setup/apps/` | Apps that start at login (Bitwarden), default apps (Chrome as browser, Showtime for video, Calendar), qBittorrent settings and Catppuccin theme, Obsidian vault settings and Catppuccin theme (not the notes). Cookies and window sizes are left out. Home-folder paths are stored as `@HOME@`. |
-| `system/` | Weekly automatic update script (needs sudo) |
+| `system/` | Weekly update and monthly clean-up scripts, installed by `install-apps.sh` (needs sudo) |
 | `scripts/dump-desktop-settings.sh` | Used by `dotsave` to write `setup/desktop-settings.dconf` |
 | `scripts/save-app-settings.sh` | Used by `dotsave` to update `setup/apps/` |
 
@@ -71,31 +72,55 @@ Things GNOME remembers by itself (window sizes, last-used folders, timestamps) a
 
 ## Setting up a new computer
 
-### Quick setup
+### Before installing Ubuntu (Lenovo Legion 5)
+
+1. **GPU mode: Hybrid.** In Windows, open Lenovo Legion Space (or Vantage) and set the GPU mode to **Hybrid**. Without Windows: restart, press <kbd>F2</kbd> for the BIOS, and set **GPU Working Mode** to Hybrid. "Hybrid-iGPU only" hides the RTX 5060 from Ubuntu.
+2. **Leave Secure Boot on.** Ubuntu's NVIDIA driver works with it.
+3. Boot the Ubuntu 26.04 USB stick (<kbd>F12</kbd> at startup) and, in the installer, tick **Install third-party software for graphics and Wi-Fi hardware**.
+
+### Fresh install: one script
+
+After Ubuntu is installed, open a terminal (<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>) and run these. `gh auth login` signs you in to GitHub through the browser.
 
 ```bash
-sudo apt install git gh curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit flatpak
+sudo apt install git gh
 gh auth login
 gh repo clone dotfiles ~/dotfiles
-~/dotfiles/install.sh
-~/dotfiles/install-apps.sh   # optional, see below
-~/dotfiles/install.sh        # again, only if you installed VS Code, to add its extensions
+~/dotfiles/fresh-install.sh
 ```
 
-Then log out and back in.
+`fresh-install.sh` does everything in the right order and ends with a restart:
 
-`lazygit` comes from Ubuntu Pro's extra app repository (`esm-apps`).
+1. **Updates the system** (`apt full-upgrade`).
+2. **Updates firmware** (BIOS, SSD, devices) with `fwupdmgr`, only if the charger is plugged in. It asks first.
+3. **Installs the terminal tools** (Starship, eza, bat, fzf, zoxide, ble.sh, Ghostty, btop, lazygit, ...) and adds Flathub.
+4. Runs **`install.sh`**: configs, fonts, Flatpak apps, GNOME extensions, desktop and app settings.
+5. Runs **`install-apps.sh`**: Chrome, VS Code, Claude Desktop, Proton VPN, OBS, ONLYOFFICE, Steam, Ubuntu apps, the NVIDIA driver, weekly updates, monthly clean-up.
+6. Runs **`install.sh` again**, for VS Code's extensions and Obsidian now that those apps exist.
 
-`install.sh` asks before doing anything. It then:
-- links the config files (keeping any existing ones as `.orig`)
-- installs the Nerd Font, VS Code extensions, Flatpak apps and GNOME extensions (the versions matching this computer's GNOME, from extensions.gnome.org)
-- restores your desktop look (theme, icons, dark mode, accent colour, window buttons, workspaces), keyboard shortcuts, extension settings, dock and wallpaper
+Every question defaults to **Yes**, so press <kbd>Enter</kbd> to go on. If a step fails, the rest still run and the failures are listed at the end. Fix the cause and run it again; finished parts are skipped.
 
-It's safe to run again. If a step fails, the others still run, and the failures are listed at the end. GNOME extensions start working after you log out and back in.
+**Two screens need you:**
+- **Font licence** (codecs): press <kbd>Tab</kbd> to `<Ok>` and <kbd>Enter</kbd>, then choose `<Yes>`.
+- **NVIDIA with Secure Boot:** if asked, make up a short password (letters and numbers). After the restart, a blue **MOK management** screen appears: Enroll MOK → Continue → Yes → type that password → Reboot. Then `nvidia-smi` should list the RTX 5060.
 
-**Backups:** the schedule and folder are restored, but your Google sign-in isn't stored anywhere in this repo. Open **Backups** once and connect Google Drive.
+**After the restart:** sign in to your apps (Steam, browsers, Discord, Bitwarden). Open **Backups**, connect Google Drive, and turn on **Back Up Automatically**. Keep the backup encryption password somewhere safe; without it the backups can't be restored.
 
 Display scaling isn't saved, because it depends on the screen. Set it in **Settings → Displays → Scale** if text looks too small or large.
+
+### Using the RTX 5060
+
+Apps run on the AMD graphics built into the processor by default, which saves battery. Steam is the exception: the setup gives it a shortcut that asks for the NVIDIA card, so games started from Steam use the RTX 5060.
+
+For any other app, right-click it in the app grid and choose **Launch using Discrete Graphics Card**. While it runs, `nvidia-smi` lists it under Processes.
+
+### Running the parts separately
+
+The three scripts can also be run on their own, for example on a computer that's already set up. Each is safe to run again.
+
+- `~/dotfiles/install.sh` (no sudo): links config files (keeping existing ones as `.orig`). It installs the Nerd Font, VS Code extensions, Flatpak apps and GNOME extensions (the versions matching this computer's GNOME). It restores your desktop look, shortcuts, settings, extension settings, dock, wallpaper, app settings and the Obsidian vault. GNOME extensions start after you log out and back in.
+- `~/dotfiles/install-apps.sh` (sudo): the apps and system parts below.
+- `~/dotfiles/fresh-install.sh` (sudo): all of the above, plus the system and firmware update.
 
 ### Apps from other sources
 
@@ -140,12 +165,15 @@ cd ~/Documents/"Obsidian Vault" && git add -A && git commit -m "Update notes" &&
 
 `install.sh` installs and enables the extensions in `setup/gnome-extensions.txt` (Alphabetical App Grid, Caffeine, Clipboard Indicator) and restores their settings. It also applies exactly which extensions are on or off, including Ubuntu's built-in ones: Ubuntu Dock, desktop icons and web search are switched off, as on the original computer. They start after you log out and back in. To add another extension to the list, put its ID (shown on its extensions.gnome.org page or by `gnome-extensions list`) in that file.
 
-### Weekly automatic updates and NVIDIA driver
+### Weekly updates, monthly clean-up and NVIDIA driver
 
 `install-apps.sh` also offers these:
 
-- **Weekly automatic updates:** installs `system/etc/cron.weekly/system-update` with this computer's username filled in. It updates everything once a week and shows a notification if an update fails, gets stuck, or needs a restart. The log is `/var/log/system-update.log`.
+- **Weekly automatic updates:** installs `system/etc/cron.weekly/system-update` with this computer's username filled in. It updates Ubuntu packages and Flatpak apps once a week and shows a notification if an update fails, gets stuck, or needs a restart. The log is `/var/log/system-update.log`.
+- **Monthly clean-up:** installs `system/etc/cron.monthly/system-cleanup`, which once a month removes packages nothing needs any more (`apt autoremove`: old kernels, leftover dependencies) and unused Flatpak runtimes (`flatpak uninstall --unused`). It shows a notification if it fails. The log is `/var/log/system-cleanup.log`.
 - **NVIDIA graphics driver:** only on computers with an NVIDIA card. It runs Ubuntu's `sudo ubuntu-drivers install`, which picks the right driver for the card and works with Secure Boot. Restart afterwards.
+- **Steam on the NVIDIA card:** installs the 32-bit NVIDIA library that matches the driver (many games need it), and a copy of Steam's shortcut that asks for the NVIDIA card, so games run on it. Quit Steam fully first if it's open.
+- **Codecs** (`ubuntu-restricted-extras`, in the Ubuntu apps list) shows a font licence screen: press <kbd>Tab</kbd> to `<Ok>` and <kbd>Enter</kbd>, then choose `<Yes>`.
 
 By hand:
 

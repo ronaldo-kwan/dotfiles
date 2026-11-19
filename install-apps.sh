@@ -4,7 +4,7 @@
 # setup/apt-packages.txt. Each one comes from its maker's official download
 # source (or Ubuntu's own), which then keeps it updated through `sudo apt upgrade`.
 # It can also remove Ubuntu's Snap Firefox (this setup uses the Flatpak one),
-# set up weekly automatic updates, and install the NVIDIA driver on computers
+# set up weekly automatic updates and a monthly clean-up, and install the NVIDIA driver on computers
 # with an NVIDIA graphics card.
 #
 # Uses sudo. Asks before each app, and skips apps that are already installed.
@@ -54,14 +54,53 @@ check_weekly_updates() {
   fi
 }
 
+# The monthly clean-up script from system/, with this computer's username filled in.
+cleanup_script() {
+  sed -E "s/^DESKTOP_USER=.*/DESKTOP_USER=$(id -un)/" \
+    "$SETUP/../system/etc/cron.monthly/system-cleanup"
+}
+check_monthly_cleanup() {
+  [[ -f /etc/cron.monthly/system-cleanup ]] || return 1
+  if ! cmp -s <(cleanup_script) /etc/cron.monthly/system-cleanup; then
+    echo "    set up, but different from the saved version"
+    return 1
+  fi
+}
+
 has_nvidia() { lspci 2>/dev/null | grep -qiE '(vga|3d|display).*nvidia'; }
 check_nvidia_driver() {
   if ! has_nvidia; then
-    echo "    not needed: this computer has no NVIDIA graphics card"
+    if grep -qi legion /sys/class/dmi/id/product_version 2>/dev/null; then
+      # Legion laptops with "Hybrid-iGPU only" mode hide the NVIDIA card from Linux.
+      echo "    no NVIDIA card visible. On this Legion it's probably hidden by the GPU mode:"
+      echo "    restart, press F2 for the BIOS, set GPU Working Mode to Hybrid, then run this again"
+    else
+      echo "    not needed: this computer has no NVIDIA graphics card"
+    fi
     NOT_NEEDED=1
     return 0
   fi
   dpkg-query -W -f='${Status}\n' 'nvidia-driver-*' 2>/dev/null | grep -q "install ok installed"
+}
+
+# NVIDIA driver version number (595, ...): from the running driver, or the installed package.
+nvidia_major() {
+  local v
+  v="$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 | cut -d. -f1)"
+  [[ -n "$v" ]] || v="$(dpkg-query -W -f='${Package} ${Status}\n' 'nvidia-driver-*' 2>/dev/null \
+    | awk '/install ok installed/ {print $1}' | grep -oE '[0-9]+' | head -1)"
+  echo "$v"
+}
+STEAM_SHORTCUT="$HOME/.local/share/applications/steam.desktop"
+check_steam_nvidia() {
+  if ! installed steam-installer || ! has_nvidia; then
+    echo "    not needed: $(installed steam-installer && echo "no NVIDIA graphics card" || echo "Steam isn't installed")"
+    NOT_NEEDED=1
+    return 0
+  fi
+  local major; major="$(nvidia_major)"
+  [[ -n "$major" ]] && installed "libnvidia-gl-$major:i386" \
+    && grep -q '^PrefersNonDefaultGPU=true' "$STEAM_SHORTCUT" 2>/dev/null
 }
 
 check_no_snap_firefox() {
@@ -200,12 +239,40 @@ setup_weekly_updates() {
   echo "    runs once a week; log: /var/log/system-update.log"
 }
 
+setup_monthly_cleanup() {
+  # Removes unused packages (apt autoremove) and Flatpak runtimes once a month.
+  cleanup_script > "$TMP/system-cleanup"
+  run sudo install -m 755 -o root -g root "$TMP/system-cleanup" /etc/cron.monthly/system-cleanup
+  echo "    runs once a month; log: /var/log/system-cleanup.log"
+}
+
 install_nvidia_driver() {
   # Ubuntu picks the right driver for the card (works with Secure Boot).
   has_nvidia || { skip "this computer has no NVIDIA graphics card"; return 0; }
   apt_wait
   run sudo ubuntu-drivers install
   echo "    restart the computer to start using the NVIDIA driver"
+}
+
+setup_steam_nvidia() {
+  # 1. Many games need the 32-bit NVIDIA library that matches the driver.
+  local major; major="$(nvidia_major)"
+  if [[ -z "$major" ]]; then
+    skip "the NVIDIA driver isn't installed yet (install it first, then run this again)"
+    return 0
+  fi
+  installed "libnvidia-gl-$major:i386" || apt_get install -y "libnvidia-gl-$major:i386"
+  # 2. A copy of Steam's shortcut that asks for the NVIDIA card, so games run on it.
+  if ! grep -q '^PrefersNonDefaultGPU=true' "$STEAM_SHORTCUT" 2>/dev/null; then
+    if [[ "$DRY_RUN" == 1 ]]; then
+      echo "    would make Steam's shortcut use the NVIDIA card: $STEAM_SHORTCUT"
+    else
+      mkdir -p "$(dirname "$STEAM_SHORTCUT")"
+      cp /usr/share/applications/steam.desktop "$STEAM_SHORTCUT"
+      sed -i '/^\[Desktop Entry\]/a PrefersNonDefaultGPU=true' "$STEAM_SHORTCUT"
+      echo "    Steam now starts on the NVIDIA card (quit Steam fully first if it's open)"
+    fi
+  fi
 }
 
 remove_snap_firefox() {
@@ -305,9 +372,11 @@ APPS=(
   "OBS Studio|obs-studio|install_obs"
   "ONLYOFFICE|check_onlyoffice|install_onlyoffice"
   "Steam|steam-installer|install_steam"
-  "Ubuntu apps (VLC, qBittorrent, Tweaks, Extension Manager, Backups, Software)|check_ubuntu_apps|install_ubuntu_apps"
+  "Ubuntu apps (VLC, qBittorrent, Tweaks, Backups, codecs and more: setup/apt-packages.txt)|check_ubuntu_apps|install_ubuntu_apps"
   "NVIDIA graphics driver|check_nvidia_driver|install_nvidia_driver"
+  "Steam on the NVIDIA card (32-bit library, shortcut)|check_steam_nvidia|setup_steam_nvidia|Set up"
   "weekly automatic updates (/etc/cron.weekly/system-update)|check_weekly_updates|setup_weekly_updates|Set up"
+  "monthly clean-up of unused packages (/etc/cron.monthly/system-cleanup)|check_monthly_cleanup|setup_monthly_cleanup|Set up"
   "Ubuntu's Snap Firefox (you use the Flatpak one)|check_no_snap_firefox|remove_snap_firefox|Remove"
 )
 

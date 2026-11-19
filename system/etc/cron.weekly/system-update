@@ -1,5 +1,6 @@
 #!/bin/sh
-# Weekly system update. Notifies on failure, if stuck, or if a restart is needed.
+# Weekly system update (Ubuntu packages and Flatpak apps).
+# Notifies on failure, if stuck, or if a restart is needed.
 export DEBIAN_FRONTEND=noninteractive
 LOG=/var/log/system-update.log
 DESKTOP_USER=azuretc
@@ -20,7 +21,8 @@ echo "=== $(date) ===" >> "$LOG"
 WATCHDOG=$!
 
 apt-get update >> "$LOG" 2>&1 \
-  && apt-get $OPTS --with-new-pkgs upgrade >> "$LOG" 2>&1
+  && apt-get $OPTS --with-new-pkgs upgrade >> "$LOG" 2>&1 \
+  && { ! command -v flatpak >/dev/null || flatpak update -y --noninteractive >> "$LOG" 2>&1; }
 STATUS=$?
 
 kill "$WATCHDOG" 2>/dev/null
