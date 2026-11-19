@@ -25,9 +25,9 @@ These folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). E
 | `install.sh` | Configs, font, Flatpak apps, extensions, settings, secret check and reminder (no sudo) |
 | `install-apps.sh` | Apps from their makers' sources, the NVIDIA driver, Steam on the NVIDIA card, weekly updates, monthly clean-up, Snap Firefox removal (sudo) |
 | `post-upgrade.sh` | After upgrading Ubuntu to a new release: switches app update sources back on and puts everything back |
-| `dot` | The `dot` command (`dot help`); `.bashrc` adds `dot cd` and Tab completion |
+| `dot` | The `dot` command: a menu on its own, or `dot help`; `.bashrc` adds `dot cd` and Tab completion |
 | `check.sh` | Health check (`dot check`); `--notify` is the weekly reminder |
-| `lib.sh` | Helpers shared by the scripts above, plus the lists of terminal tools and stow packages |
+| `lib.sh` | Helpers shared by the scripts above (questions, gum, the progress panel, steps, spinner, summary, clock check), plus the lists of terminal tools and stow packages |
 | `scripts/ssh-setup.sh` | `dot ssh`: SSH key, signed commits, adding the key to GitHub |
 | `scripts/snapshot.sh` | Writes the snapshots in `setup/` (used by `dot save`, and by `check.sh` into a temporary copy) |
 | `scripts/dump-desktop-settings.sh` | Writes `setup/desktop-settings.dconf` |

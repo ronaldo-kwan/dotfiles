@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# dot: one command for everything in ~/dotfiles. Run `dot help` for the list.
+# dot: one command for everything in ~/dotfiles. `dot` alone opens a menu (with gum);
+# `dot help` lists the commands.
 # (`dot cd` is handled by the dot() function in .bashrc, since a script can't
 # change your terminal's folder.)
 
@@ -19,6 +20,7 @@ usage() {
     printf '  %s%-20s%s %s\n' "$C_B" "$cmd" "$C_N" "$what"
   done <<'EOF'
 dot save|Refresh the snapshots in setup/ and show what changed
+dot|Menu: pick any of these with the arrow keys (needs gum)
 dot check|Health check: is everything still set up? Changes nothing
 dot check --fix|The same, then offers to fix each problem (asks first)
 dot status|What changed since your last push
@@ -54,7 +56,58 @@ push_repo() {
     && printf '%s✔%s saved to GitHub: %s\n' "$C_OK" "$C_N" "$(git -C "$dir" log --format='%h %s' -1)"
 }
 
-cmd="${1:-help}"; [[ $# -gt 0 ]] && shift
+# --- The menu (dot alone, or dot menu) --------------------------------------------------
+status_line() {
+  local n last
+  n=$(git -C "$DOTFILES" status --porcelain 2>/dev/null | wc -l)
+  last="$(git -C "$DOTFILES" log -1 --format=%cr '@{u}' 2>/dev/null)"
+  if (( n )); then printf '● %s unsaved change%s in ~/dotfiles: Push to save' "$n" "$( ((n > 1)) && echo s)"
+  elif [[ -n "$(git -C "$DOTFILES" log --oneline '@{u}..' 2>/dev/null)" ]]; then printf '● commits not on GitHub yet: Push'
+  else printf '✔ dotfiles saved'; fi
+  [[ -n "$last" ]] && printf ' · last push %s' "$last"
+  if [[ -d "$VAULT/.git" ]]; then
+    if [[ -n "$(repo_state "$VAULT")" ]]; then printf '\n● notes not saved: Save notes'; else printf '\n✔ notes saved'; fi
+  fi
+}
+menu() {
+  local pick msg key items=(
+    "Save settings          dot save|save"
+    "Push to GitHub         dot push|push"
+    "Save notes             dot notes|notes"
+    "Health check           dot check|check"
+    "Fix problems           dot check --fix|fix"
+    "Apps and firewall      dot apps|apps"
+    "Configs and desktop    dot install|install"
+    "SSH and signing        dot ssh|ssh"
+    "After Ubuntu upgrade   dot upgrade|upgrade"
+    "Open in VS Code        dot edit|edit"
+    "Quit|quit")
+  while true; do
+    clear
+    printf '\n %s%sdotfiles%s\n\n' "$C_ACC" "$C_B" "$C_N"
+    pick="$(gum choose --label-delimiter='|' --header "$(status_line)" --height 14 "${items[@]}")" || break
+    echo
+    case "$pick" in
+      quit) break ;;
+      push)
+        msg="$(gum input --prompt "Commit message › " --placeholder "Update settings")" || continue
+        "$DOTFILES/dot" push ${msg:+"$msg"} ;;
+      fix)  "$DOTFILES/dot" check --fix ;;
+      edit) "$DOTFILES/dot" edit; continue ;;
+      *)    "$DOTFILES/dot" "$pick" ;;
+    esac
+    printf '\n %sPress any key for the menu, q to quit%s ' "$C_DIM" "$C_N"
+    read -rsn1 key; [[ "$key" == q ]] && break
+  done
+  echo
+}
+
+cmd="${1:-}"; [[ $# -gt 0 ]] && shift
+if [[ -z "$cmd" || "$cmd" == menu ]]; then
+  if ui_gum; then menu; exit 0; fi
+  [[ "$cmd" == menu ]] && echo "The menu needs gum: sudo apt install gum"
+  cmd=help
+fi
 case "$cmd" in
   save)
     bash "$DOTFILES/scripts/snapshot.sh" || exit 1

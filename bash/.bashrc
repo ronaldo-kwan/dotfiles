@@ -130,7 +130,7 @@ dot() {
   if [ "${1:-}" = cd ]; then cd "${DOTFILES:-$HOME/dotfiles}" || return
   else "${DOTFILES:-$HOME/dotfiles}/dot" "$@"; fi
 }
-complete -W "save check status push notes install apps fresh upgrade ssh cd edit help" dot
+complete -W "menu save check status push notes install apps fresh upgrade ssh cd edit help" dot
 alias dotsave='dot save' dotcheck='dot check'   # the old names still work
 
 # --- Terminal customization ---

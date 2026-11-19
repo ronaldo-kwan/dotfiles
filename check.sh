@@ -65,13 +65,6 @@ stale_snapshots() {
   diff -rq "$SETUP" "$tmp/setup" 2>/dev/null | sed -E "s|^Files $SETUP/([^ ]+) and .*|\1|; s|^Only in $tmp/setup/?([^:]*): (.*)|\1/\2 (new)|; s|^Only in $SETUP/?([^:]*): (.*)|\1/\2 (gone)|; s|^/||"
   rm -rf "$tmp"
 }
-repo_state() { # repo_state <dir>: prints "uncommitted" and/or "unpushed"
-  local d="$1"
-  [[ -n "$(git -C "$d" status --porcelain 2>/dev/null)" ]] && echo uncommitted
-  [[ -n "$(git -C "$d" log --oneline '@{u}..' 2>/dev/null)" ]] && echo unpushed
-  return 0
-}
-
 if [[ "$MODE" == notify ]]; then
   msgs=()
   mapfile -t stale < <(stale_snapshots)

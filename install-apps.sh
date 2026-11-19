@@ -254,7 +254,8 @@ install_ubuntu_apps() {
   # The codecs bring Microsoft's fonts, whose installer stops on a licence screen.
   # Answer it here instead (Yes to everything counts as accepting it).
   if printf '%s\n' "${missing[@]}" | grep -qx ubuntu-restricted-extras; then
-    if ask "Accept the Microsoft fonts licence (needed for the codecs)?"; then
+    # LICENCE comes from the checklist; without one, ask here.
+    if [[ "${LICENCE:-}" == yes ]] || { [[ -z "${LICENCE:-}" ]] && ask "Accept the Microsoft fonts licence (needed for the codecs)?"; }; then
       echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" > "$TMP/fonts.debconf"
       run sudo debconf-set-selections "$TMP/fonts.debconf"
     fi
@@ -369,6 +370,7 @@ header "$title" \
   "Chrome, VS Code, Claude, Proton VPN, OBS, ONLYOFFICE, Steam, Ubuntu apps;" \
   "the NVIDIA driver, weekly updates, monthly clean-up, no Snap Firefox." \
   "Uses sudo. Yes to everything also accepts the Microsoft fonts licence."
+# shellcheck disable=SC2034  # read by step_begin in lib.sh
 STEP_TOTAL=${#APPS[@]}
 [[ "$DRY_RUN" == 1 ]] && note "Dry run: downloads are checked, but nothing is installed."
 if [[ "$DRY_RUN" != 1 ]]; then
@@ -378,8 +380,49 @@ if [[ "$DRY_RUN" != 1 ]]; then
 fi
 clock_step
 
+# What's already done, not needed, or still to do (quietly, before anything runs).
+STATUS=()
+for i in "${!APPS[@]}"; do
+  IFS='|' read -r _ check _ <<< "${APPS[$i]}"
+  NOT_NEEDED=0
+  if is_done "$check" >/dev/null 2>&1; then
+    if (( NOT_NEEDED )); then STATUS[i]=notneeded; else STATUS[i]="done"; fi
+  else STATUS[i]=todo; fi
+done
+
+# "Let me choose" with gum: one checklist instead of a question per app.
+CHECKLIST=0 CHOSEN=" " LICENCE=""
+if [[ "$DRY_RUN" != 1 && "$YES_ALL" == 0 ]] && ui_gum; then
+  opts=() done_names=() licence_offered=0
+  for i in "${!APPS[@]}"; do
+    IFS='|' read -r name _ _ verb <<< "${APPS[$i]}"
+    case "${STATUS[i]}" in
+      todo) opts+=("$( [[ -z "$verb" ]] || printf '%s ' "$verb")$name|$i") ;;
+      done) done_names+=("${name%% (*}") ;;
+    esac
+    if [[ "${STATUS[i]}" == todo && "${APPS[$i]}" == *"|install_ubuntu_apps"* ]] && ! installed ubuntu-restricted-extras; then
+      opts+=("Accept the Microsoft fonts licence (needed for the codecs)|licence"); licence_offered=1
+    fi
+  done
+  if (( ${#opts[@]} )); then
+    hdr="Choose what to set up: Space ticks or unticks, Enter starts."
+    (( ${#done_names[@]} )) && hdr+=$'\n'"Already done: $(printf '%s, ' "${done_names[@]}" | sed 's/, $//')"
+    echo
+    picked="$(gum choose --no-limit --selected='*' --label-delimiter='|' --header "$hdr" \
+      --height $(( ${#opts[@]} + 4 )) "${opts[@]}")" || { echo "Nothing changed."; exit 0; }
+    CHECKLIST=1 CHOSEN=" $(tr '\n' ' ' <<< "$picked") "
+    (( licence_offered )) && { [[ "$CHOSEN" == *" licence "* ]] && LICENCE=yes || LICENCE=no; }
+  fi
+fi
+
+titles=()
 for entry in "${APPS[@]}"; do
-  IFS='|' read -r name check fn verb <<< "$entry"
+  IFS='|' read -r name _ _ verb <<< "$entry"; titles+=("${verb:-Install}: $name")
+done
+ui_plan "${titles[@]}"
+
+for i in "${!APPS[@]}"; do
+  IFS='|' read -r name check fn verb <<< "${APPS[$i]}"
   verb="${verb:-Install}"
   step_begin "$verb: $name"
   NOT_NEEDED=0
@@ -388,7 +431,9 @@ for entry in "${APPS[@]}"; do
     if [[ "$DRY_RUN" != 1 ]]; then step_end already; continue; fi
     note "already done (checking the download anyway)"
   fi
-  if [[ "$DRY_RUN" != 1 ]] && ! ask "$verb $name?"; then
+  if (( CHECKLIST )); then
+    [[ "$CHOSEN" == *" $i "* ]] || { step_end skip "not chosen"; continue; }
+  elif [[ "$DRY_RUN" != 1 ]] && ! ask "$verb $name?"; then
     step_end skip "you chose not to"; continue
   fi
   ( set -e; "$fn" )

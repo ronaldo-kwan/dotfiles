@@ -14,6 +14,12 @@ The files in `setup/` are snapshots, so they don't update themselves. After chan
 
 Things GNOME remembers by itself (window sizes, last-used folders, timestamps) are deliberately left out of the snapshots.
 
+## The `dot` menu and the look
+
+`dot` on its own opens a menu (arrow keys, Enter, `q` or Esc to quit) with a status line: unsaved changes in `~/dotfiles` and your notes, and when you last pushed. After each action, any key goes back to the menu. It needs `gum` (in the tools list); without it `dot` prints the command list.
+
+The scripts use gum for their questions (Yes/No buttons, the start question, the app checklist) and pin a live list of steps at the top of the terminal. Without gum, in a short window, or when the output goes to a file or GitHub's checks, they fall back to plain text. To force the plain look: `DOT_PLAIN=1 dot apps`.
+
 ## Health check (`dot check`)
 
 `dot check` (or `dotcheck`, or `~/dotfiles/check.sh`) checks that this computer still matches the repo: config links, terminal tools, the Nerd Font, every app and system job from `install-apps.sh`, the NVIDIA driver, Flatpaks, GNOME and VS Code extensions, the firewall, the Obsidian vault, the secret check, signed commits, the reminder, whether the snapshots are out of date, Ubuntu apps you installed that aren't in `setup/apt-packages.txt`, and whether anything isn't committed or pushed.

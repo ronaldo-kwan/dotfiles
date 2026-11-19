@@ -7,7 +7,7 @@ My Ubuntu (GNOME) setup: bash, ble.sh, Starship, fzf, zoxide, eza, bat, Ghostty,
 Install Ubuntu 26.04 (first read [Before installing](docs/new-computer.md#before-installing-ubuntu-lenovo-legion-5)), open a terminal and run:
 
 ```bash
-sudo apt install git gh
+sudo apt install git gh gum
 gh auth login
 gh repo clone dotfiles ~/dotfiles
 ~/dotfiles/fresh-install.sh
@@ -17,7 +17,7 @@ It asks one question at the start: press <kbd>Enter</kbd> for **Yes to everythin
 
 ## Everyday
 
-Everything goes through one command, `dot` (`dot help` lists it all; <kbd>Tab</kbd> completes):
+Everything goes through one command, `dot`. On its own, **`dot` opens a menu**: pick with the arrow keys, Enter runs it, and the top shows whether anything is unsaved. Or type the command directly (`dot help` lists them; <kbd>Tab</kbd> completes):
 
 | Command | What it does |
 |---|---|

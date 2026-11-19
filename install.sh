@@ -2,7 +2,7 @@
 # Set up this computer from ~/dotfiles. Safe to run more than once.
 #
 # Needs (install first, see README):
-#   sudo apt install git gh curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit flatpak
+#   sudo apt install git gh gum curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit flatpak
 #
 # Does NOT use sudo. Steps that need sudo or a sign-in are listed at the end.
 # If one step fails, the others still run, and failures are listed at the end.
@@ -307,21 +307,21 @@ header "Set up configs and desktop" \
   "desktop look, shortcuts and settings, wallpaper, app settings, Obsidian," \
   "secret check before commits and a weekly reminder. No sudo needed." \
   "Files it replaces are kept as <name>.orig."
-STEP_TOTAL=10
 # -y / --yes (used by fresh-install.sh), or Yes to everything chosen earlier, skips this.
 yes_flag "$@"
 ask "Continue?" || { echo "Nothing changed."; exit 0; }
 
-run_step "Linking config files"                          link_configs
-run_step "JetBrainsMono Nerd Font"                       install_font
-run_step "VS Code extensions"                            install_vscode_extensions
-run_step "Flatpak apps"                                  install_flatpaks
-run_step "GNOME extensions"                              install_gnome_extensions
-run_step "Desktop look, shortcuts and settings, extension settings and dock" restore_gnome_settings
-run_step "Wallpaper and lock screen"                     set_wallpaper
-run_step "App settings (login apps, default apps, qBittorrent)" restore_app_settings
-run_step "Obsidian vault and settings"                   restore_obsidian
-run_step "Secret check, signed commits and weekly reminder" setup_safety_checks
+run_steps \
+  "Linking config files|link_configs" \
+  "JetBrainsMono Nerd Font|install_font" \
+  "VS Code extensions|install_vscode_extensions" \
+  "Flatpak apps|install_flatpaks" \
+  "GNOME extensions|install_gnome_extensions" \
+  "Desktop look, shortcuts and settings, extension settings and dock|restore_gnome_settings" \
+  "Wallpaper and lock screen|set_wallpaper" \
+  "App settings (login apps, default apps, qBittorrent)|restore_app_settings" \
+  "Obsidian vault and settings|restore_obsidian" \
+  "Secret check, signed commits and weekly reminder|setup_safety_checks"
 
 summary; ok=$?
 if [[ "$UI_NESTED" == 0 ]]; then

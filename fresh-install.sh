@@ -10,9 +10,10 @@
 #   7. Restart
 #
 # Before running it (see README, "Setting up a new computer"):
-#   sudo apt install git gh && gh auth login && gh repo clone dotfiles ~/dotfiles
+#   sudo apt install git gh gum && gh auth login && gh repo clone dotfiles ~/dotfiles
 #
-# Every question defaults to Yes: press Enter to go on, type n to skip.
+# One question at the start: Yes to everything (runs by itself), or choose as it goes.
+# With gum installed, questions are arrow-key menus and the steps stay pinned on screen.
 
 set -uo pipefail
 
@@ -31,8 +32,16 @@ header "Fresh install" \
   "  5 apps (install-apps.sh)   6 configs again, now the apps exist" \
   "Uses sudo and takes a while. Yes to everything also accepts the" \
   "Microsoft fonts licence (codecs) and restarts at the end."
-STEP_TOTAL=6
 yes_flag "$@"
+# gum draws the menus. If the first command didn't install it, get it now (needs the
+# password and a correct clock first), so the questions below are menus too.
+if ! have gum && [[ -z "$YES_ALL" && -t 0 ]]; then
+  note "Getting the menus ready: installing gum (asks for your password once)"
+  keep_sudo || exit 1
+  clock_step
+  quiet "Installing gum" sudo env DEBIAN_FRONTEND=noninteractive bash -c \
+    'apt-get -o DPkg::Lock::Timeout=300 update && apt-get -o DPkg::Lock::Timeout=300 install -y gum' || true
+fi
 choose_answer_mode
 ask "Start?" || { echo "Nothing changed."; exit 0; }
 keep_sudo || exit 1
@@ -44,7 +53,6 @@ update_system() {
   quiet "Upgrading all packages" sudo env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 \
     -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold -y full-upgrade
 }
-run_step "Update the system" update_system
 
 # 2. Firmware (BIOS, SSD, devices) ---------------------------------------------------
 update_firmware() {
@@ -62,7 +70,6 @@ update_firmware() {
   sudo fwupdmgr update --assume-yes --no-reboot-check || rc=$?
   (( rc == 0 || rc == 2 )) || return "$rc"   # 2 means "nothing to update"
 }
-run_step "Firmware updates" update_firmware
 
 # 3. Terminal tools and Flathub ---------------------------------------------------------
 install_tools() {
@@ -70,12 +77,18 @@ install_tools() {
     apt-get -o DPkg::Lock::Timeout=300 install -y "${TOOLS[@]}"
   sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 }
-run_step "Terminal tools and Flathub" install_tools
 
 # 4-6. The dotfiles scripts -------------------------------------------------------------
-run_step "Configs, fonts, Flatpak apps, extensions, settings (install.sh)" "$DOTFILES/install.sh" --yes
-run_step "Apps, NVIDIA driver, weekly updates (install-apps.sh)" "$DOTFILES/install-apps.sh"
-run_step "VS Code extensions and Obsidian (install.sh again)" "$DOTFILES/install.sh" --yes
+run_install() { "$DOTFILES/install.sh" --yes; }
+run_install_apps() { "$DOTFILES/install-apps.sh"; }
+
+run_steps \
+  "Update the system|update_system" \
+  "Firmware updates|update_firmware" \
+  "Terminal tools and Flathub|install_tools" \
+  "Configs, fonts, Flatpak apps, extensions, settings (install.sh)|run_install" \
+  "Apps, NVIDIA driver, weekly updates (install-apps.sh)|run_install_apps" \
+  "VS Code extensions and Obsidian (install.sh again)|run_install"
 
 # Done -------------------------------------------------------------------------------
 summary
@@ -84,7 +97,7 @@ note "Blue \"MOK management\" screen (NVIDIA with Secure Boot): Enroll MOK, Cont
 note "Check the NVIDIA card works: nvidia-smi"
 note "Sign in to your apps (Steam, browsers, Discord, Bitwarden)"
 note "Open Backups, connect Google Drive, and turn on \"Back Up Automatically\""
-note "Then run dotcheck in a new terminal"
+note "Then run dot ssh (signed commits) and dot check in a new terminal"
 echo
 if ask "Restart now?"; then
   if [[ "$YES_ALL" == 1 ]]; then

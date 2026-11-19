@@ -2,10 +2,10 @@
 
 ## Apps from other sources (`install-apps.sh`)
 
-These need sudo and extra setup, so `install.sh` doesn't install them. `install-apps.sh` uses sudo and skips any already installed. It first asks whether to answer Yes to everything; type <kbd>n</kbd> to be asked before each app instead:
+These need sudo and extra setup, so `install.sh` doesn't install them. `install-apps.sh` uses sudo and skips any already installed. It first asks whether to answer Yes to everything; choose **Let me choose** to get one checklist of the apps not yet installed (all pre-ticked; Space unticks, Enter starts; the codecs' font licence is a checkbox in it). Without gum it asks Y/n for each app instead:
 
 ```bash
-~/dotfiles/install-apps.sh            # one question: Yes to everything, or ask each
+~/dotfiles/install-apps.sh            # one question: Yes to everything, or a checklist
 ~/dotfiles/install-apps.sh --yes      # Yes to everything without asking (--all and -y work too)
 DRY_RUN=1 ~/dotfiles/install-apps.sh  # only checks the downloads, installs nothing
 ```

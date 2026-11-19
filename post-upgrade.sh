@@ -99,19 +99,21 @@ header "After an Ubuntu upgrade" \
   "Switches app update sources back on, updates everything, puts back apps" \
   "and settings, reinstalls GNOME extensions for the new GNOME, and checks" \
   "the NVIDIA driver. Uses sudo."
-STEP_TOTAL=5
 yes_flag "$@"
 choose_answer_mode
 ask "Continue?" || { echo "Nothing changed."; exit 0; }
 [[ -z "$SUDO" ]] || keep_sudo || exit 1
 [[ -z "$SUDO" ]] || clock_step   # apt rejects updates while the clock is wrong
 
-run_step "Switch app update sources back on" reenable_sources
-run_step "Update everything (apt and Flatpak)" update_all
-run_step "Apps, Snap Firefox, NVIDIA, weekly jobs (install-apps.sh)" "$DOTFILES/install-apps.sh"
-run_step "Configs, settings, GNOME extensions (install.sh)" \
-  env REINSTALL_EXTENSIONS=1 "$DOTFILES/install.sh" --yes
-run_step "NVIDIA driver" check_nvidia
+run_install_apps() { "$DOTFILES/install-apps.sh"; }
+run_install() { REINSTALL_EXTENSIONS=1 "$DOTFILES/install.sh" --yes; }
+
+run_steps \
+  "Switch app update sources back on|reenable_sources" \
+  "Update everything (apt and Flatpak)|update_all" \
+  "Apps, Snap Firefox, NVIDIA, weekly jobs (install-apps.sh)|run_install_apps" \
+  "Configs, settings, GNOME extensions (install.sh)|run_install" \
+  "NVIDIA driver|check_nvidia"
 
 summary; ok=$?
 "$DOTFILES/check.sh" || true

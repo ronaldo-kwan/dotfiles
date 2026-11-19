@@ -15,7 +15,7 @@
 After Ubuntu is installed, open a terminal (<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>) and run these. `gh auth login` signs you in to GitHub through the browser.
 
 ```bash
-sudo apt install git gh
+sudo apt install git gh gum
 gh auth login
 gh repo clone dotfiles ~/dotfiles
 ~/dotfiles/fresh-install.sh
@@ -30,9 +30,11 @@ gh repo clone dotfiles ~/dotfiles
 5. Runs **`install-apps.sh`**: Chrome, VS Code, Claude Desktop, Proton VPN, OBS, ONLYOFFICE, Steam, Ubuntu apps, the NVIDIA driver, weekly updates, monthly clean-up.
 6. Runs **`install.sh` again**, for VS Code's extensions and Obsidian now that those apps exist.
 
-**One question at the start:** "Answer Yes to every question, so the rest runs by itself?" Press <kbd>Enter</kbd> (Yes), then type your password once; you can walk away. Yes to everything means: install every app, update firmware if the charger is in, accept the Microsoft fonts licence that the codecs need, and restart at the end (after a 15-second countdown; <kbd>Ctrl</kbd> + <kbd>C</kbd> stays). The scripts it runs get the same answer and don't ask again. Type <kbd>n</kbd> instead to be asked before each step and app (Enter still means Yes). To skip even the first question: `~/dotfiles/fresh-install.sh --yes`.
+`gum` draws the menus. If you leave it out, `fresh-install.sh` installs it first (asking for your password before the first question).
 
-**What you see:** each step is numbered (`[3/6]`) and ends with ✔ done, ↷ skipped (with the reason) or ✘ failed. Long installs show a spinner and a timer instead of pages of apt output; the full output is saved in `~/.cache/dotfiles/` and, if something fails, its last lines are shown right there. A summary table at the end lists every step.
+**One question at the start:** "How should questions be answered?" Press <kbd>Enter</kbd> on **Yes to everything**, then type your password once; you can walk away. Yes to everything means: install every app, update firmware if the charger is in, accept the Microsoft fonts licence that the codecs need, and restart at the end (after a 15-second countdown; <kbd>Ctrl</kbd> + <kbd>C</kbd> stays). The scripts it runs get the same answer and don't ask again. Choose **Let me choose** instead to get Yes/No buttons for each step, and one checklist of the apps (everything pre-ticked; Space unticks, Enter starts). To skip even the first question: `~/dotfiles/fresh-install.sh --yes`.
+
+**What you see:** the list of steps stays pinned at the top of the terminal and updates as it goes (✔ done, ↷ skipped, ✘ failed, a spinner and timer on the running one, and the current part of a nested script), while the details scroll underneath. Each step is also numbered (`[3/6]`) in the details. Long installs show a spinner and a timer instead of pages of apt output; the full output is saved in `~/.cache/dotfiles/` and, if something fails, its last lines are shown right there. A summary table at the end lists every step.
 
 If a step fails, the rest still run. Fix the cause and run it again; finished parts are skipped.
 

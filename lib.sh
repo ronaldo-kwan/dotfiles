@@ -8,7 +8,7 @@ DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SETUP="$DOTFILES/setup"
 FAILED=()
 # Terminal tools from apt (installed by fresh-install.sh, checked by check.sh)
-TOOLS=(git gh curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit flatpak)
+TOOLS=(git gh gum curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit flatpak)
 # Stow packages: folders here whose files are linked into your home folder
 PACKAGES=(bash git starship ghostty btop lazygit terminal-default vscode claude systemd)
 
@@ -42,12 +42,26 @@ if [[ "${UI_PID:-}" != "$$" ]]; then
   UI_MARK="${TMPDIR:-/tmp}/dotfiles-skipped-$$"
 fi
 
+# --- gum: arrow-key menus, checklists and Yes/No buttons ------------------------------
+# Used when it's installed and you're at a terminal; otherwise plain prompts, as before.
+# DOT_PLAIN=1 turns gum and the progress panel off.
+ui_gum() { [[ -t 0 && -t 1 && -z "${NO_COLOR:-}" && -z "${DOT_PLAIN:-}" ]] && have gum; }
+# Catppuccin Mocha for gum's widgets (mauve cursor, green ticks)
+export GUM_CHOOSE_CURSOR="› " GUM_CHOOSE_CURSOR_FOREGROUND="#cba6f7" \
+  GUM_CHOOSE_SELECTED_FOREGROUND="#a6e3a1" GUM_CHOOSE_HEADER_FOREGROUND="#cdd6f4" \
+  GUM_CHOOSE_ITEM_FOREGROUND="#cdd6f4" GUM_CONFIRM_PROMPT_FOREGROUND="#cdd6f4" \
+  GUM_CONFIRM_SELECTED_BACKGROUND="#cba6f7" GUM_CONFIRM_SELECTED_FOREGROUND="#1e1e2e" \
+  GUM_CONFIRM_UNSELECTED_BACKGROUND="#313244" GUM_CONFIRM_UNSELECTED_FOREGROUND="#cdd6f4" \
+  GUM_INPUT_CURSOR_FOREGROUND="#cba6f7" GUM_INPUT_PROMPT_FOREGROUND="#cba6f7" \
+  GUM_INPUT_PLACEHOLDER_FOREGROUND="#7f849c"
+
 fmt_time() { local t="$1"; if (( t < 60 )); then printf '%ss' "$t"; else printf '%dm %02ds' $((t / 60)) $((t % 60)); fi; }
 
 # header "Title" "line"...: the box at the start of a script.
 header() {
   [[ "$UI_NESTED" == 0 ]] || return 0
   local title="$1" l w; shift
+  UI_TITLE="$title"
   w=${#title}; for l in "$@"; do (( ${#l} > w )) && w=${#l}; done
   local bar; bar="$(printf '%*s' $((w + 4)) '' | sed 's/ /─/g')"
   printf '\n%s╭%s╮%s\n' "$C_ACC" "$bar" "$C_N"
@@ -74,6 +88,7 @@ step_begin() {
   else
     printf '\n  %s%s%s%s\n' "$C_DIM" "$count" "$C_N" "$STEP_TITLE"
   fi
+  if [[ "$UI_NESTED" == 0 ]]; then ui_panel_step running "$STEP_TITLE"; else ui_panel_step running "$count$STEP_TITLE"; fi
 }
 step_end() {
   local st="$1" detail="${2:-}" t=$((SECONDS - STEP_T0)) icon col word quiet_end=0
@@ -93,6 +108,7 @@ step_end() {
   fi
   RESULTS+=("$st|$STEP_TITLE|$t")
   [[ "$st" == fail ]] && FAILED+=("$STEP_TITLE")
+  ui_panel_step "$st" "$STEP_TITLE" "$t"
   return 0
 }
 
@@ -103,6 +119,15 @@ run_step() {
   ( set -e; "$@" )
   local rc=$?
   if (( rc == 0 )); then step_end ok; else step_end fail "exit code $rc"; fi
+}
+
+# run_steps "title|function"...: run a script's steps in order, with the progress panel.
+run_steps() {
+  local s titles=()
+  for s in "$@"; do titles+=("${s%%|*}"); done
+  STEP_TOTAL=${#titles[@]}
+  ui_plan "${titles[@]}"
+  for s in "$@"; do run_step "${s%%|*}" "${s#*|}"; done
 }
 
 # quiet "label" command...: run a noisy command (apt, flatpak) with a spinner instead of
@@ -116,9 +141,11 @@ quiet() {
   if [[ "$UI_TTY" == 1 ]]; then
     "$@" >> "$UI_LOG" 2>&1 < /dev/null &
     pid=$!
+    local prev_int; prev_int="$(trap -p INT)"
     trap 'printf "\e[?25h"; kill "$pid" 2>/dev/null' INT TERM
     printf '\e[?25l'
     while kill -0 "$pid" 2>/dev/null; do
+      (( i == 0 )) && ui_panel_draw     # once a second: the panel's timer
       printf '\r    %s%s%s %s %s%s%s\e[K' "$C_ACC" "${frames:i:1}" "$C_N" "$label" "$C_DIM" "$(fmt_time $((SECONDS - t0)))" "$C_N"
       i=$(( (i + 1) % 10 ))
       sleep 0.1
@@ -126,6 +153,7 @@ quiet() {
     wait "$pid" || rc=$?
     printf '\r\e[K\e[?25h'
     trap - INT TERM
+    [[ -n "$prev_int" ]] && eval "$prev_int"
   else
     printf '    … %s\n' "$label"
     "$@" >> "$UI_LOG" 2>&1 < /dev/null || rc=$?
@@ -142,6 +170,7 @@ quiet() {
 
 # summary: the table of steps at the end. Returns 1 if anything failed.
 summary() {
+  ui_panel_stop
   local r st title t icon col n_ok=0 n_skip=0 n_fail=0 w=0 total=$((SECONDS - UI_T0))
   for r in "${RESULTS[@]}"; do IFS='|' read -r _ title _ <<< "$r"; (( ${#title} > w )) && w=${#title}; done
   (( w > 46 )) && w=46
@@ -193,23 +222,35 @@ yes_flag() {
 choose_answer_mode() {
   [[ -n "$YES_ALL" ]] && return 0
   local a
-  printf '\n  %sHow should questions be answered?%s\n' "$C_B" "$C_N"
-  printf '    %sY%s  Yes to everything: it runs by itself  %s(Enter)%s\n' "$C_ACC$C_B" "$C_N" "$C_DIM" "$C_N"
-  printf '    %sn%s  Ask me before each step\n' "$C_ACC$C_B" "$C_N"
-  read -rp "  ${C_ACC}›${C_N} " a
+  if ui_gum; then
+    echo
+    a="$(gum choose --header "How should questions be answered?" \
+      "Yes to everything: it runs by itself" "Let me choose")" || { echo "Nothing changed."; exit 0; }
+    [[ "$a" == Let* ]] && a=n || a=y
+  else
+    printf '\n  %sHow should questions be answered?%s\n' "$C_B" "$C_N"
+    printf '    %sY%s  Yes to everything: it runs by itself  %s(Enter)%s\n' "$C_ACC$C_B" "$C_N" "$C_DIM" "$C_N"
+    printf '    %sn%s  Let me choose (asks before each step)\n' "$C_ACC$C_B" "$C_N"
+    read -rp "  ${C_ACC}›${C_N} " a
+  fi
   if [[ "$a" =~ ^[Nn]$ ]]; then
-    YES_ALL=0; printf '  %s✔%s I'"'"'ll ask before each step %s(Enter = yes)%s\n' "$C_OK" "$C_N" "$C_DIM" "$C_N"
+    YES_ALL=0; printf '  %s✔%s You choose as it goes %s(Enter = yes)%s\n' "$C_OK" "$C_N" "$C_DIM" "$C_N"
   else
     YES_ALL=1; printf '  %s✔%s Yes to everything: you can leave it running\n' "$C_OK" "$C_N"
   fi
   export YES_ALL
 }
 
-# ask "Question?": true unless the answer is n/N (Enter means yes). With YES_ALL=1
-# it shows the question with the answer and doesn't wait.
+# ask "Question?": true for yes. With YES_ALL=1 it shows the question with the answer
+# and doesn't wait; with gum it's Yes/No buttons (Yes first); otherwise [Y/n].
 ask() {
   if [[ "$YES_ALL" == 1 ]]; then
     printf '    %s?%s %s %s› yes%s\n' "$C_INFO" "$C_N" "$1" "$C_DIM" "$C_N"; return 0
+  fi
+  if ui_gum; then
+    local rc=0; gum confirm --default=true "$1" < /dev/tty || rc=$?
+    printf '    %s?%s %s %s› %s%s\n' "$C_INFO" "$C_N" "$1" "$C_DIM" "$( ((rc == 0)) && echo yes || echo no)" "$C_N"
+    return "$rc"
   fi
   local a; read -rp "    ${C_INFO}?${C_N} $1 ${C_DIM}[Y/n]${C_N} " a; [[ ! "$a" =~ ^[Nn]$ ]]
 }
@@ -217,7 +258,9 @@ ask() {
 # keep_sudo: ask for the password once, then keep sudo signed in until this script
 # ends, so a long run (big downloads) doesn't stop halfway to ask again.
 keep_sudo() {
+  [[ -n "${SUDO_KEPT:-}" ]] && return 0
   sudo -v || return 1
+  SUDO_KEPT=1
   local parent=$$
   ( while kill -0 "$parent" 2>/dev/null; do sudo -n true; sleep 50; done ) </dev/null >/dev/null 2>&1 &
   disown 2>/dev/null || true
@@ -225,6 +268,120 @@ keep_sudo() {
 
 # installed <package>: is this apt package installed?
 installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"; }
+
+# repo_state <dir>: prints "uncommitted" and/or "unpushed"
+repo_state() {
+  local d="$1"
+  [[ -n "$(git -C "$d" status --porcelain 2>/dev/null)" ]] && echo uncommitted
+  [[ -n "$(git -C "$d" log --oneline '@{u}..' 2>/dev/null)" ]] && echo unpushed
+  return 0
+}
+
+# --- Live progress panel ---------------------------------------------------------------
+# The step list pinned at the top of the terminal, updating in place, while the output
+# scrolls underneath (a terminal scroll region). Prompts still work: they show in the
+# scrolling part. Only for the top script, in a terminal tall enough; DOT_PLAIN=1 turns
+# it off. Its state lives in small files ($UI_PANEL_FILE, exported) so nested scripts
+# (install.sh inside fresh-install.sh) can show their current step under the parent's.
+UI_PANEL_FILE="${UI_PANEL_FILE:-}"
+UI_PANEL_ROWS=0
+term_size() { stty size < /dev/tty 2>/dev/null; }   # prints "rows columns"
+
+# ui_plan "title"...: the steps this script will run; starts the panel.
+ui_plan() {
+  [[ "$UI_NESTED" == 0 && "$UI_TTY" == 1 && -z "${DOT_PLAIN:-}" && -t 1 ]] || return 0
+  local rows='' cols='' t prev
+  read -r rows cols < <(term_size)
+  [[ "$rows" =~ ^[0-9]+$ ]] && (( rows >= $# + 12 )) || return 0
+  UI_PANEL_FILE="$(mktemp "${TMPDIR:-/tmp}/dotfiles-panel.XXXXXX")" || return 0
+  export UI_PANEL_FILE
+  for t in "$@"; do printf 'pending|%s|0|0\n' "$t"; done > "$UI_PANEL_FILE"
+  printf '%s|%s\n' "${UI_TITLE:-$(basename "$0" .sh)}" "$(date +%s)" > "$UI_PANEL_FILE.head"
+  : > "$UI_PANEL_FILE.sub"
+  UI_PANEL_ROWS=$(( $# + 2 ))
+  # Move what's on screen into the scrollback, then pin the panel at the top.
+  printf '%*s' "$rows" '' | tr ' ' '\n'
+  printf '\e[H\e[2J\e[%d;%dr\e[%d;1H' $((UI_PANEL_ROWS + 1)) "$rows" $((UI_PANEL_ROWS + 1))
+  ui_panel_draw
+  trap 'ui_panel_resize' WINCH
+  prev="$(trap -p EXIT)"; prev="${prev#trap -- \'}"; prev="${prev%\' EXIT}"
+  # shellcheck disable=SC2064  # $prev is meant to be expanded now
+  trap "ui_panel_stop; $prev" EXIT
+  trap 'ui_panel_stop; exit 130' INT TERM
+}
+
+# ui_panel_step <state> <title> [seconds]: update a step (running/ok/skip/fail/...).
+# From a nested script, the title is shown as the parent's current sub-step instead.
+ui_panel_step() {
+  [[ -n "$UI_PANEL_FILE" && -f "$UI_PANEL_FILE" ]] || return 0
+  if [[ "$UI_NESTED" != 0 ]]; then
+    [[ "$1" == running ]] && printf '%s' "$2" > "$UI_PANEL_FILE.sub"
+    ui_panel_draw; return 0
+  fi
+  local st="$1" t="$2" d="${3:-0}" i s name start lines=()
+  mapfile -t lines < "$UI_PANEL_FILE"
+  for i in "${!lines[@]}"; do
+    IFS='|' read -r s name start _ <<< "${lines[$i]}"
+    [[ "$name" == "$t" ]] || continue
+    if [[ "$st" == running && "$s" == pending ]]; then lines[i]="running|$t|$(date +%s)|0"; break; fi
+    if [[ "$st" != running && "$s" == running ]]; then lines[i]="$st|$t|$start|$d"; break; fi
+  done
+  printf '%s\n' "${lines[@]}" > "$UI_PANEL_FILE"
+  [[ "$st" == running ]] || : > "$UI_PANEL_FILE.sub"
+  ui_panel_draw
+}
+
+# ui_panel_draw: redraw the pinned rows (keeps the cursor where it was).
+ui_panel_draw() {
+  [[ -n "$UI_PANEL_FILE" && -f "$UI_PANEL_FILE" ]] || return 0
+  local cols='' now title t0 sub st name start d icon col right left row=1 frames='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏' out
+  read -r _ cols < <(term_size); [[ "$cols" =~ ^[0-9]+$ ]] || cols=80
+  now=$(date +%s)
+  IFS='|' read -r title t0 < "$UI_PANEL_FILE.head"
+  sub="$(< "$UI_PANEL_FILE.sub")"
+  # line <row> <left text> <left colour> <right text>: one row, cut to the window width
+  line() {
+    local l="$2" r="$4" max=$(( cols - ${#4} - 4 ))
+    (( ${#l} > max )) && l="${l:0:max-1}…"
+    out+=$(printf '\e[%d;1H\e[2K %s%s%s%*s%s%s%s' "$1" "$3" "$l" "$C_N" $(( cols - ${#l} - ${#r} - 2 )) '' "$C_DIM" "$r" "$C_N")
+  }
+  out=$'\e7'
+  line $((row++)) "$title" "$C_ACC$C_B" "$(fmt_time $((now - t0)))"
+  while IFS='|' read -r st name start d; do
+    case "$st" in
+      pending)   icon='·' col="$C_DIM";  right='' ;;
+      running)   icon="${frames:now%10:1}" col="$C_B"; right="$(fmt_time $((now - start)))"
+                 [[ -n "$sub" ]] && name+=" › $sub" ;;
+      ok)        icon='✔' col="$C_OK";   right="$( ((d >= 2)) && fmt_time "$d")" ;;
+      already)   icon='✔' col="$C_DIM";  right='already done' ;;
+      skip)      icon='↷' col="$C_WARN"; right='skipped' ;;
+      notneeded) icon='–' col="$C_DIM";  right='not needed' ;;
+      *)         icon='✘' col="$C_ERR";  right='failed' ;;
+    esac
+    line $((row++)) " $icon $name" "$col" "$right"
+  done < "$UI_PANEL_FILE"
+  out+=$(printf '\e[%d;1H\e[2K%s%s%s' "$row" "$C_DIM" "$(printf '%*s' "$cols" '' | sed 's/ /─/g')" "$C_N")
+  unset -f line
+  printf '%s\e8' "$out"
+}
+
+ui_panel_resize() {
+  local rows=''
+  read -r rows _ < <(term_size)
+  if [[ ! "$rows" =~ ^[0-9]+$ ]] || (( rows < UI_PANEL_ROWS + 10 )); then ui_panel_stop; return; fi
+  printf '\e7\e[%d;%dr\e8' $((UI_PANEL_ROWS + 1)) "$rows"
+  ui_panel_draw
+}
+
+# ui_panel_stop: leave the final panel on screen and give the whole terminal back.
+ui_panel_stop() {
+  [[ "$UI_NESTED" == 0 && -n "$UI_PANEL_FILE" && -f "$UI_PANEL_FILE" ]] || return 0
+  ui_panel_draw
+  printf '\e7\e[r\e8\e[?25h'
+  rm -f "$UI_PANEL_FILE" "$UI_PANEL_FILE.head" "$UI_PANEL_FILE.sub"
+  UI_PANEL_FILE=''
+  trap - WINCH
+}
 
 # --- Clock check -------------------------------------------------------------------
 # apt refuses update sources whose release files look like they're "from the future",
