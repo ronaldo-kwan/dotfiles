@@ -1,0 +1,8 @@
+# Apps from Ubuntu's own repositories that I installed myself.
+# install-apps.sh installs any of these that are missing. Edit by hand.
+deja-dup                       # Backups
+gnome-shell-extension-manager  # Extension Manager
+gnome-software                 # Software
+gnome-tweaks                   # Tweaks
+qbittorrent                    # qBittorrent
+vlc                            # VLC media player

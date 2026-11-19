@@ -23,8 +23,9 @@ These aren't linked. `install.sh` restores them, or see the manual steps below:
 | File | What it is |
 |---|---|
 | `install.sh` | Sets up a new computer from this repo (no sudo) |
-| `install-apps.sh` | Optional: installs Chrome, VS Code, Claude Desktop, Proton VPN and OBS (uses sudo) |
+| `install-apps.sh` | Optional: installs Chrome, VS Code, Claude Desktop, Proton VPN, OBS, ONLYOFFICE, Steam and the Ubuntu apps below (uses sudo) |
 | `setup/vscode-extensions.txt` | VS Code extensions (the Catppuccin theme) |
+| `setup/apt-packages.txt` | Ubuntu apps I installed myself: VLC, qBittorrent, Tweaks, Extension Manager, Backups, Software. Edit by hand. |
 | `setup/flatpaks.txt` | Flatpak apps: Bitwarden, Discord, Obsidian, Firefox and others |
 | `setup/gnome-desktop.dconf` | Desktop look: Adwaita theme and icons, fonts, dark mode, blue accent, close-only window buttons, 4 fixed workspaces, and which extensions are on or off (Ubuntu Dock, desktop icons and web search are off) |
 | `setup/gnome-shortcuts.dconf` | Custom keyboard shortcuts: Super+C/X/T/E/F/O |
@@ -88,7 +89,7 @@ Display scaling isn't saved, because it depends on the screen. Set it in **Setti
 
 ### Apps from other sources
 
-These don't come from Ubuntu, so `install.sh` doesn't install them. Run `install-apps.sh` instead. It uses sudo, asks before each app, and skips any already installed:
+These need sudo and extra setup, so `install.sh` doesn't install them. Run `install-apps.sh` instead. It uses sudo, asks before each app, and skips any already installed:
 
 ```bash
 ~/dotfiles/install-apps.sh            # asks before each app
@@ -96,7 +97,7 @@ These don't come from Ubuntu, so `install.sh` doesn't install them. Run `install
 DRY_RUN=1 ~/dotfiles/install-apps.sh  # only checks the downloads, installs nothing
 ```
 
-Each app comes from its maker's official source, which then keeps it updated with `sudo apt upgrade`. The Claude Desktop signing key's fingerprint and Proton's setup package checksum are checked before installing. If a maker changes its download link, update the script; the table shows the manual way:
+Each app comes from its maker's official source, which then keeps it updated with `sudo apt upgrade`. The Claude Desktop and ONLYOFFICE signing keys' fingerprints and Proton's setup package checksum are checked before installing. If ONLYOFFICE is installed without its update source (for example from a downloaded `.deb`), the script offers to add the source so it gets updates. If a maker changes its download link, update the script; the table shows the manual way:
 
 | App | Where to get it | Package |
 |---|---|---|
@@ -105,6 +106,11 @@ Each app comes from its maker's official source, which then keeps it updated wit
 | Claude Desktop | claude.ai/download | `claude-desktop` |
 | Proton VPN | protonvpn.com/download (Linux, Ubuntu) | `proton-vpn-gnome-desktop` |
 | OBS Studio | `sudo add-apt-repository ppa:obsproject/obs-studio` | `obs-studio` |
+| ONLYOFFICE | ONLYOFFICE's update source (key from download.onlyoffice.com/GPG-KEY-ONLYOFFICE) | `onlyoffice-desktopeditors` |
+| Steam | Ubuntu's own package; needs 32-bit support: `sudo dpkg --add-architecture i386` | `steam-installer` |
+| Ubuntu apps | `sudo apt install` the packages in `setup/apt-packages.txt` | see the file |
+
+**Steam's files aren't in this repo on purpose.** `~/.steam` holds your Steam sign-in, games and Steam's own program files. On a new computer, install Steam, sign in, and reinstall games; Steam Cloud brings back saves for games that support it.
 
 ### GNOME extensions
 

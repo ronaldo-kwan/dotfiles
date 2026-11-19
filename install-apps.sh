@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Install apps that don't come from Ubuntu: Chrome, VS Code, Claude Desktop,
-# Proton VPN and OBS Studio. Each one is installed from its maker's official
-# download source, which then keeps it updated through `sudo apt upgrade`.
+# Install apps that need sudo: Chrome, VS Code, Claude Desktop, Proton VPN,
+# OBS Studio, ONLYOFFICE, Steam, and the Ubuntu apps listed in
+# setup/apt-packages.txt. Each one comes from its maker's official download
+# source (or Ubuntu's own), which then keeps it updated through `sudo apt upgrade`.
 #
 # Uses sudo. Asks before each app, and skips apps that are already installed.
 #
@@ -17,9 +18,27 @@ FAILED=()
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 chmod 755 "$TMP"   # lets apt's download user read the .deb files
 
+SETUP="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/setup"
+
 say()  { printf '\n\033[1;35m==>\033[0m %s\n' "$*"; }
 skip() { printf '    skipped: %s\n' "$*"; }
 installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"; }
+
+# Packages from setup/apt-packages.txt (comments and blank lines ignored).
+ubuntu_apps() { sed 's/#.*//' "$SETUP/apt-packages.txt" | awk 'NF{print $1}'; }
+
+# "Already done?" checks for entries that need more than one package installed.
+check_ubuntu_apps() {
+  local p; for p in $(ubuntu_apps); do installed "$p" || return 1; done
+}
+check_onlyoffice() {
+  installed onlyoffice-desktopeditors || return 1
+  if [[ ! -f /etc/apt/sources.list.d/onlyoffice.list ]]; then
+    echo "    installed, but without ONLYOFFICE's update source, so it never updates"
+    return 1
+  fi
+}
+is_done() { if [[ "$1" == check_* ]]; then "$1"; else installed "$1"; fi; }
 
 # Run a command, or only print it in dry-run mode.
 run() {
@@ -98,6 +117,44 @@ install_obs() {
   run sudo apt-get install -y obs-studio
 }
 
+install_onlyoffice() {
+  # ONLYOFFICE's update source, signed with this key (same key as on Ubuntu's keyserver):
+  local expected=E09CA29F6E178040EF22B4098320CA65CB2DE8E5
+  fetch "$TMP/onlyoffice.asc" https://download.onlyoffice.com/GPG-KEY-ONLYOFFICE
+  local got; got="$(key_fingerprint "$TMP/onlyoffice.asc")"
+  if [[ "$got" != "$expected" ]]; then
+    echo "    signing key fingerprint is $got, expected $expected. Not installing." >&2
+    return 1
+  fi
+  gpg --dearmor < "$TMP/onlyoffice.asc" > "$TMP/onlyoffice.gpg"
+  echo "deb [signed-by=/usr/share/keyrings/onlyoffice.gpg] https://download.onlyoffice.com/repo/debian squeeze main" > "$TMP/onlyoffice.list"
+  run sudo install -m 644 "$TMP/onlyoffice.gpg" /usr/share/keyrings/onlyoffice.gpg
+  run sudo install -m 644 "$TMP/onlyoffice.list" /etc/apt/sources.list.d/onlyoffice.list
+  run sudo apt-get update
+  run sudo apt-get install -y onlyoffice-desktopeditors
+}
+
+install_ubuntu_apps() {
+  local missing=() p
+  for p in $(ubuntu_apps); do installed "$p" || missing+=("$p"); done
+  if (( ${#missing[@]} == 0 )); then
+    [[ "$DRY_RUN" == 1 ]] && printf '    would install (if missing): %s\n' "$(ubuntu_apps | tr '\n' ' ')"
+    return 0
+  fi
+  echo "    installing: ${missing[*]}"
+  run sudo apt-get install -y "${missing[@]}"
+}
+
+install_steam() {
+  # Ubuntu's own Steam package (from "multiverse"). Steam needs 32-bit support.
+  if ! dpkg --print-foreign-architectures | grep -qx i386; then
+    run sudo dpkg --add-architecture i386
+  fi
+  run sudo apt-get update
+  # Non-interactive skips an information note the installer shows on some NVIDIA setups.
+  run sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y steam-installer
+}
+
 # --- Main --------------------------------------------------------------------------
 
 APPS=(
@@ -106,6 +163,9 @@ APPS=(
   "Claude Desktop|claude-desktop|install_claude"
   "Proton VPN|proton-vpn-gnome-desktop|install_protonvpn"
   "OBS Studio|obs-studio|install_obs"
+  "ONLYOFFICE|check_onlyoffice|install_onlyoffice"
+  "Steam|steam-installer|install_steam"
+  "Ubuntu apps (VLC, qBittorrent, Tweaks, Extension Manager, Backups, Software)|check_ubuntu_apps|install_ubuntu_apps"
 )
 
 for tool in curl gpg sha256sum; do
@@ -119,9 +179,9 @@ if [[ "$DRY_RUN" != 1 ]]; then
 fi
 
 for entry in "${APPS[@]}"; do
-  IFS='|' read -r name pkg fn <<< "$entry"
+  IFS='|' read -r name check fn <<< "$entry"
   say "$name"
-  if installed "$pkg"; then
+  if is_done "$check"; then
     if [[ "$DRY_RUN" == 1 ]]; then
       echo "    already installed (checking its download anyway)"
     else
@@ -150,4 +210,5 @@ if (( ${#FAILED[@]} > 0 )); then
 fi
 say "Done."
 [[ "$DRY_RUN" != 1 ]] && echo "If you installed VS Code, run ~/dotfiles/install.sh again to add its extensions."
+[[ "$DRY_RUN" != 1 ]] && echo "If you installed Steam, its first start downloads the rest of Steam, then you sign in."
 exit 0
