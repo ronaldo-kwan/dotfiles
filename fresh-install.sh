@@ -36,6 +36,7 @@ yes_flag "$@"
 choose_answer_mode
 ask "Start?" || { echo "Nothing changed."; exit 0; }
 keep_sudo || exit 1
+clock_step   # before the first update: apt rejects updates while the clock is wrong
 
 # 1. Update the system --------------------------------------------------------------
 update_system() {

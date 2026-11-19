@@ -226,6 +226,68 @@ keep_sudo() {
 # installed <package>: is this apt package installed?
 installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"; }
 
+# --- Clock check -------------------------------------------------------------------
+# apt refuses update sources whose release files look like they're "from the future",
+# which happens when the clock is wrong (for example a VM resumed from a saved state).
+# It can also be wrong on a real computer: dual-booting Windows, or a flat clock battery.
+# Compares this computer's clock with GitHub's; fails if they differ by over 5 minutes.
+# Uses curl, or wget (on a fresh Ubuntu curl isn't installed yet).
+CLOCK_OFF=""
+CLOCK_SERVER=""   # the real time (seconds since 1970), from the last check
+check_clock() {
+  local server="" now diff
+  if have curl; then
+    server="$(curl -fsSI --max-time 10 https://github.com 2>/dev/null | tr -d '\r' \
+      | awk -F': ' 'tolower($1)=="date"{print $2; exit}')"
+  elif have wget; then
+    server="$(wget -qS --spider --timeout=10 https://github.com 2>&1 | tr -d '\r' \
+      | sed 's/^ *//' | awk -F': ' 'tolower($1)=="date"{print $2; exit}')"
+  fi
+  [[ -n "$server" ]] || return 0                 # offline: can't check, carry on
+  server="$(date -d "$server" +%s 2>/dev/null)" || return 0
+  CLOCK_SERVER="$server"
+  now="$(date +%s)"; diff=$(( now - server )); diff=${diff#-}
+  (( diff <= 300 )) && return 0
+  CLOCK_OFF="$(( diff / 3600 ))h $(( diff % 3600 / 60 ))min $([[ $now -lt $server ]] && echo behind || echo ahead of)"
+  return 1
+}
+
+clock_step() {
+  check_clock && return 0
+  printf '\n%sClock%s\n' "$C_B" "$C_N"
+  warn "This computer's clock is $CLOCK_OFF the real time."
+  echo "    Installs would fail with \"Release file ... is not valid yet\"."
+  if [[ "${DRY_RUN:-0}" == 1 ]]; then
+    if command -v chronyc >/dev/null; then
+      echo "    would offer to fix it with chrony: sudo chronyc makestep"
+    else
+      echo "    would offer to fix it: sudo systemctl restart systemd-timesyncd"
+    fi
+    echo "    (and if that doesn't work, set the clock from the internet time)"
+    return 0
+  fi
+  if ask "Fix the clock now?"; then
+    # 1. Ask the time service to correct the clock right away.
+    if command -v chronyc >/dev/null; then
+      # Ubuntu 25.10+ uses chrony. "makestep" jumps straight to the right time
+      # instead of slowly adjusting it.
+      sudo chronyc -a burst 4/4 >/dev/null 2>&1
+      sleep 5
+      sudo chronyc -a makestep >/dev/null 2>&1
+    elif systemctl cat systemd-timesyncd.service >/dev/null 2>&1; then
+      sudo systemctl restart systemd-timesyncd
+    fi
+    for _ in $(seq 1 10); do sleep 2; check_clock && { echo "    clock fixed"; return 0; }; done
+    # 2. Still wrong: set it directly from the internet time measured above.
+    if [[ -n "$CLOCK_SERVER" ]]; then
+      echo "    the time service didn't correct it; setting the clock from the internet time"
+      sudo date -s "@$CLOCK_SERVER" >/dev/null && check_clock && { echo "    clock fixed"; return 0; }
+    fi
+    echo "    The clock is still $CLOCK_OFF. Check: timedatectl"
+  fi
+  ask "Continue anyway? Installs will probably fail." || { echo "Stopped. Nothing was installed."; exit 1; }
+}
+
 # Is the JetBrainsMono Nerd Font installed? (Not `fc-list | grep -q`: with pipefail
 # that fails when grep stops reading fc-list's long output early.)
 has_nerd_font() { [[ "$(fc-list 2>/dev/null)" == *"JetBrainsMono Nerd Font"* ]]; }

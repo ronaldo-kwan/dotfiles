@@ -104,6 +104,7 @@ yes_flag "$@"
 choose_answer_mode
 ask "Continue?" || { echo "Nothing changed."; exit 0; }
 [[ -z "$SUDO" ]] || keep_sudo || exit 1
+[[ -z "$SUDO" ]] || clock_step   # apt rejects updates while the clock is wrong
 
 run_step "Switch app update sources back on" reenable_sources
 run_step "Update everything (apt and Flatpak)" update_all
