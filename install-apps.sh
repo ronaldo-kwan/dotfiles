@@ -3,7 +3,9 @@
 # OBS Studio, ONLYOFFICE, Steam, and the Ubuntu apps listed in
 # setup/apt-packages.txt. Each one comes from its maker's official download
 # source (or Ubuntu's own), which then keeps it updated through `sudo apt upgrade`.
-# It can also remove Ubuntu's Snap Firefox, since this setup uses the Flatpak one.
+# It can also remove Ubuntu's Snap Firefox (this setup uses the Flatpak one),
+# set up weekly automatic updates, and install the NVIDIA driver on computers
+# with an NVIDIA graphics card.
 #
 # Uses sudo. Asks before each app, and skips apps that are already installed.
 #
@@ -39,6 +41,29 @@ check_onlyoffice() {
     return 1
   fi
 }
+# The weekly update script from system/, with this computer's username filled in.
+weekly_script() {
+  sed -E "s/^DESKTOP_USER=.*/DESKTOP_USER=$(id -un)/" \
+    "$SETUP/../system/etc/cron.weekly/system-update"
+}
+check_weekly_updates() {
+  [[ -f /etc/cron.weekly/system-update ]] || return 1
+  if ! cmp -s <(weekly_script) /etc/cron.weekly/system-update; then
+    echo "    set up, but different from the saved version"
+    return 1
+  fi
+}
+
+has_nvidia() { lspci 2>/dev/null | grep -qiE '(vga|3d|display).*nvidia'; }
+check_nvidia_driver() {
+  if ! has_nvidia; then
+    echo "    not needed: this computer has no NVIDIA graphics card"
+    NOT_NEEDED=1
+    return 0
+  fi
+  dpkg-query -W -f='${Status}\n' 'nvidia-driver-*' 2>/dev/null | grep -q "install ok installed"
+}
+
 check_no_snap_firefox() {
   ! snap list firefox >/dev/null 2>&1 && ! installed firefox
 }
@@ -168,6 +193,21 @@ install_ubuntu_apps() {
   apt_get install -y "${missing[@]}"
 }
 
+setup_weekly_updates() {
+  # Updates everything once a week and shows a notification if it fails or gets stuck.
+  weekly_script > "$TMP/system-update"
+  run sudo install -m 755 -o root -g root "$TMP/system-update" /etc/cron.weekly/system-update
+  echo "    runs once a week; log: /var/log/system-update.log"
+}
+
+install_nvidia_driver() {
+  # Ubuntu picks the right driver for the card (works with Secure Boot).
+  has_nvidia || { skip "this computer has no NVIDIA graphics card"; return 0; }
+  apt_wait
+  run sudo ubuntu-drivers install
+  echo "    restart the computer to start using the NVIDIA driver"
+}
+
 remove_snap_firefox() {
   # Ubuntu ships Firefox as a Snap; this setup uses the Flatpak one (setup/flatpaks.txt).
   # Only remove it when the Flatpak Firefox is there, so you're never left without one.
@@ -266,6 +306,8 @@ APPS=(
   "ONLYOFFICE|check_onlyoffice|install_onlyoffice"
   "Steam|steam-installer|install_steam"
   "Ubuntu apps (VLC, qBittorrent, Tweaks, Extension Manager, Backups, Software)|check_ubuntu_apps|install_ubuntu_apps"
+  "NVIDIA graphics driver|check_nvidia_driver|install_nvidia_driver"
+  "weekly automatic updates (/etc/cron.weekly/system-update)|check_weekly_updates|setup_weekly_updates|Set up"
   "Ubuntu's Snap Firefox (you use the Flatpak one)|check_no_snap_firefox|remove_snap_firefox|Remove"
 )
 
@@ -283,9 +325,11 @@ clock_step
 for entry in "${APPS[@]}"; do
   IFS='|' read -r name check fn verb <<< "$entry"
   verb="${verb:-Install}"
-  if [[ "$verb" == Remove ]]; then done_word=removed; else done_word=installed; fi
+  case "$verb" in Remove) done_word=removed ;; "Set up") done_word="set up" ;; *) done_word=installed ;; esac
   say "$verb: $name"
+  NOT_NEEDED=0
   if is_done "$check"; then
+    (( NOT_NEEDED )) && continue
     if [[ "$DRY_RUN" == 1 ]]; then
       echo "    already $done_word (checking it anyway)"
     else

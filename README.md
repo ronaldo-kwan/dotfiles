@@ -23,7 +23,7 @@ These aren't linked. `install.sh` restores them, or see the manual steps below:
 | File | What it is |
 |---|---|
 | `install.sh` | Sets up a new computer from this repo (no sudo) |
-| `install-apps.sh` | Optional: installs Chrome, VS Code, Claude Desktop, Proton VPN, OBS, ONLYOFFICE, Steam and the Ubuntu apps below (uses sudo) |
+| `install-apps.sh` | Optional: installs Chrome, VS Code, Claude Desktop, Proton VPN, OBS, ONLYOFFICE, Steam, the Ubuntu apps below and the NVIDIA driver; sets up weekly updates (uses sudo) |
 | `setup/vscode-extensions.txt` | VS Code extensions (the Catppuccin theme) |
 | `setup/apt-packages.txt` | Ubuntu apps I installed myself: VLC, qBittorrent, Tweaks, Extension Manager, Backups, Software. Edit by hand. |
 | `setup/flatpaks.txt` | Flatpak apps: Bitwarden, Discord, Obsidian, Firefox and others |
@@ -127,13 +127,19 @@ The script also offers to **remove Ubuntu's Snap Firefox**, because this setup u
 
 `install.sh` installs and enables the extensions in `setup/gnome-extensions.txt` (Alphabetical App Grid, Caffeine, Clipboard Indicator) and restores their settings. It also applies exactly which extensions are on or off, including Ubuntu's built-in ones: Ubuntu Dock, desktop icons and web search are switched off, as on the original computer. They start after you log out and back in. To add another extension to the list, put its ID (shown on its extensions.gnome.org page or by `gnome-extensions list`) in that file.
 
-### Weekly automatic updates (optional)
+### Weekly automatic updates and NVIDIA driver
 
-First change `DESKTOP_USER=` in the script to the new username, then:
+`install-apps.sh` also offers these:
+
+- **Weekly automatic updates:** installs `system/etc/cron.weekly/system-update` with this computer's username filled in. It updates everything once a week and shows a notification if an update fails, gets stuck, or needs a restart. The log is `/var/log/system-update.log`.
+- **NVIDIA graphics driver:** only on computers with an NVIDIA card. It runs Ubuntu's `sudo ubuntu-drivers install`, which picks the right driver for the card and works with Secure Boot. Restart afterwards.
+
+By hand:
 
 ```bash
-sudo cp ~/dotfiles/system/etc/cron.weekly/system-update /etc/cron.weekly/
-sudo chmod +x /etc/cron.weekly/system-update
+sed "s/^DESKTOP_USER=.*/DESKTOP_USER=$(id -un)/" ~/dotfiles/system/etc/cron.weekly/system-update > /tmp/system-update
+sudo install -m 755 /tmp/system-update /etc/cron.weekly/system-update
+sudo ubuntu-drivers install
 ```
 
 ### Manual setup (instead of install.sh)
