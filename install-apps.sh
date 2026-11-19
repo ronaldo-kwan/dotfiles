@@ -290,9 +290,9 @@ clock_step() {
     fi
     echo "    The clock is still $CLOCK_OFF. Check: timedatectl"
   fi
-  answer=n
-  (( ASK )) && read -rp "    Continue anyway? Installs will probably fail. [y/N] " answer
-  [[ "$answer" =~ ^[Yy]$ ]] || { echo "Stopped. Nothing was installed."; exit 1; }
+  answer=y
+  (( ASK )) && read -rp "    Continue anyway? Installs will probably fail. [Y/n] " answer
+  [[ "$answer" =~ ^[Nn]$ ]] && { echo "Stopped. Nothing was installed."; exit 1; }
 }
 
 # --- Main --------------------------------------------------------------------------
@@ -338,8 +338,8 @@ for entry in "${APPS[@]}"; do
     fi
   fi
   if (( ASK )) && [[ "$DRY_RUN" != 1 ]]; then
-    read -rp "    $verb $name? [y/N] " answer
-    [[ "$answer" =~ ^[Yy]$ ]] || { skip "you chose not to"; continue; }
+    read -rp "    $verb $name? [Y/n] " answer
+    [[ "$answer" =~ ^[Nn]$ ]] && { skip "you chose not to"; continue; }
   fi
   ( set -e; "$fn" )
   rc=$?
