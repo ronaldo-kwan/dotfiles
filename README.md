@@ -112,6 +112,8 @@ It first checks the computer's clock against the internet. If it's more than 5 m
 | Steam | Ubuntu's own package; needs 32-bit support: `sudo dpkg --add-architecture i386` | `steam-installer` |
 | Ubuntu apps | `sudo apt install` the packages in `setup/apt-packages.txt` | see the file |
 
+The script also offers to **remove Ubuntu's Snap Firefox**, because this setup uses the Flatpak Firefox (in `setup/flatpaks.txt`). It removes both the Snap and Ubuntu's `firefox` package, which only exists to install the Snap and would bring it back on an update. It only does this if the Flatpak Firefox is installed. By hand: `sudo snap remove firefox && sudo apt remove firefox`.
+
 **Steam's files aren't in this repo on purpose.** `~/.steam` holds your Steam sign-in, games and Steam's own program files. On a new computer, install Steam, sign in, and reinstall games; Steam Cloud brings back saves for games that support it.
 
 ### GNOME extensions

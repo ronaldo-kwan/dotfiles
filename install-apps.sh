@@ -3,6 +3,7 @@
 # OBS Studio, ONLYOFFICE, Steam, and the Ubuntu apps listed in
 # setup/apt-packages.txt. Each one comes from its maker's official download
 # source (or Ubuntu's own), which then keeps it updated through `sudo apt upgrade`.
+# It can also remove Ubuntu's Snap Firefox, since this setup uses the Flatpak one.
 #
 # Uses sudo. Asks before each app, and skips apps that are already installed.
 #
@@ -37,6 +38,9 @@ check_onlyoffice() {
     echo "    installed, but without ONLYOFFICE's update source, so it never updates"
     return 1
   fi
+}
+check_no_snap_firefox() {
+  ! snap list firefox >/dev/null 2>&1 && ! installed firefox
 }
 is_done() { if [[ "$1" == check_* ]]; then "$1"; else installed "$1"; fi; }
 
@@ -164,6 +168,23 @@ install_ubuntu_apps() {
   apt_get install -y "${missing[@]}"
 }
 
+remove_snap_firefox() {
+  # Ubuntu ships Firefox as a Snap; this setup uses the Flatpak one (setup/flatpaks.txt).
+  # Only remove it when the Flatpak Firefox is there, so you're never left without one.
+  if ! flatpak info org.mozilla.firefox >/dev/null 2>&1; then
+    skip "the Flatpak Firefox isn't installed (run install.sh first), so the Snap one stays"
+    return 0
+  fi
+  if snap list firefox >/dev/null 2>&1; then
+    run sudo snap remove firefox
+  fi
+  # Ubuntu's "firefox" package only exists to install the Snap; an update to it
+  # would bring the Snap back, so remove it too. Nothing else depends on it.
+  if installed firefox; then
+    apt_get remove -y firefox
+  fi
+}
+
 install_steam() {
   # Ubuntu's own Steam package (from "multiverse"). Steam needs 32-bit support.
   if ! dpkg --print-foreign-architectures | grep -qx i386; then
@@ -245,6 +266,7 @@ APPS=(
   "ONLYOFFICE|check_onlyoffice|install_onlyoffice"
   "Steam|steam-installer|install_steam"
   "Ubuntu apps (VLC, qBittorrent, Tweaks, Extension Manager, Backups, Software)|check_ubuntu_apps|install_ubuntu_apps"
+  "Ubuntu's Snap Firefox (you use the Flatpak one)|check_no_snap_firefox|remove_snap_firefox|Remove"
 )
 
 for tool in curl gpg sha256sum; do
@@ -259,18 +281,20 @@ fi
 clock_step
 
 for entry in "${APPS[@]}"; do
-  IFS='|' read -r name check fn <<< "$entry"
-  say "$name"
+  IFS='|' read -r name check fn verb <<< "$entry"
+  verb="${verb:-Install}"
+  if [[ "$verb" == Remove ]]; then done_word=removed; else done_word=installed; fi
+  say "$verb: $name"
   if is_done "$check"; then
     if [[ "$DRY_RUN" == 1 ]]; then
-      echo "    already installed (checking its download anyway)"
+      echo "    already $done_word (checking it anyway)"
     else
-      echo "    already installed"
+      echo "    already $done_word"
       continue
     fi
   fi
   if (( ASK )) && [[ "$DRY_RUN" != 1 ]]; then
-    read -rp "    Install $name? [y/N] " answer
+    read -rp "    $verb $name? [y/N] " answer
     [[ "$answer" =~ ^[Yy]$ ]] || { skip "you chose not to"; continue; }
   fi
   ( set -e; "$fn" )
@@ -279,7 +303,7 @@ for entry in "${APPS[@]}"; do
     printf '    \033[1;31mfailed\033[0m (exit code %s)\n' "$rc"
     FAILED+=("$name")
   elif [[ "$DRY_RUN" != 1 ]]; then
-    echo "    installed"
+    echo "    $done_word"
   fi
 done
 
