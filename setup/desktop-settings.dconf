@@ -61,6 +61,8 @@ sort-order=['org.gnome.Settings.desktop', 'org.gnome.Contacts.desktop', 'org.gno
 [org/gnome/deja-dup]
 backend='google'
 delete-after=0
+exclude-list=['$TRASH', '$DOWNLOAD', '@HOME@/.var/app/org.gnome.Boxes', '@HOME@/.steam', '@HOME@/.cache']
+periodic=true
 periodic-period=7
 
 [org/gnome/deja-dup/google]

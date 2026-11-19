@@ -64,7 +64,9 @@ dump /org/gnome/desktop/search-providers/
 
 # Backups (Deja Dup): where and how often. Your Google sign-in is never stored here;
 # connect it once in the Backups app.
-dump /org/gnome/deja-dup/ 'periodic-timestamp|prompt-check|nag-check|window-height|window-width|full-backup-[a-z-]*|last-[a-z-]*'
+# Folders left out of backups are saved as @HOME@/..., so they fit any username.
+dump /org/gnome/deja-dup/ 'periodic-timestamp|prompt-check|nag-check|window-height|window-width|full-backup-[a-z-]*|last-[a-z-]*' \
+  | sed "s|$HOME/|@HOME@/|g"
 
 # Apps
 keys /org/gnome/TextEditor/ style-scheme

@@ -140,7 +140,8 @@ restore_gnome_settings() {
   # Window and screenshot shortcuts, power, sound, Files, file dialogs, search order,
   # backups and app settings.
   if [[ -f "$SETUP/desktop-settings.dconf" ]]; then
-    dconf load / < "$SETUP/desktop-settings.dconf"
+    # @HOME@ (in the folders Backups leaves out) becomes this computer's home folder.
+    sed "s|@HOME@|$HOME|g" "$SETUP/desktop-settings.dconf" | dconf load /
     # Ptyxis keeps its colours in a profile with a different ID on each computer.
     local palette uuid
     palette="$(sed -n 's/^# ptyxis-palette=//p' "$SETUP/desktop-settings.dconf")"
