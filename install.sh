@@ -184,12 +184,68 @@ set_wallpaper() {
   echo "    set"
 }
 
+# 8. App settings -------------------------------------------------------------------
+# Apps that start at login, default apps, qBittorrent (saved by `dotsave` in setup/apps/).
+# Existing files that differ are kept as <name>.orig.
+put_file() { # put_file <saved file> <destination>: copy, turning @HOME@ into this home folder
+  local src="$1" dst="$2"
+  mkdir -p "$(dirname "$dst")"
+  if [[ -f "$dst" ]] && cmp -s <(sed "s|@HOME@|$HOME|g" "$src") "$dst"; then return 0; fi
+  [[ -f "$dst" ]] && mv "$dst" "$dst.orig"
+  sed "s|@HOME@|$HOME|g" "$src" > "$dst"
+  echo "    ${dst/#$HOME/\~}"
+}
+
+restore_app_settings() {
+  local apps="$SETUP/apps" f
+  [[ -d "$apps" ]] || { skip "no saved app settings"; return 0; }
+  for f in "$apps"/autostart/*.desktop; do
+    [[ -f "$f" ]] && put_file "$f" "$HOME/.config/autostart/$(basename "$f")"
+  done
+  [[ -f "$apps/mimeapps.list" ]] && put_file "$apps/mimeapps.list" "$HOME/.config/mimeapps.list"
+  if [[ -f "$apps/qBittorrent/qBittorrent.conf" ]]; then
+    if pgrep -x qbittorrent >/dev/null; then
+      skip "qBittorrent is open; close it and run install.sh again (it saves its settings on exit)"
+    else
+      put_file "$apps/qBittorrent/qBittorrent.conf" "$HOME/.config/qBittorrent/qBittorrent.conf"
+      for f in "$apps"/qBittorrent/themes/*; do
+        [[ -f "$f" ]] && put_file "$f" "$HOME/.config/qBittorrent/themes/$(basename "$f")"
+      done
+    fi
+  fi
+  echo "    done (apps that start at login apply from your next login)"
+}
+
+# 9. Obsidian -----------------------------------------------------------------------
+# Notes come from your private GitHub repo "obsidian-vault" (not from this repo);
+# vault settings (theme, plugins) come from setup/apps/obsidian/ if the vault has none.
+OBSIDIAN_VAULT="$HOME/Documents/Obsidian Vault"
+restore_obsidian() {
+  if [[ ! -d "$OBSIDIAN_VAULT" ]]; then
+    if have gh && gh repo view obsidian-vault >/dev/null 2>&1; then
+      gh repo clone obsidian-vault "$OBSIDIAN_VAULT" -- --quiet
+      echo "    notes cloned to ${OBSIDIAN_VAULT/#$HOME/\~}"
+    else
+      skip "no obsidian-vault repo found on GitHub (or gh isn't signed in), so no notes cloned"
+    fi
+  else
+    echo "    vault already there: ${OBSIDIAN_VAULT/#$HOME/\~}"
+  fi
+  if [[ -d "$SETUP/apps/obsidian" && ! -f "$OBSIDIAN_VAULT/.obsidian/appearance.json" ]]; then
+    mkdir -p "$OBSIDIAN_VAULT/.obsidian"
+    cp -r --update=none "$SETUP/apps/obsidian/." "$OBSIDIAN_VAULT/.obsidian/"
+    echo "    Obsidian settings and Catppuccin theme added to the vault"
+  fi
+  echo "    in Obsidian, choose \"Open folder as vault\" and pick that folder (first time only)"
+}
+
 # Main ---------------------------------------------------------------------------------
 echo "This will set up your configs from $DOTFILES:"
 echo "  link config files, install the Nerd Font, VS Code extensions, Flatpak apps and GNOME extensions,"
 echo "  and restore your desktop look (theme, icons, dark mode, accent colour, window buttons,"
 echo "  workspaces, fonts), keyboard shortcuts, power, Files and dialog settings, backups settings,"
-echo "  extension settings, dock, wallpaper and lock screen."
+echo "  extension settings, dock, wallpaper, lock screen, apps that start at login,"
+echo "  default apps and qBittorrent settings."
 echo "Existing files that would be replaced are kept as <name>.orig."
 echo "Keyboard shortcuts replace any custom shortcuts already on this computer."
 read -rp "Continue? [y/N] " answer
@@ -202,6 +258,8 @@ run_step "Flatpak apps"                                  install_flatpaks
 run_step "GNOME extensions"                              install_gnome_extensions
 run_step "Desktop look, shortcuts and settings, extension settings and dock" restore_gnome_settings
 run_step "Wallpaper and lock screen"                     set_wallpaper
+run_step "App settings (login apps, default apps, qBittorrent)" restore_app_settings
+run_step "Obsidian vault and settings"                   restore_obsidian
 
 if (( ${#FAILED[@]} > 0 )); then
   say "Finished with problems. These steps failed (see messages above):"

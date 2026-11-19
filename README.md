@@ -34,8 +34,10 @@ These aren't linked. `install.sh` restores them, or see the manual steps below:
 | `setup/dock-favorites.txt` | Apps pinned to the dock, in order |
 | `setup/gnome-extensions.txt` | GNOME extensions that `install.sh` installs from extensions.gnome.org |
 | `setup/wallpaper/` | Desktop wallpaper |
+| `setup/apps/` | Apps that start at login (Bitwarden), default apps (Chrome as browser, Showtime for video, Calendar), qBittorrent settings and Catppuccin theme, Obsidian vault settings and Catppuccin theme (not the notes). Cookies and window sizes are left out. Home-folder paths are stored as `@HOME@`. |
 | `system/` | Weekly automatic update script (needs sudo) |
 | `scripts/dump-desktop-settings.sh` | Used by `dotsave` to write `setup/desktop-settings.dconf` |
+| `scripts/save-app-settings.sh` | Used by `dotsave` to update `setup/apps/` |
 
 ## Making changes
 
@@ -62,6 +64,7 @@ dconf dump /org/gnome/settings-daemon/plugins/media-keys/ > ~/dotfiles/setup/gno
 dconf dump /org/gnome/shell/extensions/ > ~/dotfiles/setup/gnome-extension-settings.dconf
 gsettings get org.gnome.shell favorite-apps > ~/dotfiles/setup/dock-favorites.txt
 bash ~/dotfiles/scripts/dump-desktop-settings.sh > ~/dotfiles/setup/desktop-settings.dconf
+bash ~/dotfiles/scripts/save-app-settings.sh
 ```
 
 Things GNOME remembers by itself (window sizes, last-used folders, timestamps) are deliberately left out of the snapshots.
@@ -122,6 +125,16 @@ It first checks the computer's clock against the internet. If it's more than 5 m
 The script also offers to **remove Ubuntu's Snap Firefox**, because this setup uses the Flatpak Firefox (in `setup/flatpaks.txt`). It removes both the Snap and Ubuntu's `firefox` package, which only exists to install the Snap and would bring it back on an update. It only does this if the Flatpak Firefox is installed. By hand: `sudo snap remove firefox && sudo apt remove firefox`.
 
 **Steam's files aren't in this repo on purpose.** `~/.steam` holds your Steam sign-in, games and Steam's own program files. On a new computer, install Steam, sign in, and reinstall games; Steam Cloud brings back saves for games that support it.
+
+### Obsidian
+
+Your **notes** aren't in this repo. They're in their own private repo, `obsidian-vault`, at `~/Documents/Obsidian Vault`. To save changes to your notes:
+
+```bash
+cd ~/Documents/"Obsidian Vault" && git add -A && git commit -m "Update notes" && git push
+```
+
+`install.sh` clones that repo to `~/Documents/Obsidian Vault` if it isn't there. It also adds your Obsidian settings (Catppuccin theme, hidden ribbon, core plugins) from `setup/apps/obsidian/` if the vault has none yet. The first time, open Obsidian and choose **Open folder as vault** with that folder.
 
 ### GNOME extensions
 

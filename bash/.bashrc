@@ -154,6 +154,8 @@ dotsave() {
     # Shortcuts, power, sound, Files, file dialogs, search order, backups, app settings
     bash "$d/../scripts/dump-desktop-settings.sh" > "$d/desktop-settings.dconf"
   fi
+  # Apps that start at login, default apps, qBittorrent
+  bash "$d/../scripts/save-app-settings.sh"
   command -v gsettings >/dev/null && gsettings get org.gnome.shell favorite-apps > "$d/dock-favorites.txt"
   echo "Snapshots refreshed."
   if [ -z "$(git -C "$d/.." status --porcelain)" ]; then
