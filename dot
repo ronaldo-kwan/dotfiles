@@ -7,6 +7,10 @@ set -uo pipefail
 # shellcheck source=lib.sh
 source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib.sh"
 VAULT="$HOME/Documents/Obsidian Vault"
+# The scripts dot starts take its place: give them the full look (title box, summary)
+# and their own log, as if you'd run them directly.
+export UI_DEPTH="$UI_NESTED"
+unset UI_LOG
 
 usage() {
   printf '\n%sdot%s: your dotfiles in one command\n\n' "$C_ACC$C_B" "$C_N"
