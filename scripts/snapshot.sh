@@ -32,9 +32,11 @@ if have dconf; then
   } > "$d/gnome-desktop.dconf"
   dconf dump /org/gnome/settings-daemon/plugins/media-keys/ > "$d/gnome-shortcuts.dconf"
   # Leave out extensions' internal records, which shouldn't be restored elsewhere
+  # (indicator-position-max: Caffeine's count of top-bar icons, which changes by itself),
+  # then any section left empty.
   dconf dump /org/gnome/shell/extensions/ \
-    | grep -vE '^(last-version-installed|overridden-settings|check-x11wayland|cli-toggle)=' \
-    | sed '/^\[ding\]$/{N;/\n$/d}' > "$d/gnome-extension-settings.dconf"
+    | grep -vE '^(last-version-installed|overridden-settings|check-x11wayland|cli-toggle|indicator-position-max)=' \
+    | sed '/^\[[^]]*\]$/{N;/\n$/d}' > "$d/gnome-extension-settings.dconf"
   # Shortcuts, power, sound, Files, file dialogs, search order, backups, app settings
   bash "$DOTFILES/scripts/dump-desktop-settings.sh" > "$d/desktop-settings.dconf"
 fi
