@@ -134,7 +134,7 @@ Your **notes** aren't in this repo. They're in their own private repo, `obsidian
 cd ~/Documents/"Obsidian Vault" && git add -A && git commit -m "Update notes" && git push
 ```
 
-`install.sh` clones that repo to `~/Documents/Obsidian Vault` if it isn't there. It also adds your Obsidian settings (Catppuccin theme, hidden ribbon, core plugins) from `setup/apps/obsidian/` if the vault has none yet. The first time, open Obsidian and choose **Open folder as vault** with that folder.
+`install.sh` clones that repo to `~/Documents/Obsidian Vault` if it isn't there. It also adds your Obsidian settings (Catppuccin theme, hidden ribbon, core plugins) from `setup/apps/obsidian/` if the vault has none yet. It also adds the vault to Obsidian's list, so Obsidian opens straight into it. Obsidian needs to be installed and closed for that; otherwise choose **Open folder as vault** once.
 
 ### GNOME extensions
 

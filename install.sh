@@ -246,7 +246,49 @@ restore_obsidian() {
     cp -r --update=none "$SETUP/apps/obsidian/." "$OBSIDIAN_VAULT/.obsidian/"
     echo "    Obsidian settings and Catppuccin theme added to the vault"
   fi
-  echo "    in Obsidian, choose \"Open folder as vault\" and pick that folder (first time only)"
+  register_obsidian_vault
+}
+
+# Add the vault to Obsidian's list of vaults and make it the one that opens, so
+# Obsidian opens straight into it instead of asking. Only while Obsidian is closed,
+# because Obsidian rewrites this list when it quits.
+register_obsidian_vault() {
+  [[ -d "$OBSIDIAN_VAULT" ]] || return 0
+  local list
+  if have flatpak && flatpak info md.obsidian.Obsidian >/dev/null 2>&1; then
+    list="$HOME/.var/app/md.obsidian.Obsidian/config/obsidian/obsidian.json"
+  elif have obsidian; then
+    list="$HOME/.config/obsidian/obsidian.json"
+  else
+    echo "    Obsidian isn't installed yet; run install.sh again after installing it"
+    return 0
+  fi
+  if pgrep -x obsidian >/dev/null; then
+    echo "    Obsidian is open: close it and run install.sh again, or choose \"Open folder as vault\""
+    return 0
+  fi
+  mkdir -p "$(dirname "$list")"
+  python3 -I -c '
+import json, os, secrets, sys, time
+path, vault = sys.argv[1], sys.argv[2]
+data = {}
+if os.path.exists(path):
+    try:
+        data = json.load(open(path))
+    except ValueError:
+        data = {}
+vaults = data.setdefault("vaults", {})
+known = [v for v in vaults.values() if v.get("path") == vault]
+for v in vaults.values():
+    v.pop("open", None)                 # only this vault opens
+if known:
+    known[0]["open"] = True
+    print("    Obsidian will open your vault (already in its list)")
+else:
+    vaults[secrets.token_hex(8)] = {"path": vault, "ts": int(time.time() * 1000), "open": True}
+    print("    vault added to Obsidian; it opens straight into it")
+json.dump(data, open(path, "w"))
+' "$list" "$OBSIDIAN_VAULT"
 }
 
 # Main ---------------------------------------------------------------------------------
@@ -280,11 +322,12 @@ fi
 cat <<'EOF'
 
 Still to do yourself:
-  - Optional: install Chrome, VS Code, Claude Desktop, Proton VPN and OBS with
-    ~/dotfiles/install-apps.sh (uses sudo, asks before each app).
-    Then run install.sh again to add VS Code's extensions.
-  - Optional: weekly updates script in system/ (needs sudo, see README).
+  - Run ~/dotfiles/install-apps.sh (uses sudo): Chrome, VS Code, Claude Desktop,
+    Proton VPN, OBS, ONLYOFFICE, Steam, Ubuntu apps, the NVIDIA driver if needed,
+    and weekly automatic updates. Then run install.sh again to add VS Code's
+    extensions and set up Obsidian.
   - Log out and back in (this also starts the GNOME extensions), then open a new terminal.
+  - Sign in to your apps (Steam, browsers, Discord, Bitwarden, Backups/Google Drive).
 EOF
 
 (( ${#FAILED[@]} == 0 ))
