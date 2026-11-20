@@ -18,7 +18,8 @@ link_configs() {
     skip "stow isn't installed (sudo apt install stow), so nothing was linked"
     return 0
   fi
-  for pkg in "${PACKAGES[@]}"; do
+  local pkgs; mapfile -t pkgs < <(chosen_packages)
+  for pkg in "${pkgs[@]}"; do
     # Move aside real files that stow would refuse to replace.
     while IFS= read -r -d '' src; do
       target="$HOME/${src#"$DOTFILES/$pkg/"}"
@@ -30,12 +31,13 @@ link_configs() {
   done
   # --no-folding links individual files, so apps that write extra files into
   # their config folder (like btop's log) don't write them into this repo.
-  stow --dir="$DOTFILES" --target="$HOME" --no-folding --restow "${PACKAGES[@]}"
-  echo "    linked: ${PACKAGES[*]}"
+  stow --dir="$DOTFILES" --target="$HOME" --no-folding --restow "${pkgs[@]}"
+  echo "    linked: ${pkgs[*]}"
 }
 
 # 2. JetBrainsMono Nerd Font -----------------------------------------------------
 install_font() {
+  need terminal || return 0
   local font_dir="$HOME/.local/share/fonts/JetBrainsMonoNerdFont" tmp
   if has_nerd_font; then
     echo "    already installed"
@@ -57,6 +59,7 @@ install_font() {
 
 # 3. VS Code extensions --------------------------------------------------------------
 install_vscode_extensions() {
+  need app:code || return 0
   if ! have code; then
     skip "VS Code isn't installed yet"
     return 0
@@ -78,7 +81,8 @@ install_flatpaks() {
     return 0
   fi
   local -a apps
-  mapfile -t apps < <(grep -v '^\s*$' "$SETUP/flatpaks.txt")
+  mapfile -t apps < <(grep -v '^\s*$' "$SETUP/flatpaks.txt" | while read -r a; do chosen "flatpak:$a" && echo "$a"; done)
+  (( ${#apps[@]} )) || { skip "no Flatpak apps chosen"; return 0; }
   quiet "Installing ${#apps[@]} Flatpak apps (already installed ones are skipped)" \
     flatpak install -y --noninteractive flathub "${apps[@]}"
 }
@@ -90,6 +94,7 @@ install_flatpaks() {
 # REINSTALL_EXTENSIONS=1 downloads them again even if installed (post-upgrade.sh uses
 # this after a new Ubuntu release, which brings a new GNOME version).
 install_gnome_extensions() {
+  need desktop || return 0
   local missing=()
   for c in gnome-extensions gnome-shell curl python3; do have "$c" || missing+=("$c"); done
   if (( ${#missing[@]} > 0 )); then
@@ -135,6 +140,7 @@ print(current)' "$(gsettings get org.gnome.shell enabled-extensions)" "$uuid")"
 held_back() { note "held back: applied at the end, just before the restart"; }
 
 restore_gnome_settings() {
+  need desktop || return 0
   if ! have dconf || ! have gsettings; then
     skip "not a GNOME desktop"
     return 0
@@ -170,6 +176,7 @@ restore_gnome_settings() {
 WALLPAPER_URL="https://raw.githubusercontent.com/zhichaoh/catppuccin-wallpapers/main/landscapes/tropic_island_night.jpg"
 WALLPAPER_SHA256="166f34d21ec26c41ea70f0cbee829205222918184458b152ea2a15e6a334495c"
 set_wallpaper() {
+  need desktop || return 0
   if ! have gsettings; then
     skip "not a GNOME desktop"
     return 0
@@ -209,11 +216,11 @@ put_file() { # put_file <saved file> <destination>: copy, turning @HOME@ into th
 restore_app_settings() {
   local saved="$SETUP/apps" f
   [[ -d "$saved" ]] || { skip "no saved app settings"; return 0; }
-  for f in "$saved"/autostart/*.desktop; do
-    [[ -f "$f" ]] && put_file "$f" "$HOME/.config/autostart/$(basename "$f")"
+  for f in "$saved"/autostart/*.desktop; do   # named after the app's Flatpak ID
+    [[ -f "$f" ]] && chosen "flatpak:$(basename "$f" .desktop)" && put_file "$f" "$HOME/.config/autostart/$(basename "$f")"
   done
-  [[ -f "$saved/mimeapps.list" ]] && put_file "$saved/mimeapps.list" "$HOME/.config/mimeapps.list"
-  if [[ -f "$saved/qBittorrent/qBittorrent.conf" ]]; then
+  if [[ -f "$saved/mimeapps.list" ]] && chosen desktop; then put_file "$saved/mimeapps.list" "$HOME/.config/mimeapps.list"; fi
+  if [[ -f "$saved/qBittorrent/qBittorrent.conf" ]] && chosen pkg:qbittorrent; then
     if pgrep -x qbittorrent >/dev/null; then
       skip "qBittorrent is open; close it and run install.sh again (it saves its settings on exit)"
     else
@@ -231,6 +238,7 @@ restore_app_settings() {
 # vault settings (theme, plugins) come from setup/apps/obsidian/ if the vault has none.
 OBSIDIAN_VAULT="$HOME/Documents/Obsidian Vault"
 restore_obsidian() {
+  need notes || return 0
   if [[ ! -d "$OBSIDIAN_VAULT" ]]; then
     if have gh && gh repo view obsidian-vault >/dev/null 2>&1; then
       gh repo clone obsidian-vault "$OBSIDIAN_VAULT" -- --quiet
@@ -308,6 +316,7 @@ json.dump(data, open(path, "w"))
 # (Sunday evening, or the next login) when settings changed since the last dotsave or
 # changes aren't committed. The reminder only notifies; it never commits.
 setup_safety_checks() {
+  need safety || return 0
   local d
   for d in "$DOTFILES" "$OBSIDIAN_VAULT"; do
     [[ -d "$d/.git" ]] || continue

@@ -87,3 +87,16 @@ Then restart. If an extension is still off, switch it on in the Extensions app.
 ## GitHub checks
 
 `.github/workflows/check.yml` runs on every push, and every Monday so a maker changing a download link or signing key shows up as a failed run (GitHub emails you) rather than on the day you set up a new computer: `shellcheck` on all scripts, then `install.sh` (twice), a dry run of `install-apps.sh`, `post-upgrade.sh` on test files and the secret check, in a clean Ubuntu 26.04 container. The result shows on the repo's **Actions** tab. To run shellcheck locally: `sudo apt install shellcheck`, then `shellcheck -x -S warning *.sh scripts/*.sh .githooks/pre-commit`.
+
+## The website and choices
+
+The website ([ronaldo-kwan.github.io/dotfiles](https://ronaldo-kwan.github.io/dotfiles/), source in `site/`) turns what a visitor ticks into settings for the scripts:
+
+- `DOTFILES_CHOICES='terminal desktop app:chrome pkg:vlc flatpak:org.mozilla.firefox ...'`: set up only these.
+- `DOTFILES_SKIP='claude-md app:steam'`: everything except these (the site uses whichever is shorter).
+- `DOTFILES_GIT_NAME` / `DOTFILES_GIT_EMAIL`: your name and email for git, without asking.
+
+`bootstrap.sh` saves the choices in `~/.config/dotfiles/choices` (`-name` lines are skipped items), and every script follows them from then on, including `dot check`, which shows unchosen parts as "not chosen". Delete that file to go back to everything.
+
+The site's app lists come from the repo: `scripts/build-site.py` reads `install-apps.sh` and `setup/`, and the `website` workflow (`.github/workflows/pages.yml`) rebuilds and publishes it on every push that touches them. A new entry in `install-apps.sh` needs a line in `APP_TOKENS` in `build-site.py` (the build stops with a message if it's missing).
+

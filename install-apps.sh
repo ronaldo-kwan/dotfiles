@@ -21,7 +21,12 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, skip, ask, installed, fi
 
 
 # Packages from setup/apt-packages.txt (comments and blank lines ignored).
-ubuntu_apps() { sed 's/#.*//' "$SETUP/apt-packages.txt" | awk 'NF && $1 !~ /^-/ {print $1}'; }
+# Only the ones chosen (pkg:<name>), when there's a list of choices.
+ubuntu_apps() {
+  sed 's/#.*//' "$SETUP/apt-packages.txt" | awk 'NF && $1 !~ /^-/ {print $1}' \
+    | while read -r p; do chosen "pkg:$p" && echo "$p"; done
+  return 0
+}
 
 # "Already done?" checks for entries that need more than one package installed.
 check_ubuntu_apps() {
@@ -115,6 +120,20 @@ check_no_snap_firefox() {
   ! snap list firefox >/dev/null 2>&1 && ! installed firefox
 }
 is_done() { if [[ "$1" == check_* ]]; then "$1"; else installed "$1"; fi; }
+
+# Was this entry chosen? (by its install function; everything when there's no list)
+entry_chosen() {
+  case "$1" in
+    install_chrome) chosen app:chrome ;;        install_vscode) chosen app:code ;;
+    install_claude) chosen app:claude ;;        install_protonvpn) chosen app:protonvpn ;;
+    install_obs) chosen app:obs ;;              install_onlyoffice) chosen app:onlyoffice ;;
+    install_steam) chosen app:steam ;;          install_ubuntu_apps) chosen_any pkg: ;;
+    install_nvidia_driver|setup_steam_nvidia) chosen nvidia ;;
+    setup_weekly_updates|setup_monthly_cleanup) chosen updates ;;
+    setup_firewall) chosen firewall ;;          remove_snap_firefox) chosen nosnapfirefox ;;
+    *) return 0 ;;
+  esac
+}
 
 # Wait while another program (such as Ubuntu's automatic updates) is using apt.
 # Only one program can install or refresh package lists at a time.
@@ -385,7 +404,8 @@ clock_step
 # What's already done, not needed, or still to do (quietly, before anything runs).
 STATUS=()
 for i in "${!APPS[@]}"; do
-  IFS='|' read -r _ check _ <<< "${APPS[$i]}"
+  IFS='|' read -r _ check fn _ <<< "${APPS[$i]}"
+  if ! entry_chosen "$fn"; then STATUS[i]=notchosen; continue; fi
   NOT_NEEDED=0
   if is_done "$check" >/dev/null 2>&1; then
     if (( NOT_NEEDED )); then STATUS[i]=notneeded; else STATUS[i]="done"; fi
@@ -427,6 +447,7 @@ for i in "${!APPS[@]}"; do
   IFS='|' read -r name check fn verb <<< "${APPS[$i]}"
   verb="${verb:-Install}"
   step_begin "$verb: $name"
+  if [[ "${STATUS[i]}" == notchosen ]]; then step_end skip "not chosen"; continue; fi
   NOT_NEEDED=0
   if is_done "$check"; then
     if (( NOT_NEEDED )); then step_end notneeded; continue; fi

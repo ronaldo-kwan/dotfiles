@@ -14,6 +14,46 @@ PACKAGES=(bash git starship ghostty btop lazygit terminal-default vscode claude 
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
+# --- Choices: what to set up (picked on the website, or everything) ----------------------
+# DOTFILES_CHOICES lists what to set up, separated by spaces. Groups: terminal desktop
+# notes safety updates firewall nvidia firmware claude-md nosnapfirefox; single apps:
+# app:chrome app:code app:claude app:protonvpn app:obs app:onlyoffice app:steam,
+# pkg:<Ubuntu package> and flatpak:<Flatpak ID>. Empty or unset means everything.
+# DOTFILES_SKIP is the opposite: everything except these (shorter when you untick little).
+# bootstrap.sh saves it in ~/.config/dotfiles/choices, so later runs (dot install,
+# dot apps, dot check) keep following it.
+CHOICES_FILE="$HOME/.config/dotfiles/choices"
+# In the file, a line "-name" means skip it.
+if [[ -z "${DOTFILES_CHOICES:-}${DOTFILES_SKIP:-}" && -r "$CHOICES_FILE" ]]; then
+  DOTFILES_CHOICES="$(grep -v '^#' "$CHOICES_FILE" | grep -v '^-' | tr '\n' ' ')"
+  DOTFILES_SKIP="$(grep '^-' "$CHOICES_FILE" | sed 's/^-//' | tr '\n' ' ')"
+fi
+DOTFILES_CHOICES="$(echo ${DOTFILES_CHOICES:-})" DOTFILES_SKIP="$(echo ${DOTFILES_SKIP:-})"   # tidy spacing
+export DOTFILES_CHOICES DOTFILES_SKIP
+chosen() {
+  [[ " $DOTFILES_SKIP " == *" $1 "* ]] && return 1
+  [[ -z "$DOTFILES_CHOICES" || " $DOTFILES_CHOICES " == *" $1 "* ]]
+}
+# need <choice>: in a step, skip it (with a note) unless it was chosen
+need() { chosen "$1" && return 0; skip "not chosen"; return 1; }
+# Is any choice starting with <prefix> (e.g. "pkg:") picked?
+chosen_any() { [[ -z "$DOTFILES_CHOICES" || " $DOTFILES_CHOICES" == *" $1"* ]]; }
+
+# The stow packages for what was chosen (git always: name, email and signing).
+chosen_packages() {
+  local p
+  for p in "${PACKAGES[@]}"; do
+    case "$p" in
+      bash|starship|ghostty|btop|lazygit|terminal-default) chosen terminal && echo "$p" ;;
+      vscode)  chosen app:code && echo "$p" ;;
+      claude)  chosen claude-md && echo "$p" ;;
+      systemd) chosen safety && echo "$p" ;;
+      *) echo "$p" ;;
+    esac
+  done
+  return 0
+}
+
 # --- Look: colours, title box, steps, spinner, summary ------------------------------
 # Colours and symbols only in a terminal; plain text in logs, CI and pipes (and with NO_COLOR).
 if [[ -t 1 && -z "${NO_COLOR:-}" && "${TERM:-dumb}" != dumb ]]; then
@@ -294,6 +334,14 @@ gh_key_admin() {
 GIT_USER_FILE="$HOME/.config/git/user.gitconfig"
 git_identity() {
   [[ -f "$GIT_USER_FILE" ]] && return 0
+  # Given on the website (DOTFILES_GIT_NAME / DOTFILES_GIT_EMAIL): use them, no question.
+  if [[ -n "${DOTFILES_GIT_NAME:-}" && -n "${DOTFILES_GIT_EMAIL:-}" ]]; then
+    mkdir -p "$(dirname "$GIT_USER_FILE")"
+    git config --file "$GIT_USER_FILE" user.name "$DOTFILES_GIT_NAME"
+    git config --file "$GIT_USER_FILE" user.email "$DOTFILES_GIT_EMAIL"
+    printf '  %s✔%s Commits will be by %s <%s>\n' "$C_OK" "$C_N" "$DOTFILES_GIT_NAME" "$DOTFILES_GIT_EMAIL"
+    return 0
+  fi
   [[ -t 0 && -t 1 ]] && have git || return 0
   local name email def_name def_email
   def_name="$(git config --get user.name 2>/dev/null)"; def_email="$(git config --get user.email 2>/dev/null)"

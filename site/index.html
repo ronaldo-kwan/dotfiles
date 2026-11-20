@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dotfiles installer</title>
+<meta name="description" content="Pick what you want from ronaldo-kwan's Ubuntu dotfiles and get a one-line installer or an automated-install file.">
+<style>
+  :root {
+    /* Catppuccin Latte (light) */
+    --base: #eff1f5; --mantle: #e6e9ef; --crust: #dce0e8; --surface0: #ccd0da; --surface1: #bcc0cc;
+    --text: #4c4f69; --subtext: #6c6f85; --overlay: #8c8fa1;
+    --accent: #8839ef; --accent-on: #ffffff; --green: #40a02b; --red: #d20f39; --blue: #1e66f5;
+    --radius: 12px; --mono: "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      /* Catppuccin Mocha (dark) */
+      --base: #1e1e2e; --mantle: #181825; --crust: #11111b; --surface0: #313244; --surface1: #45475a;
+      --text: #cdd6f4; --subtext: #a6adc8; --overlay: #7f849c;
+      --accent: #cba6f7; --accent-on: #1e1e2e; --green: #a6e3a1; --red: #f38ba8; --blue: #89b4fa;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--base); color: var(--text);
+         font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Cantarell, sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 32px 16px 80px; }
+  a { color: var(--blue); }
+  h1 { font-size: 28px; font-weight: 600; margin: 0 0 6px; }
+  h2 { font-size: 20px; font-weight: 600; margin: 40px 0 6px; display: flex; gap: 10px; align-items: baseline; }
+  h2 .n { color: var(--accent); font-family: var(--mono); }
+  h3 { font-size: 16px; font-weight: 600; margin: 22px 0 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .lead { color: var(--subtext); margin: 0; }
+  .hint { color: var(--subtext); font-size: 14px; margin: 0 0 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+  label.opt { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: var(--radius);
+              background: var(--mantle); border: 1px solid var(--surface0); cursor: pointer; min-width: 0; }
+  label.opt:hover { border-color: var(--surface1); }
+  label.opt:has(input:checked) { border-color: var(--accent); }
+  label.opt input { margin-top: 4px; accent-color: var(--accent); width: 18px; height: 18px; flex: none; }
+  label.opt span { min-width: 0; }
+  label.opt b { display: block; font-weight: 600; }
+  label.opt small { display: block; color: var(--subtext); font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+  .rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 6px; }
+  .rows label.opt { padding: 8px 12px; }
+  .mini { display: flex; gap: 6px; }
+  button { font: inherit; font-size: 14px; border-radius: 8px; padding: 6px 12px; cursor: pointer;
+           border: 1px solid var(--surface1); background: var(--surface0); color: var(--text); }
+  button:hover { border-color: var(--overlay); }
+  button.primary { background: var(--accent); color: var(--accent-on); border-color: var(--accent); font-weight: 600; }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .field label { display: block; font-size: 14px; color: var(--subtext); margin-bottom: 4px; }
+  .field input { width: 100%; font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--surface1);
+                 background: var(--mantle); color: var(--text); }
+  .field input[aria-invalid="true"] { border-color: var(--red); }
+  .err { color: var(--red); font-size: 13px; min-height: 1em; margin-top: 2px; }
+  .card { background: var(--mantle); border: 1px solid var(--surface0); border-radius: var(--radius); padding: 16px; margin-top: 12px; }
+  .card h3 { margin-top: 0; }
+  pre { margin: 10px 0; padding: 12px 14px; background: var(--crust); border-radius: 8px; overflow-x: auto;
+        font: 13px/1.5 var(--mono); white-space: pre-wrap; word-break: break-all; }
+  pre.yaml { white-space: pre; word-break: normal; max-height: 360px; }
+  ol { padding-left: 20px; margin: 8px 0; } li { margin: 4px 0; }
+  .summary { position: sticky; bottom: 12px; margin-top: 28px; padding: 10px 14px; border-radius: var(--radius);
+             background: var(--surface0); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .ok { color: var(--green); font-size: 14px; }
+  footer { color: var(--overlay); font-size: 13px; margin-top: 48px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Ubuntu dotfiles installer</h1>
+    <p class="lead">Pick what you want from <a href="https://github.com/ronaldo-kwan/dotfiles">ronaldo-kwan/dotfiles</a>
+      (Ubuntu 26.04, GNOME, Catppuccin) and get an installer for a fresh Ubuntu: a one-line command, or a file for
+      Ubuntu's automated install. Everything happens in your browser; nothing you type is sent anywhere.</p>
+  </header>
+
+  <h2><span class="n">1</span> What to set up</h2>
+  <p class="hint">Switch off what you don't want. Unticked parts are skipped, and <code>dot check</code> won't expect them later.</p>
+  <div class="grid" id="groups"></div>
+
+  <h2><span class="n">2</span> Apps</h2>
+  <p class="hint">Each comes from its maker's official source or Ubuntu's, and keeps itself updated.</p>
+  <h3>From their makers <span class="mini" data-list="apps"></span></h3><div class="rows" id="apps"></div>
+  <h3>From Ubuntu <span class="mini" data-list="ubuntu"></span></h3><div class="rows" id="ubuntu"></div>
+  <h3>From Flathub <span class="mini" data-list="flatpaks"></span></h3><div class="rows" id="flatpaks"></div>
+
+  <h2><span class="n">3</span> About you <small class="hint">(optional)</small></h2>
+  <p class="hint">Your name and email for git commits. Leave them empty to be asked during the install.</p>
+  <div class="fields">
+    <div class="field"><label for="gitname">Name</label><input id="gitname" autocomplete="name" placeholder="Ada Lovelace"><div class="err" id="gitname-err"></div></div>
+    <div class="field"><label for="gitemail">Email</label><input id="gitemail" type="email" autocomplete="email" placeholder="ada@example.com"><div class="err" id="gitemail-err"></div></div>
+  </div>
+  <p class="hint" style="margin-top:16px">For the automated install only:</p>
+  <div class="fields">
+    <div class="field"><label for="locale">Language</label><input id="locale" value="en_US.UTF-8" spellcheck="false"><div class="err" id="locale-err"></div></div>
+    <div class="field"><label for="keyboard">Keyboard layout</label><input id="keyboard" value="us" spellcheck="false"><div class="err" id="keyboard-err"></div></div>
+    <div class="field"><label for="timezone">Timezone</label><input id="timezone" spellcheck="false"><div class="err" id="timezone-err"></div></div>
+  </div>
+
+  <h2><span class="n">4</span> Your installer</h2>
+  <div class="card">
+    <h3>One command <button class="primary" id="copy-cmd">Copy</button></h3>
+    <ol>
+      <li>Install Ubuntu 26.04 as usual (in the installer, tick third-party drivers; disk encryption is a good idea on a laptop).</li>
+      <li>Open a terminal (<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>), paste this, press Enter, and type your password once.</li>
+    </ol>
+    <pre id="cmd"></pre>
+    <span class="ok" id="copied" role="status"></span>
+  </div>
+  <div class="card">
+    <h3>Automated install <button id="dl-yaml">Download autoinstall.yaml</button></h3>
+    <p class="hint">Ubuntu's installer answers language, keyboard, timezone, drivers and updates from this file; you only pick the disk and type your name and password (no passwords are in it). At your first login, the setup above starts by itself.</p>
+    <ol>
+      <li>Put the file online where the installer can read it, e.g. a <b>secret gist</b> at <a href="https://gist.github.com">gist.github.com</a>, then open it and click <b>Raw</b> to get its address.</li>
+      <li>Boot the Ubuntu USB stick, choose the <b>automated installation</b>, and paste that address.</li>
+    </ol>
+    <pre class="yaml" id="yaml"></pre>
+  </div>
+
+  <div class="summary"><span id="count"></span><button id="reset">Reset to the defaults</button></div>
+  <footer>MIT licensed. Generated from the repo's own lists; the installer scripts are at
+    <a href="https://github.com/ronaldo-kwan/dotfiles">github.com/ronaldo-kwan/dotfiles</a>.</footer>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

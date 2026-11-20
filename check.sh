@@ -99,25 +99,28 @@ else
 fi
 section "Config links (stow)"
 broken=()
-for pkg in "${PACKAGES[@]}"; do
+mapfile -t pkgs < <(chosen_packages)
+for pkg in "${pkgs[@]}"; do
   while IFS= read -r -d '' src; do
     rel="${src#"$DOTFILES/$pkg/"}"
     # shellcheck disable=SC2088  # "~/" is only shown, not used as a path
     [[ "$(readlink -f "$HOME/$rel")" == "$(readlink -f "$src")" ]] || broken+=("~/$rel")
   done < <(find "$DOTFILES/$pkg" -type f -print0)
 done
-list_missing "all config files linked (${PACKAGES[*]})" install "${broken[@]}"
+list_missing "all config files linked (${pkgs[*]})" install "${broken[@]}"
 
 section "Terminal tools"
 for t in "${TOOLS[@]}"; do installed "$t" || MISSING_TOOLS+=("$t"); done
 list_missing "${#TOOLS[@]} tools installed" tools "${MISSING_TOOLS[@]}"
-if has_nerd_font; then ok "JetBrainsMono Nerd Font"; else bad "JetBrainsMono Nerd Font not installed" install; fi
+if ! chosen terminal; then info "JetBrainsMono Nerd Font: not chosen"
+elif has_nerd_font; then ok "JetBrainsMono Nerd Font"; else bad "JetBrainsMono Nerd Font not installed" install; fi
 
 section "Apps and system jobs (install-apps.sh)"
 # shellcheck source=install-apps.sh
 source "$DOTFILES/install-apps.sh"   # only loads APPS and the check_* functions
 for entry in "${APPS[@]}"; do
-  IFS='|' read -r name check _ <<< "$entry"
+  IFS='|' read -r name check fn _ <<< "$entry"
+  if ! entry_chosen "$fn"; then info "$name: not chosen"; continue; fi
   out="$(is_done "$check" 2>&1; echo "rc=$?")"; rc="${out##*rc=}"
   out="$(printf '%s' "${out%rc=*}" | tr -s ' \n' ' ' | sed 's/^ //; s/ $//')"
   if (( rc != 0 )); then bad "$name${out:+: $out}" apps
@@ -132,25 +135,30 @@ fi
 
 section "Flatpaks and extensions"
 if have flatpak; then
-  missing=(); while read -r a; do [[ -z "$a" ]] || flatpak info "$a" >/dev/null 2>&1 || missing+=("$a"); done < "$SETUP/flatpaks.txt"
-  list_missing "$(grep -c . "$SETUP/flatpaks.txt") Flatpak apps" install "${missing[@]}"
+  missing=() n=0
+  while read -r a; do
+    [[ -z "$a" ]] || ! chosen "flatpak:$a" && continue
+    n=$((n + 1)); flatpak info "$a" >/dev/null 2>&1 || missing+=("$a")
+  done < "$SETUP/flatpaks.txt"
+  (( n )) && list_missing "$n Flatpak apps" install "${missing[@]}"
 else MISSING_TOOLS+=(flatpak); bad "flatpak isn't installed" tools; fi
-if have gnome-extensions; then
+if have gnome-extensions && chosen desktop; then
   enabled="$(gnome-extensions list --enabled 2>/dev/null)"
   missing=(); while read -r u; do [[ -z "$u" || "$u" == \#* ]] || grep -qxF "$u" <<< "$enabled" || missing+=("$u"); done < "$SETUP/gnome-extensions.txt"
   list_missing "GNOME extensions enabled" install "${missing[@]}"
 fi
-if have code; then
+if have code && chosen app:code; then
   have_ext="$(code --list-extensions 2>/dev/null)"
   missing=(); while read -r e; do [[ -z "$e" ]] || grep -qixF "$e" <<< "$have_ext" || missing+=("$e"); done < "$SETUP/vscode-extensions.txt"
   list_missing "VS Code extensions" install "${missing[@]}"
 fi
 
 section "Obsidian, safety, backups and reminder"
-if [[ -d "$VAULT/.git" ]]; then ok "Obsidian vault: ${VAULT/#$HOME/\~}"
+if ! chosen notes; then info "Obsidian vault: not chosen"
+elif [[ -d "$VAULT/.git" ]]; then ok "Obsidian vault: ${VAULT/#$HOME/\~}"
 else bad "Obsidian vault not cloned" install; fi
 for d in "$DOTFILES" "$VAULT"; do
-  [[ -d "$d/.git" ]] || continue
+  [[ -d "$d/.git" ]] && chosen safety || continue
   hp="$(git -C "$d" config core.hooksPath)"
   [[ -n "$hp" && -x "$(cd "$d" && readlink -f "$hp")/pre-commit" ]] \
     && ok "secret check before commits: ${d/#$HOME/\~}" \
@@ -158,7 +166,8 @@ for d in "$DOTFILES" "$VAULT"; do
 done
 if [[ -n "$(git config --get user.email 2>/dev/null)" ]]; then ok "git name and email set ($(git config --get user.name))"
 else bad "git doesn't know your name and email" install; fi
-if [[ -f "$HOME/.config/git/signing.gitconfig" && -f "$HOME/.ssh/id_ed25519.pub" ]]; then
+if ! chosen safety; then :
+elif [[ -f "$HOME/.config/git/signing.gitconfig" && -f "$HOME/.ssh/id_ed25519.pub" ]]; then
   ok "commits signed with this computer's SSH key"
 else bad "commits aren't signed" ssh; fi
 if have gh && gh auth status >/dev/null 2>&1; then
@@ -169,7 +178,7 @@ case "$(backups_state)" in
   on)  ok "automatic backups (every $(gsettings get org.gnome.DejaDup periodic-period) days)" ;;
   off) bad "automatic backups are off" backups ;;
 esac
-if have systemctl; then
+if have systemctl && chosen safety; then
   systemctl --user is-enabled dotfiles-reminder.timer >/dev/null 2>&1 \
     && ok "weekly reminder to save settings (dotfiles-reminder.timer)" \
     || bad "weekly reminder not switched on" install

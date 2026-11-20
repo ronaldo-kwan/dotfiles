@@ -58,6 +58,7 @@ update_system() {
 
 # 2. Firmware (BIOS, SSD, devices) ---------------------------------------------------
 update_firmware() {
+  need firmware || return 0
   command -v fwupdmgr >/dev/null || { skip "fwupdmgr isn't installed"; return 0; }
   if ! on_charger; then
     skip "plug in the charger first (a firmware update must not lose power)"

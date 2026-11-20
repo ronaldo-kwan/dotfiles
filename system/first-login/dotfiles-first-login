@@ -7,7 +7,10 @@ marker="$HOME/.config/dotfiles-first-login-done"
 mkdir -p "$HOME/.config" && : > "$marker"
 
 URL="https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/bootstrap.sh"
+# /etc/dotfiles-choices (written by an autoinstall.yaml from the website) holds what you
+# picked and your git name and email; it's read inside the new terminal.
 exec xdg-terminal-exec bash -c '
+  if [ -r /etc/dotfiles-choices ]; then set -a; . /etc/dotfiles-choices; set +a; fi
   echo "Setting up this computer from your dotfiles."
   echo "Waiting for the internet connection..."
   for i in $(seq 1 60); do wget -q --spider https://github.com && break; sleep 2; done

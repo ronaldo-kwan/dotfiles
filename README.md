@@ -4,6 +4,8 @@ My Ubuntu (GNOME) setup: bash, ble.sh, Starship, fzf, zoxide, eza, bat, Ghostty,
 
 ## New computer
 
+**Pick what you want on the website: [ronaldo-kwan.github.io/dotfiles](https://ronaldo-kwan.github.io/dotfiles/).** Choose groups (terminal, desktop look, updates, firewall, ...) and single apps, then copy your own one-line command or download an `autoinstall.yaml`. Or take everything:
+
 Install Ubuntu 26.04 (first read [Before installing](docs/new-computer.md#before-installing-ubuntu-lenovo-legion-5)), open a terminal (<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>) and run this one command. No GitHub account or sign-in needed:
 
 ```bash
