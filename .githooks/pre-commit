@@ -17,7 +17,8 @@ while IFS= read -r -d '' f; do
     Cookies|cookies.sqlite|Login\ Data|logins.json|key4.db|hosts.yml)
       flag "$f: this kind of file holds keys or sign-ins" ;;
   esac
-done < <(git diff --cached --name-only --diff-filter=AM -z)
+# --no-renames: a renamed file counts as new, so its contents are checked too.
+done < <(git diff --cached --no-renames --name-only --diff-filter=AMT -z)
 
 # 2. Lines being added that look like secrets
 # Known token formats (standing on their own, not inside a longer string such as an
@@ -45,7 +46,7 @@ while IFS= read -r l; do
       line=$((line + 1)) ;;
     ' '*) line=$((line + 1)) ;;
   esac
-done < <(git diff --cached -U0 --no-color --diff-filter=AM)
+done < <(git diff --cached --no-renames -U0 --no-color --diff-filter=AMT)
 
 if (( found )); then
   echo

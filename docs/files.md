@@ -51,5 +51,4 @@ Written by `dot save`, restored by `install.sh` (except `apt-packages.txt`, whic
 | `gnome-extension-settings.dconf` | Settings for Caffeine, Clipboard Indicator, Ubuntu Dock, Tiling Assistant |
 | `dock-favorites.txt` | Apps pinned to the dock, in order |
 | `gnome-extensions.txt` | GNOME extensions that `install.sh` installs from extensions.gnome.org |
-| `wallpaper/` | Desktop wallpaper |
 | `apps/` | Apps that start at login (Bitwarden), default apps (Chrome as browser, Showtime for video, Calendar), qBittorrent settings and Catppuccin theme, Obsidian vault settings and Catppuccin theme (not the notes). Cookies and window sizes are left out. Home-folder paths are stored as `@HOME@`. |

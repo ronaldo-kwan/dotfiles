@@ -58,3 +58,5 @@ The upgrade switches off the apps' own update sources (Chrome, VS Code, Claude, 
 - [docs/apps.md](docs/apps.md): `install-apps.sh`, where each app comes from, Steam, Obsidian, GNOME extensions
 - [docs/maintenance.md](docs/maintenance.md): `dot save`, `dot check`, `dot ssh`, weekly updates, monthly clean-up, the reminder, the secret check, `post-upgrade.sh`, GitHub checks
 - [docs/files.md](docs/files.md): what every file and folder here is
+
+MIT licensed (see [LICENSE](LICENSE)); the Catppuccin themes keep their own MIT licence.

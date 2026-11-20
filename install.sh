@@ -154,16 +154,29 @@ restore_gnome_settings() {
 }
 
 # 7. Wallpaper -----------------------------------------------------------------------
+# The wallpaper isn't stored in this repo: it's downloaded from the Catppuccin wallpaper
+# collection (github.com/zhichaoh/catppuccin-wallpapers, MIT) and checked against this
+# fingerprint, so a changed file is never used.
+WALLPAPER_URL="https://raw.githubusercontent.com/zhichaoh/catppuccin-wallpapers/main/landscapes/tropic_island_night.jpg"
+WALLPAPER_SHA256="166f34d21ec26c41ea70f0cbee829205222918184458b152ea2a15e6a334495c"
 set_wallpaper() {
   if ! have gsettings; then
     skip "not a GNOME desktop"
     return 0
   fi
-  local wall_dir="$HOME/Pictures/Wallpapers/current" wall uri
-  wall="$(ls "$SETUP"/wallpaper/*.jpg | head -1)"
+  local wall_dir="$HOME/Pictures/Wallpapers/current" wall uri tmp
+  wall="$wall_dir/catppuccin-tropic-island-night.jpg"
   mkdir -p "$wall_dir"
-  cp --update=none "$wall" "$wall_dir/"
-  uri="file://$wall_dir/$(basename "$wall")"
+  if [[ ! -f "$wall" ]]; then
+    have curl || { skip "curl isn't installed, so the wallpaper wasn't downloaded"; return 0; }
+    tmp="$(mktemp)"
+    curl -fsSL --retry 3 -o "$tmp" "$WALLPAPER_URL"
+    if [[ "$(sha256sum "$tmp" | cut -d' ' -f1)" != "$WALLPAPER_SHA256" ]]; then
+      rm -f "$tmp"; echo "    the downloaded wallpaper isn't the expected file; not using it" >&2; return 1
+    fi
+    mv "$tmp" "$wall"
+  fi
+  uri="file://$wall"
   gsettings set org.gnome.desktop.background picture-uri "$uri"
   gsettings set org.gnome.desktop.background picture-uri-dark "$uri"
   gsettings set org.gnome.desktop.screensaver picture-uri "$uri"   # lock screen
