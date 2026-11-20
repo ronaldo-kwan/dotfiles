@@ -114,6 +114,28 @@ function command(vars) {
   return `${prefix}bash <(wget -qO- ${data.raw}/bootstrap.sh)`;
 }
 
+// The picks in words, for comments in autoinstall.yaml (lines of up to ~84 characters).
+function describe(vars) {
+  const names = new Map([...data.groups, ...data.apps, ...data.ubuntu, ...data.flatpaks]
+    .map((i) => [i.token, i.name]));
+  const v = Object.fromEntries(vars);
+  const wrap = (head, items) => {
+    const lines = [];
+    let line = head;
+    for (const [n, item] of items.entries()) {
+      const piece = item + (n < items.length - 1 ? ", " : ".");
+      if ((line + piece).length > 84) { lines.push(line.trimEnd()); line = "  "; }
+      line += piece;
+    }
+    return [...lines, line];
+  };
+  const out = [];
+  if (v.DOTFILES_SKIP) out.push(...wrap("Your choices: everything except ", v.DOTFILES_SKIP.split(" ").map((t) => names.get(t) || t)));
+  if (v.DOTFILES_CHOICES) out.push(...wrap("Your choices: only ", v.DOTFILES_CHOICES.split(" ").map((t) => names.get(t) || t)));
+  if (v.DOTFILES_GIT_NAME) out.push(`Git commits by: ${v.DOTFILES_GIT_NAME} <${v.DOTFILES_GIT_EMAIL}>`);
+  return out;
+}
+
 function autoinstall(vars) {
   let y = data.autoinstall
     .replace(/^(\s*locale:).*$/m, `$1 ${$("locale").value.trim()}`)
@@ -128,9 +150,11 @@ function autoinstall(vars) {
     y = y.replace(/^(\s*codecs:\n\s*install:) true.*$/m, "$1 false   # media codecs (unticked on the website)");
   }
   if (vars.length) {
-    // What you picked, for the first-login setup (read from /etc/dotfiles-choices).
+    // What you picked, for the first-login setup (read from /etc/dotfiles-choices). It's
+    // encoded so names with quotes can't break the YAML; the comments say it in words.
     const file = vars.map(([k, v]) => `${k}=${sq(v)}`).join("\n") + "\n";
-    y = y.trimEnd() + "\n    # Your picks and git name/email from the website (removed after the setup starts).\n" +
+    y = y.trimEnd() + "\n" + describe(vars).map((l) => `    # ${l}\n`).join("") +
+      "    # (The line below holds exactly this, encoded; it's removed once the setup starts.)\n" +
       `    - curtin in-target -- sh -c 'echo ${b64(file)} | base64 -d > /etc/dotfiles-choices'\n`;
   }
   return y;
