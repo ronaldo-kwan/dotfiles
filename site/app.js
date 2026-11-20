@@ -5,21 +5,39 @@
 
 const $ = (id) => document.getElementById(id);
 const STORE = "dotfiles-site-v1";
+const LISTS = ["groups", "apps", "ubuntu", "flatpaks"];
+const FIELDS = ["gitname", "gitemail", "locale", "keyboard", "timezone"];
 let data;
 
 // Shell single-quoting: 'it'\''s'
 const sq = (s) => "'" + String(s).replace(/'/g, "'\\''") + "'";
 const b64 = (s) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
 
+// Starting points. Each returns whether an item is on.
+const PRESETS = {
+  everything: (item) => item.default !== false,
+  essentials: (item) =>
+    ["terminal", "desktop", "updates", "firewall", "nvidia", "firmware", "safety", "nosnapfirefox",
+     "app:chrome", "app:code", "flatpak:org.mozilla.firefox", "flatpak:com.github.tchx84.Flatseal"].includes(item.token) ||
+    item.token.startsWith("pkg:"),
+  terminal: (item) => item.token === "terminal",
+};
+
+const allItems = () => LISTS.flatMap((id) => data[id]);
+const boxes = () => [...document.querySelectorAll("main input.switch")];
+
 function option(item, checked) {
   const label = document.createElement("label");
-  label.className = "opt";
+  label.className = "row";
+  label.dataset.search = `${item.name} ${item.desc || ""} ${item.token}`.toLowerCase();
   const box = document.createElement("input");
   box.type = "checkbox";
+  box.className = "switch";
   box.value = item.token;
   box.checked = checked;
   box.addEventListener("change", update);
   const text = document.createElement("span");
+  text.className = "txt";
   const b = document.createElement("b");
   b.textContent = item.name;
   text.append(b);
@@ -41,34 +59,91 @@ function save(state) {
 
 function build(saved) {
   const picked = saved.picked ? new Set(saved.picked) : null;
-  const isOn = (item) => (picked ? picked.has(item.token) : item.default !== false);
-  for (const [id, list] of [["groups", data.groups], ["apps", data.apps], ["ubuntu", data.ubuntu], ["flatpaks", data.flatpaks]]) {
-    const box = $(id);
-    box.replaceChildren(...list.map((item) => option(item, isOn(item))));
-  }
-  document.querySelectorAll(".mini").forEach((span) => {
-    const list = span.dataset.list;
-    for (const [word, value] of [["All", true], ["None", false]]) {
+  const isOn = (item) => (picked ? picked.has(item.token) : PRESETS.everything(item));
+  for (const id of LISTS) $(id).replaceChildren(...data[id].map((item) => option(item, isOn(item))));
+
+  document.querySelectorAll("[data-tools]").forEach((span) => {
+    const list = span.dataset.tools;
+    for (const [word, value] of [["Select all", true], ["Clear", false]]) {
       const btn = document.createElement("button");
       btn.type = "button";
+      btn.className = "small";
       btn.textContent = word;
+      btn.setAttribute("aria-label", `${word}: ${span.closest("details").querySelector(".sec-title").firstChild.textContent.trim()}`);
       btn.addEventListener("click", () => {
-        $(list).querySelectorAll("input").forEach((i) => { i.checked = value; });
+        $(list).querySelectorAll("input.switch").forEach((i) => { if (!i.closest(".row").hidden) i.checked = value; });
         update();
       });
       span.append(btn);
     }
   });
-  for (const id of ["gitname", "gitemail", "locale", "keyboard", "timezone"]) {
+
+  document.querySelectorAll('input[name="preset"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      const rule = PRESETS[radio.value];
+      if (!rule) return; // Custom: keep the current picks
+      const on = new Set(allItems().filter(rule).map((i) => i.token));
+      boxes().forEach((b) => { b.checked = on.has(b.value); });
+      update();
+    });
+  });
+
+  for (const id of FIELDS) {
     if (saved[id] !== undefined) $(id).value = saved[id];
     $(id).addEventListener("input", update);
   }
   if (!$("timezone").value) {
     $("timezone").value = Intl.DateTimeFormat().resolvedOptions().timeZone || "Etc/UTC";
   }
+  if (saved.gitname || saved.gitemail) $("sec-you").open = true;
+
+  $("filter").addEventListener("input", filter);
+  setupTabs(saved.tab === "auto" ? "auto" : "cmd");
 }
 
-// Check the typed fields; returns false (and shows why) if something can't be used.
+// Show only the apps whose name or description matches; open the sections that have matches.
+function filter() {
+  const q = $("filter").value.trim().toLowerCase();
+  for (const id of ["apps", "ubuntu", "flatpaks"]) {
+    const rows = [...$(id).children];
+    let shown = 0;
+    for (const row of rows) {
+      row.hidden = q !== "" && !row.dataset.search.includes(q);
+      if (!row.hidden) shown++;
+    }
+    const sec = $("sec-" + id);
+    sec.querySelector(".empty").hidden = shown > 0;
+    if (q) sec.open = shown > 0;
+  }
+}
+
+// A two-tab switch with arrow-key support (WAI-ARIA tabs pattern).
+function setupTabs(start) {
+  const tabs = [$("tab-cmd"), $("tab-auto")];
+  const select = (tab, focus) => {
+    for (const t of tabs) {
+      const on = t === tab;
+      t.setAttribute("aria-selected", String(on));
+      t.tabIndex = on ? 0 : -1;
+      $(t.getAttribute("aria-controls")).hidden = !on;
+    }
+    if (focus) tab.focus();
+  };
+  tabs.forEach((tab, n) => {
+    tab.addEventListener("click", () => { select(tab, false); update(); });
+    tab.addEventListener("keydown", (e) => {
+      const step = { ArrowRight: 1, ArrowLeft: -1, Home: -n, End: tabs.length - 1 - n }[e.key];
+      if (step === undefined) return;
+      e.preventDefault();
+      select(tabs[(n + step + tabs.length) % tabs.length], true);
+      update();
+    });
+  });
+  select(start === "auto" ? tabs[1] : tabs[0], false);
+}
+
+// Check the typed fields. Returns which outputs can be made: the command needs only the
+// name and email; the file also needs language, keyboard and timezone.
 function validate() {
   const rules = {
     gitname: [(v) => !/[\n\r]/.test(v), "One line, please."],
@@ -77,23 +152,24 @@ function validate() {
     keyboard: [(v) => /^[a-z]{2,8}$/.test(v), "A layout code, like us, gb or de."],
     timezone: [(v) => /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+){0,2}$/.test(v), "Like Europe/Berlin or America/New_York."],
   };
-  let ok = true;
+  const good = {};
   for (const [id, [test, msg]] of Object.entries(rules)) {
-    const good = test($(id).value.trim());
-    $(id).setAttribute("aria-invalid", String(!good));
-    $(id + "-err").textContent = good ? "" : msg;
-    ok = ok && good;
+    good[id] = test($(id).value.trim());
+    $(id).setAttribute("aria-invalid", String(!good[id]));
+    $(id + "-err").textContent = good[id] ? "" : msg;
   }
   const name = $("gitname").value.trim(), email = $("gitemail").value.trim();
   if ((name === "") !== (email === "")) {
-    $((name ? "gitemail" : "gitname") + "-err").textContent = "Fill in both, or neither.";
-    ok = false;
+    const missing = name ? "gitemail" : "gitname";
+    good[missing] = false;
+    $(missing + "-err").textContent = "Fill in both, or leave both empty.";
   }
-  return ok;
+  const cmd = good.gitname && good.gitemail;
+  return { cmd, yaml: cmd && good.locale && good.keyboard && good.timezone };
 }
 
 function picks() {
-  const all = [...document.querySelectorAll("main input[type=checkbox]")];
+  const all = boxes();
   return { all, on: all.filter((i) => i.checked).map((i) => i.value),
            off: all.filter((i) => !i.checked).map((i) => i.value) };
 }
@@ -116,8 +192,7 @@ function command(vars) {
 
 // The picks in words, for comments in autoinstall.yaml (lines of up to ~84 characters).
 function describe(vars) {
-  const names = new Map([...data.groups, ...data.apps, ...data.ubuntu, ...data.flatpaks]
-    .map((i) => [i.token, i.name]));
+  const names = new Map(allItems().map((i) => [i.token, i.name]));
   const v = Object.fromEntries(vars);
   const wrap = (head, items) => {
     const lines = [];
@@ -160,30 +235,58 @@ function autoinstall(vars) {
   return y;
 }
 
+// Which preset the current picks match, if any.
+function matchingPreset(on) {
+  const set = new Set(on);
+  for (const [name, rule] of Object.entries(PRESETS)) {
+    if (allItems().every((i) => rule(i) === set.has(i.token))) return name;
+  }
+  return "custom";
+}
+
 function update() {
   const { all, on, off } = picks();
   const ok = validate();
   const vars = settings(on, all.length, off);
-  $("cmd").textContent = ok ? command(vars) : "Fix the highlighted fields above first.";
-  $("yaml").textContent = ok ? autoinstall(vars) : "";
-  $("copy-cmd").disabled = $("dl-yaml").disabled = !ok;
-  $("count").textContent = on.length === all.length ? `Everything (${all.length} items)` : `${on.length} of ${all.length} picked`;
-  $("copied").textContent = "";
-  const state = { picked: on };
-  for (const id of ["gitname", "gitemail", "locale", "keyboard", "timezone"]) state[id] = $(id).value;
+
+  $("cmd").textContent = ok.cmd ? command(vars) : "Fix your name and email for git first (on the left).";
+  $("yaml").textContent = ok.yaml ? autoinstall(vars) : "";
+  $("copy-cmd").disabled = !ok.cmd;
+  $("dl-yaml").disabled = !ok.yaml;
+  if (!ok.cmd) $("sec-you").open = true;
+  $("cmd-status").textContent = $("yaml-status").textContent = "";
+  $("cmd-status").classList.remove("bad");
+
+  // Counts: the panel, the phone bar and each section's badge.
+  const summary = on.length === all.length ? `All ${all.length} picked` : `${on.length} of ${all.length} picked`;
+  $("count").replaceChildren(Object.assign(document.createElement("strong"), { textContent: summary }));
+  $("mcount").textContent = summary;
+  for (const id of LISTS) {
+    const list = [...$(id).querySelectorAll("input.switch")];
+    const n = list.filter((i) => i.checked).length;
+    document.querySelector(`[data-badge="${id}"]`).textContent = n === list.length ? `all ${n}` : `${n} of ${list.length}`;
+  }
+  const name = $("gitname").value.trim();
+  $("you-badge").textContent = name && ok.cmd ? name : "optional";
+
+  const preset = matchingPreset(on);
+  document.querySelectorAll('input[name="preset"]').forEach((r) => { r.checked = r.value === preset; });
+
+  const state = { picked: on, tab: $("tab-auto").getAttribute("aria-selected") === "true" ? "auto" : "cmd" };
+  for (const id of FIELDS) state[id] = $(id).value;
   save(state);
 }
 
 async function copy() {
   try {
     await navigator.clipboard.writeText($("cmd").textContent);
-    $("copied").textContent = "Copied. Paste it into the new computer's terminal.";
+    $("cmd-status").textContent = "Copied. Paste it into the new computer's terminal.";
   } catch {
     const range = document.createRange();
     range.selectNodeContents($("cmd"));
     getSelection().removeAllRanges();
     getSelection().addRange(range);
-    $("copied").textContent = "Selected: press Ctrl+C to copy.";
+    $("cmd-status").textContent = "Selected: press Ctrl+C to copy.";
   }
 }
 
@@ -194,6 +297,7 @@ function download() {
   a.download = "autoinstall.yaml";
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  $("yaml-status").textContent = "Saved to your downloads as autoinstall.yaml.";
 }
 
 fetch("options.json")
@@ -204,6 +308,15 @@ fetch("options.json")
     $("copy-cmd").addEventListener("click", copy);
     $("dl-yaml").addEventListener("click", download);
     $("reset").addEventListener("click", () => { save({}); location.reload(); });
+    // Phones: hide the "Get your installer" bar while the installer is on screen.
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(([e]) => { document.querySelector(".mbar").hidden = e.isIntersecting; })
+        .observe($("installer"));
+    }
     update();
   })
-  .catch(() => { $("cmd").textContent = "Couldn't load the options. Reload the page."; });
+  .catch(() => {
+    $("cmd").textContent = "Couldn't load the options. Reload the page.";
+    $("cmd-status").textContent = "Couldn't load the options.";
+    $("cmd-status").classList.add("bad");
+  });

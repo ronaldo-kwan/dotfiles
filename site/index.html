@@ -2,127 +2,266 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Dotfiles installer</title>
 <meta name="description" content="Pick what you want from ronaldo-kwan's Ubuntu dotfiles and get a one-line installer or an automated-install file.">
 <style>
+  /* Layout: a configurator. Choices on the left in collapsible sections; the installer in a
+     sticky panel on the right, drawn as the terminal it will be pasted into. One column on
+     phones, with a bar at the bottom that jumps to the installer. */
   :root {
-    /* Catppuccin Latte (light) */
-    --base: #eff1f5; --mantle: #e6e9ef; --crust: #dce0e8; --surface0: #ccd0da; --surface1: #bcc0cc;
-    --text: #4c4f69; --subtext: #6c6f85; --overlay: #8c8fa1;
-    --accent: #8839ef; --accent-on: #ffffff; --green: #40a02b; --red: #d20f39; --blue: #1e66f5;
-    --radius: 12px; --mono: "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, monospace;
+    /* Catppuccin Latte: the dotfiles' own palette, light */
+    --bg: #eff1f5; --panel: #e6e9ef; --raised: #ffffff; --line: #ccd0da; --line-strong: #acb0be;
+    --fg: #4c4f69; --muted: #5c5f77; --faint: #7c7f93;
+    --accent: #8839ef; --on-accent: #ffffff; --accent-soft: #e9dcfd;
+    --ok: #40a02b; --bad: #d20f39; --link: #1e66f5;
+    --term-bg: #1e1e2e; --term-fg: #cdd6f4; --term-dim: #7f849c; --term-prompt: #cba6f7; --term-bar: #181825;
+    --sans: system-ui, -apple-system, "Segoe UI", Cantarell, "Noto Sans", sans-serif;
+    --mono: "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --r: 10px;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      /* Catppuccin Mocha (dark) */
-      --base: #1e1e2e; --mantle: #181825; --crust: #11111b; --surface0: #313244; --surface1: #45475a;
-      --text: #cdd6f4; --subtext: #a6adc8; --overlay: #7f849c;
-      --accent: #cba6f7; --accent-on: #1e1e2e; --green: #a6e3a1; --red: #f38ba8; --blue: #89b4fa;
-    }
-  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    /* Catppuccin Mocha, dark */
+    --bg: #1e1e2e; --panel: #181825; --raised: #26263a; --line: #313244; --line-strong: #45475a;
+    --fg: #cdd6f4; --muted: #bac2de; --faint: #9399b2;
+    --accent: #cba6f7; --on-accent: #1e1e2e; --accent-soft: #3a3150;
+    --ok: #a6e3a1; --bad: #f38ba8; --link: #89b4fa;
+    --term-bg: #11111b; --term-bar: #181825; color-scheme: dark; } }
+  :root[data-theme="dark"] {
+    --bg: #1e1e2e; --panel: #181825; --raised: #26263a; --line: #313244; --line-strong: #45475a;
+    --fg: #cdd6f4; --muted: #bac2de; --faint: #9399b2;
+    --accent: #cba6f7; --on-accent: #1e1e2e; --accent-soft: #3a3150;
+    --ok: #a6e3a1; --bad: #f38ba8; --link: #89b4fa;
+    --term-bg: #11111b; --term-bar: #181825; color-scheme: dark; }
+
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--base); color: var(--text);
-         font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Cantarell, sans-serif; }
-  main { max-width: 920px; margin: 0 auto; padding: 32px 16px 80px; }
-  a { color: var(--blue); }
-  h1 { font-size: 28px; font-weight: 600; margin: 0 0 6px; }
-  h2 { font-size: 20px; font-weight: 600; margin: 40px 0 6px; display: flex; gap: 10px; align-items: baseline; }
-  h2 .n { color: var(--accent); font-family: var(--mono); }
-  h3 { font-size: 16px; font-weight: 600; margin: 22px 0 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  .lead { color: var(--subtext); margin: 0; }
-  .hint { color: var(--subtext); font-size: 14px; margin: 0 0 12px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
-  label.opt { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: var(--radius);
-              background: var(--mantle); border: 1px solid var(--surface0); cursor: pointer; min-width: 0; }
-  label.opt:hover { border-color: var(--surface1); }
-  label.opt:has(input:checked) { border-color: var(--accent); }
-  label.opt input { margin-top: 4px; accent-color: var(--accent); width: 18px; height: 18px; flex: none; }
-  label.opt span { min-width: 0; }
-  label.opt b { display: block; font-weight: 600; }
-  label.opt small { display: block; color: var(--subtext); font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
-  .rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 6px; }
-  .rows label.opt { padding: 8px 12px; }
-  .mini { display: flex; gap: 6px; }
-  button { font: inherit; font-size: 14px; border-radius: 8px; padding: 6px 12px; cursor: pointer;
-           border: 1px solid var(--surface1); background: var(--surface0); color: var(--text); }
-  button:hover { border-color: var(--overlay); }
-  button.primary { background: var(--accent); color: var(--accent-on); border-color: var(--accent); font-weight: 600; }
-  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
-  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
-  .field label { display: block; font-size: 14px; color: var(--subtext); margin-bottom: 4px; }
-  .field input { width: 100%; font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--surface1);
-                 background: var(--mantle); color: var(--text); }
-  .field input[aria-invalid="true"] { border-color: var(--red); }
-  .err { color: var(--red); font-size: 13px; min-height: 1em; margin-top: 2px; }
-  .card { background: var(--mantle); border: 1px solid var(--surface0); border-radius: var(--radius); padding: 16px; margin-top: 12px; }
-  .card h3 { margin-top: 0; }
-  pre { margin: 10px 0; padding: 12px 14px; background: var(--crust); border-radius: 8px; overflow-x: auto;
-        font: 13px/1.5 var(--mono); white-space: pre-wrap; word-break: break-all; }
-  pre.yaml { white-space: pre; word-break: normal; max-height: 360px; }
-  ol { padding-left: 20px; margin: 8px 0; } li { margin: 4px 0; }
-  .summary { position: sticky; bottom: 12px; margin-top: 28px; padding: 10px 14px; border-radius: var(--radius);
-             background: var(--surface0); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .ok { color: var(--green); font-size: 14px; }
-  footer { color: var(--overlay); font-size: 13px; margin-top: 48px; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 var(--sans); }
+  a { color: var(--link); }
+  .wrap { max-width: 1160px; margin: 0 auto; padding-block: 0 96px;
+          padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  :focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 4px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+  html { scroll-behavior: smooth; }
+
+  /* Header and intro */
+  .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-block: 18px; }
+  .brand { font: 600 15px var(--mono); color: var(--fg); text-decoration: none; white-space: nowrap; }
+  .brand span { color: var(--accent); }
+  .top a.gh { font-size: 14px; }
+  .intro { padding-block: 12px 28px; max-width: 70ch; }
+  h1 { font: 700 clamp(28px, 4vw, 40px)/1.15 var(--sans); letter-spacing: -0.02em; margin: 0 0 10px; text-wrap: balance; }
+  .intro p { margin: 0 0 14px; color: var(--muted); font-size: 17px; }
+  .facts { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0; list-style: none; }
+  .facts li { font: 13px var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; }
+
+  /* Two columns */
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 32px; align-items: start; }
+  @media (max-width: 960px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+
+  /* Presets */
+  .presets { border: 0; padding: 0; margin: 0 0 20px; }
+  .presets legend { font-size: 14px; font-weight: 600; margin-bottom: 8px; padding: 0; }
+  .seg { display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 8px; }
+  .seg label { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border: 1px solid var(--line);
+               border-radius: var(--r); background: var(--raised); cursor: pointer; min-width: 0; }
+  .seg label:hover { border-color: var(--line-strong); }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+  .seg label:has(input:focus-visible) { outline: 2px solid var(--link); outline-offset: 2px; }
+  .seg b { font-size: 15px; } .seg small { font-size: 13px; color: var(--muted); }
+
+  /* Sections */
+  details.sec { border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); margin-bottom: 12px; }
+  details.sec > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px;
+                          padding: 14px 16px; font-weight: 600; }
+  details.sec > summary::-webkit-details-marker { display: none; }
+  details.sec > summary::before { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--faint); border-bottom: 2px solid var(--faint);
+                                  transform: rotate(-45deg); transition: transform .15s; flex: none; }
+  details.sec[open] > summary::before { transform: rotate(45deg); }
+  .sec-title { flex: 1; min-width: 0; }
+  .sec-title small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); }
+  .badge { font: 12px var(--mono); color: var(--muted); background: var(--bg); border: 1px solid var(--line);
+           border-radius: 999px; padding: 1px 9px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .sec-body { padding: 0 16px 16px; }
+  .tools { display: flex; gap: 6px; margin-bottom: 10px; }
+  .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+  .empty { color: var(--muted); font-size: 14px; margin: 4px 0 0; }
+
+  /* An option row with a switch */
+  .row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 8px;
+         background: var(--raised); border: 1px solid var(--line); cursor: pointer; min-width: 0; }
+  .row:hover { border-color: var(--line-strong); }
+  .row .txt { min-width: 0; }
+  .row b { display: block; font-weight: 600; font-size: 15px; }
+  .row small { display: block; color: var(--muted); font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+  .switch { appearance: none; flex: none; width: 34px; height: 20px; margin: 2px 0 0; border-radius: 999px;
+            background: var(--line-strong); position: relative; cursor: pointer; transition: background .15s; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%;
+                   background: var(--raised); transition: transform .15s; }
+  .switch:checked { background: var(--accent); }
+  .switch:checked::after { transform: translateX(14px); background: var(--on-accent); }
+
+  /* Filter and fields */
+  .filter { margin: 20px 0 10px; }
+  input.text { width: 100%; font: inherit; font-size: 15px; padding: 9px 12px; border-radius: 8px;
+               border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg); }
+  input.text[aria-invalid="true"] { border-color: var(--bad); }
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .field label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .field .help { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .err { color: var(--bad); font-size: 13px; margin-top: 3px; min-height: 0; }
+  .err:empty { display: none; }
+
+  /* Buttons */
+  button { font: inherit; font-size: 14px; border-radius: 8px; padding: 7px 12px; cursor: pointer;
+           border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg); }
+  button:hover { border-color: var(--faint); }
+  button.small { font-size: 13px; padding: 3px 10px; }
+  button.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; padding: 9px 16px; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.link { border: 0; background: none; color: var(--link); padding: 0; text-decoration: underline; font-size: 13px; }
+
+  /* The installer panel */
+  .panel { position: sticky; top: max(16px, env(safe-area-inset-top, 0px)); border: 1px solid var(--line); border-radius: 14px;
+           background: var(--panel); padding: 18px; display: grid; gap: 14px; scroll-margin-top: 16px; }
+  @media (min-width: 961px) { .panel { max-height: calc(100vh - 32px); overflow: auto; } }
+  @media (max-width: 960px) { .panel { position: static; } }
+  .panel h2 { font-size: 20px; margin: 0; }
+  .sum { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 14px; color: var(--muted); }
+  .sum strong { color: var(--fg); font-variant-numeric: tabular-nums; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--bg); border-radius: 10px; border: 1px solid var(--line); }
+  .tabs button { border: 0; background: none; padding: 8px; font-weight: 600; color: var(--muted); }
+  .tabs button[aria-selected="true"] { background: var(--raised); color: var(--fg); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+  .steps { margin: 0; padding-left: 20px; font-size: 14px; color: var(--muted); display: grid; gap: 4px; }
+  .steps strong { color: var(--fg); }
+  .term { border-radius: 10px; overflow: hidden; background: var(--term-bg); }
+  .term-bar { display: flex; align-items: center; gap: 6px; padding: 7px 10px; background: var(--term-bar); }
+  .term-bar i { width: 10px; height: 10px; border-radius: 50%; background: #45475a; }
+  .term-bar span { margin-left: 6px; font: 12px var(--mono); color: var(--term-dim); }
+  .term pre { margin: 0; padding: 12px 14px 14px; font: 13px/1.6 var(--mono); color: var(--term-fg);
+              white-space: pre-wrap; word-break: break-all; }
+  .term pre::before { content: "❯ "; color: var(--term-prompt); }
+  .actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .status { font-size: 13px; color: var(--ok); }
+  .status.bad { color: var(--bad); }
+  details.preview summary { cursor: pointer; font-size: 14px; color: var(--muted); }
+  details.preview pre { max-height: 320px; overflow: auto; margin: 8px 0 0; padding: 12px; border-radius: 8px;
+                        background: var(--term-bg); color: var(--term-fg); font: 12px/1.5 var(--mono); }
+  .note { font-size: 13px; color: var(--muted); margin: 0; }
+
+  /* Phone: a bar that jumps to the installer */
+  .mbar { display: none; }
+  @media (max-width: 960px) {
+    .mbar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+            background: var(--panel); border-top: 1px solid var(--line); font-size: 14px; }
+    .mbar[hidden] { display: none; }
+    .mbar a { background: var(--accent); color: var(--on-accent); text-decoration: none; font-weight: 600; padding: 8px 14px; border-radius: 8px; }
+  }
+  footer { color: var(--faint); font-size: 13px; margin-top: 40px; }
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <h1>Ubuntu dotfiles installer</h1>
-    <p class="lead">Pick what you want from <a href="https://github.com/ronaldo-kwan/dotfiles">ronaldo-kwan/dotfiles</a>
-      (Ubuntu 26.04, GNOME, Catppuccin) and get an installer for a fresh Ubuntu: a one-line command, or a file for
-      Ubuntu's automated install. Everything happens in your browser; nothing you type is sent anywhere.</p>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="https://github.com/ronaldo-kwan/dotfiles">ronaldo-kwan/<span>dotfiles</span></a>
+    <a class="gh" href="https://github.com/ronaldo-kwan/dotfiles">View on GitHub</a>
   </header>
 
-  <h2><span class="n">1</span> What to set up</h2>
-  <p class="hint">Switch off what you don't want. Unticked parts are skipped, and <code>dot check</code> won't expect them later.</p>
-  <div class="grid" id="groups"></div>
+  <section class="intro">
+    <h1>Set up a fresh Ubuntu your way</h1>
+    <p>Pick what you want from these dotfiles, then paste one command into a new Ubuntu, or let the Ubuntu installer do it for you.
+       Everything here happens in your browser.</p>
+    <ul class="facts"><li>Ubuntu 26.04</li><li>GNOME</li><li>Catppuccin Mocha</li><li>MIT licence</li></ul>
+  </section>
 
-  <h2><span class="n">2</span> Apps</h2>
-  <p class="hint">Each comes from its maker's official source or Ubuntu's, and keeps itself updated.</p>
-  <h3>From their makers <span class="mini" data-list="apps"></span></h3><div class="rows" id="apps"></div>
-  <h3>From Ubuntu <span class="mini" data-list="ubuntu"></span></h3><div class="rows" id="ubuntu"></div>
-  <h3>From Flathub <span class="mini" data-list="flatpaks"></span></h3><div class="rows" id="flatpaks"></div>
+  <div class="cols">
+    <main id="choices">
+      <fieldset class="presets">
+        <legend>Start from</legend>
+        <div class="seg" id="presets">
+          <label><input type="radio" name="preset" value="everything"><b>Everything</b><small>The full setup</small></label>
+          <label><input type="radio" name="preset" value="essentials"><b>Essentials</b><small>Terminal, desktop, main apps</small></label>
+          <label><input type="radio" name="preset" value="terminal"><b>Terminal only</b><small>Shell and prompt, no apps</small></label>
+          <label><input type="radio" name="preset" value="custom"><b>Custom</b><small>Your own picks below</small></label>
+        </div>
+      </fieldset>
 
-  <h2><span class="n">3</span> About you <small class="hint">(optional)</small></h2>
-  <p class="hint">Your name and email for git commits. Leave them empty to be asked during the install.</p>
-  <div class="fields">
-    <div class="field"><label for="gitname">Name</label><input id="gitname" autocomplete="name" placeholder="Ada Lovelace"><div class="err" id="gitname-err"></div></div>
-    <div class="field"><label for="gitemail">Email</label><input id="gitemail" type="email" autocomplete="email" placeholder="ada@example.com"><div class="err" id="gitemail-err"></div></div>
-  </div>
-  <p class="hint" style="margin-top:16px">For the automated install only:</p>
-  <div class="fields">
-    <div class="field"><label for="locale">Language</label><input id="locale" value="en_US.UTF-8" spellcheck="false"><div class="err" id="locale-err"></div></div>
-    <div class="field"><label for="keyboard">Keyboard layout</label><input id="keyboard" value="us" spellcheck="false"><div class="err" id="keyboard-err"></div></div>
-    <div class="field"><label for="timezone">Timezone</label><input id="timezone" spellcheck="false"><div class="err" id="timezone-err"></div></div>
+      <details class="sec" open id="sec-groups">
+        <summary><span class="sec-title">Setup<small>What gets configured on the system</small></span><span class="badge" data-badge="groups"></span></summary>
+        <div class="sec-body"><div class="tools" data-tools="groups"></div><div class="list" id="groups"></div></div>
+      </details>
+
+      <div class="filter field">
+        <label for="filter">Find an app</label>
+        <input class="text" id="filter" type="search" placeholder="e.g. vlc, steam, firefox" autocomplete="off" spellcheck="false">
+      </div>
+
+      <details class="sec" open id="sec-apps">
+        <summary><span class="sec-title">Apps from their makers<small>Official sources, kept up to date by apt</small></span><span class="badge" data-badge="apps"></span></summary>
+        <div class="sec-body"><div class="tools" data-tools="apps"></div><div class="list" id="apps"></div><p class="empty" hidden>No apps match.</p></div>
+      </details>
+      <details class="sec" id="sec-ubuntu">
+        <summary><span class="sec-title">Apps from Ubuntu<small>Ubuntu's own packages</small></span><span class="badge" data-badge="ubuntu"></span></summary>
+        <div class="sec-body"><div class="tools" data-tools="ubuntu"></div><div class="list" id="ubuntu"></div><p class="empty" hidden>No apps match.</p></div>
+      </details>
+      <details class="sec" id="sec-flatpaks">
+        <summary><span class="sec-title">Apps from Flathub<small>Sandboxed Flatpak apps</small></span><span class="badge" data-badge="flatpaks"></span></summary>
+        <div class="sec-body"><div class="tools" data-tools="flatpaks"></div><div class="list" id="flatpaks"></div><p class="empty" hidden>No apps match.</p></div>
+      </details>
+
+      <details class="sec" id="sec-you">
+        <summary><span class="sec-title">Your name for git<small>Optional. Otherwise the install asks once.</small></span><span class="badge" id="you-badge">optional</span></summary>
+        <div class="sec-body">
+          <div class="fields">
+            <div class="field"><label for="gitname">Name</label><input class="text" id="gitname" autocomplete="name" placeholder="Ada Lovelace"><div class="err" id="gitname-err"></div></div>
+            <div class="field"><label for="gitemail">Email</label><input class="text" id="gitemail" type="email" autocomplete="email" placeholder="ada@example.com"><div class="err" id="gitemail-err"></div></div>
+          </div>
+        </div>
+      </details>
+    </main>
+
+    <aside class="panel" id="installer" aria-labelledby="installer-h">
+      <h2 id="installer-h">Your installer</h2>
+      <div class="sum"><span id="count" aria-live="polite"></span><button class="link" id="reset" type="button">Reset</button></div>
+
+      <div class="tabs" role="tablist" aria-label="How to install">
+        <button role="tab" id="tab-cmd" aria-controls="pane-cmd" aria-selected="true" type="button">One command</button>
+        <button role="tab" id="tab-auto" aria-controls="pane-auto" aria-selected="false" tabindex="-1" type="button">Automated install</button>
+      </div>
+
+      <section id="pane-cmd" role="tabpanel" aria-labelledby="tab-cmd">
+        <ol class="steps">
+          <li>Install <strong>Ubuntu 26.04</strong>, ticking third-party drivers.</li>
+          <li>Open a terminal (<kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>T</kbd>), paste this and press <strong>Enter</strong>.</li>
+          <li>Type your password once; it restarts when done.</li>
+        </ol>
+        <div class="term" style="margin-top:12px"><div class="term-bar"><i></i><i></i><i></i><span>Terminal</span></div><pre id="cmd"></pre></div>
+        <div class="actions" style="margin-top:12px"><button class="primary" id="copy-cmd" type="button">Copy command</button><span class="status" id="cmd-status" role="status"></span></div>
+      </section>
+
+      <section id="pane-auto" role="tabpanel" aria-labelledby="tab-auto" hidden>
+        <ol class="steps">
+          <li><strong>Download</strong> your file and put it online, e.g. as a secret gist at <a href="https://gist.github.com">gist.github.com</a>; copy its <strong>Raw</strong> address.</li>
+          <li>Boot the Ubuntu USB stick, choose the <strong>automated installation</strong> and paste the address.</li>
+          <li>Pick the disk and type your name and password. Setup starts at your first login.</li>
+        </ol>
+        <div class="fields" style="margin-top:12px">
+          <div class="field"><label for="locale">Language</label><input class="text" id="locale" value="en_US.UTF-8" spellcheck="false"><div class="err" id="locale-err"></div></div>
+          <div class="field"><label for="keyboard">Keyboard</label><input class="text" id="keyboard" value="us" spellcheck="false"><div class="err" id="keyboard-err"></div></div>
+          <div class="field" style="grid-column:1/-1"><label for="timezone">Timezone</label><input class="text" id="timezone" spellcheck="false"><div class="help">Filled in from this browser.</div><div class="err" id="timezone-err"></div></div>
+        </div>
+        <div class="actions" style="margin-top:12px"><button class="primary" id="dl-yaml" type="button">Download autoinstall.yaml</button><span class="status" id="yaml-status" role="status"></span></div>
+        <details class="preview" style="margin-top:10px"><summary>Preview the file</summary><pre id="yaml"></pre></details>
+      </section>
+
+      <p class="note">No passwords go into either. Nothing you pick or type leaves your browser.</p>
+    </aside>
   </div>
 
-  <h2><span class="n">4</span> Your installer</h2>
-  <div class="card">
-    <h3>One command <button class="primary" id="copy-cmd">Copy</button></h3>
-    <ol>
-      <li>Install Ubuntu 26.04 as usual (in the installer, tick third-party drivers; disk encryption is a good idea on a laptop).</li>
-      <li>Open a terminal (<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>), paste this, press Enter, and type your password once.</li>
-    </ol>
-    <pre id="cmd"></pre>
-    <span class="ok" id="copied" role="status"></span>
-  </div>
-  <div class="card">
-    <h3>Automated install <button id="dl-yaml">Download autoinstall.yaml</button></h3>
-    <p class="hint">Ubuntu's installer answers language, keyboard, timezone, drivers and updates from this file; you only pick the disk and type your name and password (no passwords are in it). At your first login, the setup above starts by itself.</p>
-    <ol>
-      <li>Put the file online where the installer can read it, e.g. a <b>secret gist</b> at <a href="https://gist.github.com">gist.github.com</a>, then open it and click <b>Raw</b> to get its address.</li>
-      <li>Boot the Ubuntu USB stick, choose the <b>automated installation</b>, and paste that address.</li>
-    </ol>
-    <pre class="yaml" id="yaml"></pre>
-  </div>
-
-  <div class="summary"><span id="count"></span><button id="reset">Reset to the defaults</button></div>
-  <footer>MIT licensed. Generated from the repo's own lists; the installer scripts are at
-    <a href="https://github.com/ronaldo-kwan/dotfiles">github.com/ronaldo-kwan/dotfiles</a>.</footer>
-</main>
+  <footer>MIT licensed. The lists on this page are generated from the repo, so they match what the scripts install.</footer>
+</div>
+<div class="mbar"><span id="mcount"></span><a href="#installer">Get your installer</a></div>
 <script src="app.js"></script>
 </body>
 </html>
