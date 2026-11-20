@@ -21,6 +21,8 @@ These folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). E
 
 | File | What it is |
 |---|---|
+| `setup/autoinstall.yaml` | Answers for the Ubuntu installer's automated install (no passwords in it) |
+| `system/first-login/` | The one-time first-login step an automated install adds: opens a terminal running `bootstrap.sh` |
 | `bootstrap.sh` | The one command for a fresh Ubuntu: installs git, gum and gh, downloads the repo, starts `fresh-install.sh` |
 | `fresh-install.sh` | Sets up a freshly installed Ubuntu in one go: system and firmware update, tools, then the two scripts below |
 | `install.sh` | Configs, font, Flatpak apps, extensions, settings, secret check and reminder (no sudo) |

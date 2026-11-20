@@ -24,11 +24,21 @@ jobs:
       - name: Syntax check (bash -n)
         run: |
           for f in *.sh dot scripts/*.sh .githooks/pre-commit bash/.bashrc; do bash -n "$f"; done
+          sh -n system/first-login/dotfiles-first-login
           for f in system/etc/cron.*/*; do sh -n "$f"; done
       - name: shellcheck (warnings and errors)
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
-          shellcheck -x -S warning *.sh dot scripts/*.sh .githooks/pre-commit system/etc/cron.*/*
+          shellcheck -x -S warning *.sh dot scripts/*.sh .githooks/pre-commit system/etc/cron.*/* system/first-login/dotfiles-first-login
+      - name: autoinstall.yaml matches the Ubuntu installer's schema
+        run: |
+          sudo apt-get install -y -qq python3-jsonschema python3-yaml
+          wget -qO /tmp/schema.json https://raw.githubusercontent.com/canonical/subiquity/main/autoinstall-schema.json
+          python3 -c 'import json,yaml,jsonschema; d=yaml.safe_load(open("setup/autoinstall.yaml")); jsonschema.validate(d["autoinstall"], json.load(open("/tmp/schema.json"))); print("valid")'
+      - name: The first-login entry is a valid desktop file
+        run: |
+          sudo apt-get install -y -qq desktop-file-utils
+          desktop-file-validate system/first-login/dotfiles-setup.desktop
 
   install:
     name: install.sh on a clean Ubuntu 26.04

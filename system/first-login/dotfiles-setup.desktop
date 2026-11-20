@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Dotfiles setup
+Comment=Sets this computer up from the dotfiles, once, at the first login after an automated install
+Exec=/usr/local/bin/dotfiles-first-login
+OnlyShowIn=GNOME;
+X-GNOME-Autostart-Delay=5
+NoDisplay=true

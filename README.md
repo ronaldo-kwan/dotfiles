@@ -12,6 +12,8 @@ bash <(wget -qO- https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/bo
 
 It installs git and gum, downloads the dotfiles to `~/dotfiles`, asks your name and email for git (once), and one question: press <kbd>Enter</kbd> for **Yes to everything**, type your password once, and it runs by itself: it updates the system, installs everything and restarts at the end. Afterwards, `gh auth login` signs you in to GitHub for your notes, pushing and signed commits. Details: [docs/new-computer.md](docs/new-computer.md).
 
+**Even simpler, from the installer:** choose the automated installation and give it `https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/setup/autoinstall.yaml`. You only pick the disk and type your name and password; at your first login the setup starts by itself. See [Automated install](docs/new-computer.md#automated-install-from-the-installer).
+
 ## Everyday
 
 Everything goes through one command, `dot`. On its own, **`dot` opens a menu**: pick with the arrow keys, Enter runs it, and the top shows whether anything is unsaved. Or type the command directly (`dot help` lists them; <kbd>Tab</kbd> completes):

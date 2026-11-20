@@ -1,0 +1,16 @@
+#!/bin/sh
+# Runs once, at your first login after an automated install (setup/autoinstall.yaml):
+# opens a terminal that sets this computer up from the dotfiles with bootstrap.sh.
+# bootstrap.sh removes this step afterwards; the marker file stops it running twice.
+marker="$HOME/.config/dotfiles-first-login-done"
+[ -e "$marker" ] && exit 0
+mkdir -p "$HOME/.config" && : > "$marker"
+
+URL="https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/bootstrap.sh"
+exec xdg-terminal-exec bash -c '
+  echo "Setting up this computer from your dotfiles."
+  echo "Waiting for the internet connection..."
+  for i in $(seq 1 60); do wget -q --spider https://github.com && break; sleep 2; done
+  bash <(wget -qO- "'"$URL"'") || echo "Setup stopped. Run it again with the command in the dotfiles README."
+  echo; read -rp "Press Enter to close this window. " _
+'

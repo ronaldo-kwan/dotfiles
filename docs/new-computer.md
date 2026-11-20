@@ -10,6 +10,17 @@
    - The passphrase is asked once per start-up, before Ubuntu loads; not at login, unlock or wake. For one password per start-up, see [below](#one-password-at-start-up-encrypted-disk).
    - Save the passphrase and the installer's recovery key in Bitwarden: without them the disk is unreadable and only Backups can bring your files back.
 
+## Automated install (from the installer)
+
+Instead of installing Ubuntu and then running the one command, the Ubuntu installer can do most of it from `setup/autoinstall.yaml`:
+
+1. Boot the Ubuntu USB stick. In the installer, choose the **automated installation** and paste:
+   `https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/setup/autoinstall.yaml`
+2. The installer only asks for the **disk** (pick encryption here, see step 4 above) and your **name and password**. Language, keyboard, timezone, third-party drivers, codecs and updates are answered by the file, and git, gum and gh are installed with Ubuntu.
+3. Restart and log in. A terminal opens by itself and runs the one-line setup below (name and email for git, then "Yes to everything"). It runs once only.
+
+No password or other secret is in the file; it's public. Language `en_US.UTF-8`, keyboard `us` and timezone `Australia/Sydney` are set in it; change them in a fork if they don't suit. The installer's own menus for automated installs vary between Ubuntu releases; if yours doesn't offer it, use the one command instead.
+
 ## Fresh install: one script
 
 After Ubuntu is installed, open a terminal (<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>) and run:
