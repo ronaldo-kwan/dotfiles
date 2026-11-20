@@ -122,6 +122,11 @@ function autoinstall(vars) {
     .replace(/^#cloud-config\n# Automated install[^]*?give it this file's address:\n#.*\n/,
       `#cloud-config\n# Made on the dotfiles website on ${new Date().toISOString().slice(0, 10)}. Put it online (for example\n` +
       "# a secret gist), choose the automated installation in the Ubuntu installer, and give it\n# the file's Raw address.\n");
+  // Codecs during the install only if ubuntu-restricted-extras is ticked.
+  const codecs = document.querySelector('input[value="pkg:ubuntu-restricted-extras"]');
+  if (codecs && !codecs.checked) {
+    y = y.replace(/^(\s*codecs:\n\s*install:) true.*$/m, "$1 false   # media codecs (unticked on the website)");
+  }
   if (vars.length) {
     // What you picked, for the first-login setup (read from /etc/dotfiles-choices).
     const file = vars.map(([k, v]) => `${k}=${sq(v)}`).join("\n") + "\n";
