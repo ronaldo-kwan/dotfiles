@@ -537,7 +537,7 @@ clock_step() {
 has_nerd_font() { [[ "$(fc-list 2>/dev/null)" == *"JetBrainsMono Nerd Font"* ]]; }
 
 # Packages that install-apps.sh installs itself (not from setup/apt-packages.txt).
-APP_PACKAGES=(google-chrome-stable code claude-desktop protonvpn-stable-release proton-vpn-gnome-desktop
+APP_PACKAGES=(google-chrome-stable code claude-desktop claude-code protonvpn-stable-release proton-vpn-gnome-desktop
   obs-studio onlyoffice-desktopeditors steam-installer 'nvidia-driver-*' 'libnvidia-gl-*'
   'linux-modules-nvidia-*' ufw)
 # Added by Ubuntu itself (language support adds dictionaries for your languages).

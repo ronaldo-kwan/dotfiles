@@ -31,6 +31,7 @@ APP_TOKENS = {
     "install_chrome": ("app:chrome", "Google's browser, from Google's own update source"),
     "install_vscode": ("app:code", "Microsoft's code editor, with the Catppuccin theme"),
     "install_claude": ("app:claude", "Anthropic's desktop app"),
+    "install_claude_code": ("app:claude-code", "Anthropic's AI coding assistant for the terminal (the claude command)"),
     "install_protonvpn": ("app:protonvpn", "Proton's VPN app"),
     "install_obs": ("app:obs", "Screen recording and streaming"),
     "install_onlyoffice": ("app:onlyoffice", "Office suite (documents, spreadsheets, slides)"),

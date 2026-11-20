@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install apps that need sudo: Chrome, VS Code, Claude Desktop, Proton VPN,
+# Install apps that need sudo: Chrome, VS Code, Claude Desktop, Claude Code, Proton VPN,
 # OBS Studio, ONLYOFFICE, Steam, and the Ubuntu apps listed in
 # setup/apt-packages.txt. Each one comes from its maker's official download
 # source (or Ubuntu's own), which then keeps it updated through `sudo apt upgrade`.
@@ -126,6 +126,7 @@ entry_chosen() {
   case "$1" in
     install_chrome) chosen app:chrome ;;        install_vscode) chosen app:code ;;
     install_claude) chosen app:claude ;;        install_protonvpn) chosen app:protonvpn ;;
+    install_claude_code) chosen app:claude-code ;;
     install_obs) chosen app:obs ;;              install_onlyoffice) chosen app:onlyoffice ;;
     install_steam) chosen app:steam ;;          install_ubuntu_apps) chosen_any pkg: ;;
     install_nvidia_driver|setup_steam_nvidia) chosen nvidia ;;
@@ -230,6 +231,19 @@ install_claude() {
   run sudo install -m 644 "$TMP/claude.list" /etc/apt/sources.list.d/claude-desktop.list
   apt_get update
   apt_get install -y claude-desktop
+}
+
+install_claude_code() {
+  # Claude Code (the `claude` command for the terminal), from Anthropic's own update
+  # source, signed with the same key as Claude Desktop's. Updates come with apt.
+  local expected=31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
+  fetch "$TMP/claude-code.asc" https://downloads.claude.ai/keys/claude-code.asc
+  key_ok "$TMP/claude-code.asc" "$expected" || return 1
+  echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/claude-code.asc] https://downloads.claude.ai/claude-code/apt/stable stable main" > "$TMP/claude-code.list"
+  run sudo install -m 644 "$TMP/claude-code.asc" /usr/share/keyrings/claude-code.asc
+  run sudo install -m 644 "$TMP/claude-code.list" /etc/apt/sources.list.d/claude-code.list
+  apt_get update
+  apt_get install -y claude-code
 }
 
 install_protonvpn() {
@@ -362,6 +376,7 @@ APPS=(
   "Google Chrome|google-chrome-stable|install_chrome"
   "VS Code|code|install_vscode"
   "Claude Desktop|claude-desktop|install_claude"
+  "Claude Code (the claude command)|claude-code|install_claude_code"
   "Proton VPN|proton-vpn-gnome-desktop|install_protonvpn"
   "OBS Studio|obs-studio|install_obs"
   "ONLYOFFICE|check_onlyoffice|install_onlyoffice"

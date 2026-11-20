@@ -10,7 +10,7 @@ These need sudo and extra setup, so `install.sh` doesn't install them. `install-
 DRY_RUN=1 ~/dotfiles/install-apps.sh  # only checks the downloads, installs nothing
 ```
 
-Each app comes from its maker's official source, which then keeps it updated with `sudo apt upgrade`. The Claude Desktop and ONLYOFFICE signing keys' fingerprints and Proton's setup package checksum are checked before installing. If ONLYOFFICE is installed without its update source (for example from a downloaded `.deb`), the script offers to add the source so it gets updates.
+Each app comes from its maker's official source, which then keeps it updated with `sudo apt upgrade`. The Claude Desktop, Claude Code and ONLYOFFICE signing keys' fingerprints and Proton's setup package checksum are checked before installing. If ONLYOFFICE is installed without its update source (for example from a downloaded `.deb`), the script offers to add the source so it gets updates.
 
 It first checks the computer's clock against the internet. If it's more than 5 minutes off (common in a VM resumed from a saved state), installs would fail with "Release file … is not valid yet", so it offers to fix the clock first: with `sudo chronyc makestep` on Ubuntu 25.10 and later (which use chrony), or by restarting `systemd-timesyncd` on older versions, or by setting the clock from the internet time. If another software update is already running, it waits for it instead of failing.
 
@@ -21,6 +21,7 @@ If a maker changes its download link, update the script; the table shows the man
 | Google Chrome | google.com/chrome (.deb) | `google-chrome-stable` |
 | VS Code | code.visualstudio.com (.deb) | `code` |
 | Claude Desktop | claude.ai/download | `claude-desktop` |
+| Claude Code | Anthropic's apt source (`downloads.claude.ai/claude-code/apt/stable`, key from `downloads.claude.ai/keys/claude-code.asc`) | `claude-code` |
 | Proton VPN | protonvpn.com/download (Linux, Ubuntu) | `proton-vpn-gnome-desktop` |
 | OBS Studio | `sudo add-apt-repository ppa:obsproject/obs-studio` | `obs-studio` |
 | ONLYOFFICE | ONLYOFFICE's update source (key from download.onlyoffice.com/GPG-KEY-ONLYOFFICE) | `onlyoffice-desktopeditors` |
