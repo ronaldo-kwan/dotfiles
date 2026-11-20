@@ -112,8 +112,10 @@ list_missing "all config files linked (${pkgs[*]})" install "${broken[@]}"
 section "Terminal tools"
 for t in "${TOOLS[@]}"; do installed "$t" || MISSING_TOOLS+=("$t"); done
 list_missing "${#TOOLS[@]} tools installed" tools "${MISSING_TOOLS[@]}"
-if ! chosen terminal; then info "JetBrainsMono Nerd Font: not chosen"
-elif has_nerd_font; then ok "JetBrainsMono Nerd Font"; else bad "JetBrainsMono Nerd Font not installed" install; fi
+if ! chosen terminal; then info "RobotoMono Nerd Font: not chosen"
+elif has_nerd_font; then ok "RobotoMono Nerd Font"; else bad "RobotoMono Nerd Font not installed" install; fi
+if ! chosen desktop; then info "Roboto Mono: not chosen"
+elif has_roboto_mono; then ok "Roboto Mono"; else bad "Roboto Mono not installed" install; fi
 
 section "Apps and system jobs (install-apps.sh)"
 # shellcheck source=install-apps.sh

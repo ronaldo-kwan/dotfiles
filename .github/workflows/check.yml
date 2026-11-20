@@ -63,7 +63,7 @@ jobs:
         run: |
           ./check.sh | tee check.txt || true
           grep -q '✔ all config files linked' check.txt
-          grep -q '✔ JetBrainsMono Nerd Font' check.txt
+          grep -q '✔ RobotoMono Nerd Font' check.txt
           test "$(git config core.hooksPath)" = "$PWD/.githooks"
       - name: dot command works
         run: ./dot help && ./dot status

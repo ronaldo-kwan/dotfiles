@@ -76,7 +76,7 @@ style-scheme='catppuccin-mocha'
 
 [org/gnome/Ptyxis]
 use-system-font=false
-font-name='JetBrainsMono Nerd Font 10'
+font-name='RobotoMono Nerd Font 10'
 
 [com/ubuntu/update-notifier]
 show-livepatch-status-icon=false

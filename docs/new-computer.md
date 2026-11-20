@@ -87,7 +87,7 @@ For any other app, right-click it in the app grid and choose **Launch using Disc
 
 The scripts can also be run on their own, for example on a computer that's already set up. Each is safe to run again.
 
-- `~/dotfiles/install.sh` (no sudo): links config files (keeping existing ones as `.orig`). It installs the Nerd Font, VS Code extensions, Flatpak apps and GNOME extensions (the versions matching this computer's GNOME). It restores your desktop look, shortcuts, settings, extension settings, dock, wallpaper, app settings and the Obsidian vault, and switches on the secret check and weekly reminder. GNOME extensions start after you log out and back in.
+- `~/dotfiles/install.sh` (no sudo): links config files (keeping existing ones as `.orig`). It installs the Roboto Mono fonts (Roboto itself comes from `install-apps.sh`), VS Code extensions, Flatpak apps and GNOME extensions (the versions matching this computer's GNOME). It restores your desktop look, shortcuts, settings, extension settings, dock, wallpaper, app settings and the Obsidian vault, and switches on the secret check and weekly reminder. GNOME extensions start after you log out and back in.
 - `~/dotfiles/install-apps.sh` (sudo): apps and system parts, see [apps.md](apps.md).
 - `~/dotfiles/fresh-install.sh` (sudo): all of the above, plus the system and firmware update.
 - `~/dotfiles/check.sh` (or `dot check`): shows what's missing. Changes nothing.
@@ -97,14 +97,26 @@ The scripts can also be run on their own, for example on a computer that's alrea
 <details>
 <summary>Step-by-step commands</summary>
 
-**Nerd Font**
+**Fonts.** Roboto everywhere: Roboto from Ubuntu, Roboto Mono from Google Fonts, and RobotoMono Nerd Font (Roboto Mono plus prompt icons) for the terminal and VS Code:
 
 ```bash
-mkdir -p ~/.local/share/fonts/JetBrainsMonoNerdFont
-cd /tmp && curl -fLO https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.tar.xz
-mkdir -p /tmp/jbm && tar -xJf JetBrainsMono.tar.xz -C /tmp/jbm
-cp /tmp/jbm/JetBrainsMonoNerdFont-*.ttf ~/.local/share/fonts/JetBrainsMonoNerdFont/
+sudo apt install fonts-roboto
+mkdir -p ~/.local/share/fonts/RobotoMono ~/.local/share/fonts/RobotoMonoNerdFont
+cd ~/.local/share/fonts/RobotoMono
+curl -fL -o 'RobotoMono[wght].ttf' 'https://raw.githubusercontent.com/google/fonts/main/ofl/robotomono/RobotoMono%5Bwght%5D.ttf'
+curl -fL -o 'RobotoMono-Italic[wght].ttf' 'https://raw.githubusercontent.com/google/fonts/main/ofl/robotomono/RobotoMono-Italic%5Bwght%5D.ttf'
+cd /tmp && curl -fLO https://github.com/ryanoasis/nerd-fonts/releases/latest/download/RobotoMono.tar.xz
+mkdir -p /tmp/rmn && tar -xJf RobotoMono.tar.xz -C /tmp/rmn
+cp /tmp/rmn/RobotoMonoNerdFont*.ttf ~/.local/share/fonts/RobotoMonoNerdFont/
 fc-cache -f
+```
+
+After linking the config files below (include the `fontconfig` package), give each Flatpak app the same font settings:
+
+```bash
+for a in $(flatpak list --app --columns=application); do
+  mkdir -p ~/.var/app/$a/config/fontconfig && cp ~/dotfiles/fontconfig/.config/fontconfig/fonts.conf ~/.var/app/$a/config/fontconfig/
+done
 ```
 
 **Link config files.** Stow won't replace files that already exist, so move them aside first:
@@ -113,7 +125,7 @@ fc-cache -f
 mv ~/.bashrc ~/.bashrc.orig
 mv ~/.gitconfig ~/.gitconfig.orig 2>/dev/null
 cd ~/dotfiles
-stow --no-folding bash git starship ghostty btop lazygit terminal-default vscode claude systemd
+stow --no-folding bash git starship ghostty btop lazygit terminal-default vscode claude systemd fontconfig
 ```
 
 **VS Code extensions and Flatpak apps**

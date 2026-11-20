@@ -10,7 +10,7 @@ FAILED=()
 # Terminal tools from apt (installed by fresh-install.sh, checked by check.sh)
 TOOLS=(git gh gum curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit flatpak)
 # Stow packages: folders here whose files are linked into your home folder
-PACKAGES=(bash git starship ghostty btop lazygit terminal-default vscode claude systemd)
+PACKAGES=(bash git starship ghostty btop lazygit terminal-default vscode claude systemd fontconfig)
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
@@ -48,6 +48,7 @@ chosen_packages() {
       vscode)  chosen app:code && echo "$p" ;;
       claude)  chosen claude-md && echo "$p" ;;
       systemd) chosen safety && echo "$p" ;;
+      fontconfig) chosen desktop && echo "$p" ;;
       *) echo "$p" ;;
     esac
   done
@@ -532,9 +533,14 @@ clock_step() {
   ask "Continue anyway? Installs will probably fail." || { echo "Stopped. Nothing was installed."; exit 1; }
 }
 
-# Is the JetBrainsMono Nerd Font installed? (Not `fc-list | grep -q`: with pipefail
-# that fails when grep stops reading fc-list's long output early.)
-has_nerd_font() { [[ "$(fc-list 2>/dev/null)" == *"JetBrainsMono Nerd Font"* ]]; }
+# Is a font family installed? (Not `fc-list | grep -q`: with pipefail that fails when
+# grep stops reading fc-list's long output early.)
+has_font() { [[ "$(fc-list : family 2>/dev/null)" == *"$1"* ]]; }
+# The terminal's font (Ghostty, Ptyxis, VS Code): Roboto Mono with Nerd Font icons.
+has_nerd_font() { has_font "RobotoMono Nerd Font"; }
+# Plain Roboto Mono: the desktop's monospace font (fontconfig and GNOME settings).
+# Ubuntu has no package for it; Roboto itself comes from fonts-roboto (apt-packages.txt).
+has_roboto_mono() { has_font "Roboto Mono"; }   # (the Nerd Font is "RobotoMono", no space)
 
 # Packages that install-apps.sh installs itself (not from setup/apt-packages.txt).
 APP_PACKAGES=(google-chrome-stable code claude-desktop claude-code protonvpn-stable-release proton-vpn-gnome-desktop

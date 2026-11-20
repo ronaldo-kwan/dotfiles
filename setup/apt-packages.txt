@@ -11,4 +11,5 @@ sound-theme-freedesktop        # GNOME's sounds (the "freedesktop" sound theme)
 qbittorrent                    # qBittorrent
 vlc                            # VLC media player
 vainfo                         # checks video hardware acceleration
+fonts-roboto                   # Roboto, the desktop font (Roboto Mono comes from install.sh)
 ubuntu-restricted-extras       # codecs and Microsoft fonts (asks you to accept a font licence)

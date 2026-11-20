@@ -35,26 +35,44 @@ link_configs() {
   echo "    linked: ${pkgs[*]}"
 }
 
-# 2. JetBrainsMono Nerd Font -----------------------------------------------------
-install_font() {
-  need terminal || return 0
-  local font_dir="$HOME/.local/share/fonts/JetBrainsMonoNerdFont" tmp
-  if has_nerd_font; then
+# 2. Fonts -----------------------------------------------------------------------
+# Everything is Roboto. Roboto itself is an Ubuntu package (fonts-roboto, installed by
+# install-apps.sh from setup/apt-packages.txt); these two aren't packaged:
+#   - RobotoMono Nerd Font (terminal): Roboto Mono plus the icons the prompt uses
+#   - Roboto Mono (desktop): the monospace font, from Google Fonts' own repo
+ROBOTO_MONO_URL="https://raw.githubusercontent.com/google/fonts/main/ofl/robotomono"
+install_fonts() {
+  local want_nerd=0 want_mono=0 tmp dir
+  chosen terminal && ! has_nerd_font && want_nerd=1
+  chosen desktop && ! has_roboto_mono && want_mono=1
+  if (( !want_nerd && !want_mono )); then
+    chosen terminal || chosen desktop || { skip "not chosen"; return 0; }
     echo "    already installed"
     return 0
   fi
   if ! have curl; then
-    skip "curl isn't installed (sudo apt install curl), so the font wasn't downloaded"
+    skip "curl isn't installed (sudo apt install curl), so the fonts weren't downloaded"
     return 0
   fi
   tmp="$(mktemp -d)"
-  curl -fsSL -o "$tmp/JetBrainsMono.tar.xz" \
-    https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.tar.xz
-  mkdir -p "$tmp/extract" "$font_dir"
-  tar -xJf "$tmp/JetBrainsMono.tar.xz" -C "$tmp/extract"
-  cp "$tmp"/extract/JetBrainsMonoNerdFont-*.ttf "$font_dir/"
+  if (( want_nerd )); then
+    dir="$HOME/.local/share/fonts/RobotoMonoNerdFont"
+    curl -fsSL -o "$tmp/RobotoMono.tar.xz" \
+      https://github.com/ryanoasis/nerd-fonts/releases/latest/download/RobotoMono.tar.xz
+    mkdir -p "$tmp/extract" "$dir"
+    tar -xJf "$tmp/RobotoMono.tar.xz" -C "$tmp/extract"
+    cp "$tmp"/extract/RobotoMonoNerdFont*.ttf "$dir/"
+    echo "    RobotoMono Nerd Font"
+  fi
+  if (( want_mono )); then
+    dir="$HOME/.local/share/fonts/RobotoMono"
+    mkdir -p "$dir"
+    curl -fsSL -o "$dir/RobotoMono[wght].ttf" "$ROBOTO_MONO_URL/RobotoMono%5Bwght%5D.ttf"
+    curl -fsSL -o "$dir/RobotoMono-Italic[wght].ttf" "$ROBOTO_MONO_URL/RobotoMono-Italic%5Bwght%5D.ttf"
+    echo "    Roboto Mono"
+  fi
   rm -rf "$tmp"
-  fc-cache -f "$font_dir"
+  fc-cache -f "$HOME/.local/share/fonts"
 }
 
 # 3. VS Code extensions --------------------------------------------------------------
@@ -85,6 +103,20 @@ install_flatpaks() {
   (( ${#apps[@]} )) || { skip "no Flatpak apps chosen"; return 0; }
   quiet "Installing ${#apps[@]} Flatpak apps (already installed ones are skipped)" \
     flatpak install -y --noninteractive flathub "${apps[@]}"
+}
+
+# Flatpak apps read fontconfig from their own folder (~/.var/app/<id>/config), not
+# ~/.config/fontconfig, so each gets a copy of the Roboto settings. Runs again after
+# new Flatpak apps are installed: `dot install`.
+flatpak_fonts() {
+  need desktop || return 0
+  have flatpak || { skip "flatpak isn't installed"; return 0; }
+  local conf="$DOTFILES/fontconfig/.config/fontconfig/fonts.conf" app n=0
+  while read -r app; do
+    [[ -n "$app" ]] || continue
+    put_file "$conf" "$HOME/.var/app/$app/config/fontconfig/fonts.conf" >/dev/null; n=$((n + 1))
+  done < <(flatpak list --app --columns=application 2>/dev/null)
+  echo "    $n Flatpak apps use Roboto"
 }
 
 # 5. GNOME extensions ----------------------------------------------------------------
@@ -347,7 +379,7 @@ if [[ "${1:-}" == "--desktop-only" ]]; then
 fi
 
 header "Set up configs and desktop" \
-  "Config links, Nerd Font, VS Code extensions, Flatpak apps, GNOME extensions," \
+  "Config links, Roboto fonts, VS Code extensions, Flatpak apps, GNOME extensions," \
   "desktop look, shortcuts and settings, wallpaper, app settings, Obsidian," \
   "secret check before commits and a weekly reminder. No sudo needed." \
   "Files it replaces are kept as <name>.orig."
@@ -358,9 +390,10 @@ git_identity
 
 run_steps \
   "Linking config files|link_configs" \
-  "JetBrainsMono Nerd Font|install_font" \
+  "Fonts (Roboto Mono and RobotoMono Nerd Font)|install_fonts" \
   "VS Code extensions|install_vscode_extensions" \
   "Flatpak apps|install_flatpaks" \
+  "Roboto in Flatpak apps|flatpak_fonts" \
   "GNOME extensions|install_gnome_extensions" \
   "Desktop look, shortcuts and settings, extension settings and dock|restore_gnome_settings" \
   "Wallpaper and lock screen|set_wallpaper" \

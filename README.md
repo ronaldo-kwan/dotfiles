@@ -1,6 +1,6 @@
 # dotfiles
 
-My Ubuntu (GNOME) setup: bash, ble.sh, Starship, fzf, zoxide, eza, bat, Ghostty, btop, lazygit and VS Code, all in Catppuccin Mocha with JetBrainsMono Nerd Font, plus my apps, desktop settings and weekly updates.
+My Ubuntu (GNOME) setup: bash, ble.sh, Starship, fzf, zoxide, eza, bat, Ghostty, btop, lazygit and VS Code, all in Catppuccin Mocha with Roboto fonts everywhere (RobotoMono Nerd Font in the terminal), plus my apps, desktop settings and weekly updates.
 
 ## New computer
 
