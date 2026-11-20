@@ -10,7 +10,8 @@
 #   7. Restart
 #
 # Before running it (see README, "Setting up a new computer"):
-#   sudo apt install git gh gum && gh auth login && gh repo clone dotfiles ~/dotfiles
+#   bash <(wget -qO- https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/bootstrap.sh)
+# (which installs git, gum and gh, downloads ~/dotfiles and starts this script)
 #
 # One question at the start: Yes to everything (runs by itself), or choose as it goes.
 # With gum installed, questions are arrow-key menus and the steps stay pinned on screen.
@@ -42,6 +43,7 @@ if ! have gum && [[ -z "$YES_ALL" && -t 0 ]]; then
   quiet "Installing gum" sudo env DEBIAN_FRONTEND=noninteractive bash -c \
     'apt-get -o DPkg::Lock::Timeout=300 update && apt-get -o DPkg::Lock::Timeout=300 install -y gum' || true
 fi
+git_identity
 choose_answer_mode
 ask "Start?" || { echo "Nothing changed."; exit 0; }
 keep_sudo || exit 1
@@ -97,7 +99,8 @@ note "Blue \"MOK management\" screen (NVIDIA with Secure Boot): Enroll MOK, Cont
 note "Check the NVIDIA card works: nvidia-smi"
 note "Sign in to your apps (Steam, browsers, Discord, Bitwarden)"
 note "Open Backups, connect Google Drive, and turn on \"Back Up Automatically\""
-note "Then run dot ssh (signed commits) and dot check in a new terminal"
+note "Sign in to GitHub (for your notes, pushing and signed commits): gh auth login, then dot install and dot ssh"
+note "Then run dot check in a new terminal"
 echo
 if ask "Restart now?"; then
   if [[ "$YES_ALL" == 1 ]]; then

@@ -4,16 +4,13 @@ My Ubuntu (GNOME) setup: bash, ble.sh, Starship, fzf, zoxide, eza, bat, Ghostty,
 
 ## New computer
 
-Install Ubuntu 26.04 (first read [Before installing](docs/new-computer.md#before-installing-ubuntu-lenovo-legion-5)), open a terminal and run:
+Install Ubuntu 26.04 (first read [Before installing](docs/new-computer.md#before-installing-ubuntu-lenovo-legion-5)), open a terminal (<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>) and run this one command. No GitHub account or sign-in needed:
 
 ```bash
-sudo apt install git gh gum
-gh auth login
-gh repo clone dotfiles ~/dotfiles
-~/dotfiles/fresh-install.sh
+bash <(wget -qO- https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/bootstrap.sh)
 ```
 
-It asks one question at the start: press <kbd>Enter</kbd> for **Yes to everything**, type your password once, and it runs by itself: it updates the system, installs everything and restarts at the end. Details and what to do after: [docs/new-computer.md](docs/new-computer.md).
+It installs git and gum, downloads the dotfiles to `~/dotfiles`, asks your name and email for git (once), and one question: press <kbd>Enter</kbd> for **Yes to everything**, type your password once, and it runs by itself: it updates the system, installs everything and restarts at the end. Afterwards, `gh auth login` signs you in to GitHub for your notes, pushing and signed commits. Details: [docs/new-computer.md](docs/new-computer.md).
 
 ## Everyday
 
@@ -51,6 +48,23 @@ dot upgrade
 ```
 
 The upgrade switches off the apps' own update sources (Chrome, VS Code, Claude, Proton VPN, ONLYOFFICE, OBS). This switches them back on, updates everything, puts back anything that went missing (and removes the Snap Firefox if it came back), reinstalls GNOME extensions for the new GNOME, and checks the NVIDIA driver. See [docs/maintenance.md](docs/maintenance.md#after-upgrading-ubuntu).
+
+## Using this yourself
+
+You're welcome to use or adapt this (MIT licence). The scripts install *my* apps and settings, so:
+
+1. **Fork** this repo on GitHub, then in your fork edit:
+   - `setup/git-identity`: your name and email (suggested for git commits; saved per computer, never committed)
+   - `setup/apt-packages.txt`, `setup/flatpaks.txt`, `setup/vscode-extensions.txt`, `setup/gnome-extensions.txt`: your apps
+   - `install-apps.sh` (the `APPS` list): which outside apps to install (Chrome, VS Code, Steam, ...)
+   - the configs in `bash/`, `ghostty/`, `starship/` ... to taste; `claude/` holds my Claude Code instructions, delete it if you don't want them
+2. On a fresh Ubuntu, run the one command with your fork:
+   ```bash
+   DOTFILES_REPO=https://github.com/YOU/dotfiles.git bash <(wget -qO- https://raw.githubusercontent.com/YOU/dotfiles/main/bootstrap.sh)
+   ```
+3. On your current computer, `dot save` then saves your own desktop settings into `setup/`.
+
+Your notes, if any, aren't part of it: `install.sh` looks for a private repo of yours called `obsidian-vault` and skips it if there's none.
 
 ## More
 

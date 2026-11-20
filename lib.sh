@@ -286,6 +286,36 @@ gh_key_admin() {
   [[ "$scopes" == *admin:public_key* || "$scopes" == *admin:ssh_signing_key* ]]
 }
 
+# --- Git name and email -----------------------------------------------------------------
+# Kept per person in ~/.config/git/user.gitconfig (git/.gitconfig includes it), so someone
+# else using these dotfiles doesn't commit under your name. Asked once per computer; the
+# suggestion is git's current setting, or setup/git-identity. Without a terminal (CI,
+# pipes) it's skipped, and git asks at the first commit.
+GIT_USER_FILE="$HOME/.config/git/user.gitconfig"
+git_identity() {
+  [[ -f "$GIT_USER_FILE" ]] && return 0
+  [[ -t 0 && -t 1 ]] && have git || return 0
+  local name email def_name def_email
+  def_name="$(git config --get user.name 2>/dev/null)"; def_email="$(git config --get user.email 2>/dev/null)"
+  if [[ -z "$def_email" && -f "$SETUP/git-identity" ]]; then
+    def_name="$(sed -n 's/^name=//p' "$SETUP/git-identity")"
+    def_email="$(sed -n 's/^email=//p' "$SETUP/git-identity")"
+  fi
+  printf '\n  %sYour name and email for git commits%s %s(asked once on this computer; Enter keeps it)%s\n' "$C_B" "$C_N" "$C_DIM" "$C_N"
+  if ui_gum; then
+    name="$(gum input --prompt "  Name  › " --value "$def_name")" || return 0
+    email="$(gum input --prompt "  Email › " --value "$def_email")" || return 0
+  else
+    read -rep "    Name:  " -i "$def_name" name
+    read -rep "    Email: " -i "$def_email" email
+  fi
+  if [[ -z "$name" || -z "$email" ]]; then warn "skipped: git will ask when you first commit"; return 0; fi
+  mkdir -p "$(dirname "$GIT_USER_FILE")"
+  git config --file "$GIT_USER_FILE" user.name "$name"
+  git config --file "$GIT_USER_FILE" user.email "$email"
+  printf '  %s✔%s Commits will be by %s <%s>\n' "$C_OK" "$C_N" "$name" "$email"
+}
+
 # --- Live progress panel ---------------------------------------------------------------
 # The step list pinned at the top of the terminal, updating in place, while the output
 # scrolls underneath (a terminal scroll region). Prompts still work: they show in the

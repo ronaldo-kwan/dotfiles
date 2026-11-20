@@ -1,0 +1,5 @@
+# Name and email for git commits. install.sh suggests these once per computer and
+# saves the answer in ~/.config/git/user.gitconfig (not in this repo).
+# Using these dotfiles yourself? Put your own name and email here, in your fork.
+name=ronaldo kwan
+email=ronaldokwan.work@gmail.com

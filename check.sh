@@ -156,6 +156,8 @@ for d in "$DOTFILES" "$VAULT"; do
     && ok "secret check before commits: ${d/#$HOME/\~}" \
     || bad "secret check not switched on for ${d/#$HOME/\~}" install
 done
+if [[ -n "$(git config --get user.email 2>/dev/null)" ]]; then ok "git name and email set ($(git config --get user.name))"
+else bad "git doesn't know your name and email" install; fi
 if [[ -f "$HOME/.config/git/signing.gitconfig" && -f "$HOME/.ssh/id_ed25519.pub" ]]; then
   ok "commits signed with this computer's SSH key"
 else bad "commits aren't signed" ssh; fi

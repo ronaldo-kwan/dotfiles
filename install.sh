@@ -323,6 +323,7 @@ header "Set up configs and desktop" \
 # -y / --yes (used by fresh-install.sh), or Yes to everything chosen earlier, skips this.
 yes_flag "$@"
 ask "Continue?" || { echo "Nothing changed."; exit 0; }
+git_identity
 
 run_steps \
   "Linking config files|link_configs" \

@@ -21,6 +21,7 @@ These folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). E
 
 | File | What it is |
 |---|---|
+| `bootstrap.sh` | The one command for a fresh Ubuntu: installs git, gum and gh, downloads the repo, starts `fresh-install.sh` |
 | `fresh-install.sh` | Sets up a freshly installed Ubuntu in one go: system and firmware update, tools, then the two scripts below |
 | `install.sh` | Configs, font, Flatpak apps, extensions, settings, secret check and reminder (no sudo) |
 | `install-apps.sh` | Apps from their makers' sources, the NVIDIA driver, Steam on the NVIDIA card, weekly updates, monthly clean-up, Snap Firefox removal (sudo) |
@@ -42,6 +43,7 @@ Written by `dot save`, restored by `install.sh` (except `apt-packages.txt`, whic
 
 | File | What it is |
 |---|---|
+| `git-identity` | Name and email suggested for git commits; saved per computer in `~/.config/git/user.gitconfig` |
 | `vscode-extensions.txt` | VS Code extensions (the Catppuccin theme) |
 | `apt-packages.txt` | Ubuntu packages I installed myself (`-name` lines: installed here on purpose but not wanted on new computers): VLC, qBittorrent, Tweaks, Extension Manager, Backups and rclone (for Google Drive), Software with Flathub, GNOME wallpapers and sounds, codecs, vainfo |
 | `flatpaks.txt` | Flatpak apps: Bitwarden, Discord, Obsidian, Firefox and others |

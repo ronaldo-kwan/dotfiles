@@ -1,8 +1,9 @@
-[user]
-	name = ronaldo kwan
-	email = ronaldokwan.work@gmail.com
 [init]
 	defaultBranch = main
+[include]
+	# Your name and email for commits: per person, asked once by install.sh (see
+	# setup/git-identity), so nobody else using these dotfiles commits as you.
+	path = ~/.config/git/user.gitconfig
 [include]
 	# Commit signing with this computer's SSH key, written by `dot ssh` (and install.sh
 	# when a key exists). Git ignores it while the file doesn't exist.
