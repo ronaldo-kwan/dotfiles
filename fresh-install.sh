@@ -81,7 +81,9 @@ install_tools() {
 }
 
 # 4-6. The dotfiles scripts -------------------------------------------------------------
-run_install() { "$DOTFILES/install.sh" --yes; }
+# DEFER_DESKTOP: the look (theme, fonts, extensions, wallpaper) stays Ubuntu's until the
+# very end, then changes once, right before the restart (apply_look below).
+run_install() { DEFER_DESKTOP=1 "$DOTFILES/install.sh" --yes; }
 run_install_apps() { "$DOTFILES/install-apps.sh"; }
 
 run_steps \
@@ -102,13 +104,25 @@ note "Open Backups, connect Google Drive, and turn on \"Back Up Automatically\""
 note "Sign in to GitHub (for your notes, pushing and signed commits): gh auth login, then dot install and dot ssh"
 note "Then run dot check in a new terminal"
 echo
+# Your desktop look, all at once: right before the restart, so the screen doesn't
+# change halfway through. Also when you don't restart (or press Ctrl+C to stay).
+apply_look() {
+  note "Applying your desktop look (theme, fonts, extensions, wallpaper)"
+  "$DOTFILES/install.sh" --desktop-only > /dev/null 2>&1 || warn "some of it didn't apply: run dot install"
+}
 if ask "Restart now?"; then
   if [[ "$YES_ALL" == 1 ]]; then
+    trap 'echo; apply_look; note "Not restarting: log out and back in to see your desktop look."; exit 0' INT
     for n in $(seq 15 -1 1); do
       printf '\r    %sRestarting in %2ss.%s Press Ctrl+C to stay. ' "$C_WARN" "$n" "$C_N"
       sleep 1
     done
     echo
+    trap - INT
   fi
+  apply_look
   sudo reboot
+else
+  apply_look
+  note "Log out and back in (or restart) to see it fully, with the extensions running."
 fi

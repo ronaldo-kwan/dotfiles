@@ -37,6 +37,8 @@ The manual way, if you prefer: `sudo apt install git gum` → `git clone https:/
 
 **What you see:** the list of steps stays pinned at the top of the terminal and updates as it goes (✔ done, ↷ skipped, ✘ failed, a spinner and timer on the running one, and the current part of a nested script), while the details scroll underneath. Each step is also numbered (`[3/6]`) in the details. Long installs show a spinner and a timer instead of pages of apt output; the full output is saved in `~/.cache/dotfiles/` and, if something fails, its last lines are shown right there. A summary table at the end lists every step.
 
+**Your desktop look changes once, at the end:** the theme, fonts, extensions, dock and wallpaper stay Ubuntu's while it works, and switch to yours right before the restart (or when you press <kbd>Ctrl</kbd> + <kbd>C</kbd> to skip the restart; then log out and back in). Running `dot install` on its own applies them straight away.
+
 If a step fails, the rest still run. Fix the cause and run it again; finished parts are skipped.
 
 **One screen may still need you:**

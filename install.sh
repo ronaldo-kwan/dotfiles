@@ -111,7 +111,9 @@ install_gnome_extensions() {
       gnome-extensions install --force "$tmp/ext.zip"
       echo "    $uuid: installed"
     fi
-    # Add it to the enabled list (keeps everything already enabled).
+    # Add it to the enabled list (keeps everything already enabled). Held back during
+    # fresh-install.sh, which switches everything on just before its restart.
+    [[ "${DEFER_DESKTOP:-0}" == 1 ]] && continue
     gsettings set org.gnome.shell enabled-extensions "$(python3 -I -c '
 import sys, ast
 current = ast.literal_eval(sys.argv[1].removeprefix("@as "))
@@ -119,17 +121,25 @@ if sys.argv[2] not in current:
     current.append(sys.argv[2])
 print(current)' "$(gsettings get org.gnome.shell enabled-extensions)" "$uuid")"
   done < "$SETUP/gnome-extensions.txt"
-  gsettings set org.gnome.shell disable-user-extensions false
   rm -rf "$tmp"
+  if [[ "${DEFER_DESKTOP:-0}" == 1 ]]; then
+    note "downloaded; switched on at the end, just before the restart"; return 0
+  fi
+  gsettings set org.gnome.shell disable-user-extensions false
   echo "    enabled (they start after you log out and back in)"
 }
 
 # 6. GNOME settings ----------------------------------------------------------------
+# fresh-install.sh sets DEFER_DESKTOP=1, so the desktop doesn't change look halfway
+# through; it runs `install.sh --desktop-only` right before restarting instead.
+held_back() { note "held back: applied at the end, just before the restart"; }
+
 restore_gnome_settings() {
   if ! have dconf || ! have gsettings; then
     skip "not a GNOME desktop"
     return 0
   fi
+  [[ "${DEFER_DESKTOP:-0}" == 1 ]] && { held_back; return 0; }
   # Theme, icons, fonts, accent colour, dark mode, window buttons, workspaces, and
   # exactly which extensions are on or off (this also switches off Ubuntu's
   # built-in ones you turned off, like Ubuntu Dock and desktop icons).
@@ -164,6 +174,7 @@ set_wallpaper() {
     skip "not a GNOME desktop"
     return 0
   fi
+  [[ "${DEFER_DESKTOP:-0}" == 1 ]] && { held_back; return 0; }
   local wall_dir="$HOME/Pictures/Wallpapers/current" wall uri tmp
   wall="$wall_dir/catppuccin-tropic-island-night.jpg"
   mkdir -p "$wall_dir"
@@ -315,6 +326,17 @@ setup_safety_checks() {
 }
 
 # Main ---------------------------------------------------------------------------------
+# --desktop-only: just the visible part (extensions on, theme, fonts, shortcuts, settings,
+# wallpaper), in one go. fresh-install.sh runs this right before restarting.
+if [[ "${1:-}" == "--desktop-only" ]]; then
+  switch_on_extensions() { have gsettings && gsettings set org.gnome.shell disable-user-extensions false; return 0; }
+  run_steps \
+    "Desktop look, shortcuts and settings, extensions on or off|restore_gnome_settings" \
+    "Allow GNOME extensions|switch_on_extensions" \
+    "Wallpaper and lock screen|set_wallpaper"
+  summary; exit $?
+fi
+
 header "Set up configs and desktop" \
   "Config links, Nerd Font, VS Code extensions, Flatpak apps, GNOME extensions," \
   "desktop look, shortcuts and settings, wallpaper, app settings, Obsidian," \
