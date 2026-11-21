@@ -140,8 +140,8 @@ setup_firewall() {
   run sudo ufw default deny incoming
   run sudo ufw default allow outgoing
   # qBittorrent shares faster when other people can connect to it: open its port.
-  local port
-  port="$(sed -n 's/^Session\\Port=//p' "$HOME/.config/qBittorrent/qBittorrent.conf" 2>/dev/null | head -1)"
+  local port='' conf="$HOME/.config/qBittorrent/qBittorrent.conf"
+  [[ -f "$conf" ]] && port="$(sed -n 's/^Session\\Port=//p' "$conf" | head -1)"   # no settings, no port
   if [[ "$port" =~ ^[0-9]+$ ]]; then
     run sudo ufw allow "$port" comment qBittorrent
     note "port $port left open for qBittorrent"
