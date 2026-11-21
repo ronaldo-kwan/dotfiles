@@ -39,9 +39,11 @@ bash <(wget -qO- https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/bo
 ```
 
 1. `bootstrap.sh` first checks the system, then installs git, gum and gh, downloads the dotfiles to `~/dotfiles` and starts `fresh-install.sh`. The repo is public, so no GitHub sign-in is needed.
-   - On another Ubuntu version, an Ubuntu-based system (Mint, Pop!_OS) or a desktop other than GNOME, it says why and asks before changing anything (<kbd>Enter</kbd> = no; `--yes` carries on). On anything else it stops.
+   - On another Ubuntu version, an Ubuntu-based system (Mint, Pop!_OS) or a desktop other than GNOME, it says why and asks before changing anything (<kbd>Enter</kbd> = no). To try it there without the question, put `DOTFILES_ANY_SYSTEM=1` in front of the command. On anything else it stops.
 2. The first time, it asks your **name and email for git commits**. <kbd>Enter</kbd> keeps the suggestion from `setup/git-identity`. They're saved in `~/.config/git/user.gitconfig`, on this computer only.
 3. It asks **how questions should be answered**. Press <kbd>Enter</kbd> on **Yes to everything**, type your password once, and walk away.
+
+A command from [the website](https://ronaldo-kwan.github.io/dotfiles/) ends with `--yes`: what you picked there is the answer, so it skips this question (and the name question too, if you filled it in).
 
 <details>
 <summary>Without the one-line command</summary>
@@ -96,7 +98,7 @@ Instead of installing Ubuntu and then running the command, the Ubuntu installer 
    ```
 
 2. The installer only asks for the **disk** (choose encryption here, see [step 4](#before-installing-ubuntu)) and your **name and password**. The file answers the rest: language, keyboard, timezone, third-party drivers, codecs and updates. git, gum and gh are installed with Ubuntu.
-3. Restart and log in. A terminal opens by itself and runs the [one command](#option-1-one-command): your name and email for git, then "Yes to everything". It runs once only.
+3. Restart and log in. A terminal opens by itself and runs the [one command](#option-1-one-command) with `--yes`, so the only question is your name and email for git (not even that if the file holds them; a file from the website can). It runs once only.
 
 > [!NOTE]
 > The file is public and holds no password or other secret. It sets the language to `en_US.UTF-8`, the keyboard to `us` and the timezone to `Australia/Sydney`; [the website](https://ronaldo-kwan.github.io/dotfiles/) makes a copy with your own. The installer's menus for automated installs vary between Ubuntu releases; if yours doesn't offer it, use [option 1](#option-1-one-command).

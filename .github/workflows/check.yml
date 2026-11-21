@@ -45,16 +45,18 @@ jobs:
           printf 'ID=linuxmint\nID_LIKE="ubuntu debian"\nPRETTY_NAME="Linux Mint 22"\n' > $d/mint
           printf 'ID=fedora\nPRETTY_NAME="Fedora Linux 43"\n' > $d/fedora
           sed -n '/^check_system() {/,/^}/p' bootstrap.sh > $d/boot.sh
-          run() {  # run <lib|boot> <os> <desktop> [--yes]: prints "<exit code> <continues|stops>"
-            local load="source ./lib.sh >/dev/null"; [[ $1 == boot ]] && load="set -euo pipefail; source $d/boot.sh"
-            OS_RELEASE_FILE=$d/$2 XDG_CURRENT_DESKTOP=$3 DOTFILES_SYSTEM_CHECKED= \
-              bash -c "$load; check_system ${4:-} && echo continues" </dev/null >$d/out 2>&1
+          run() {  # run <lib|boot> <os> <desktop> [--yes|any]: prints "<exit code> <continues|stops>"
+            local load="source ./lib.sh >/dev/null" any=; [[ $1 == boot ]] && load="set -euo pipefail; source $d/boot.sh"
+            [[ ${4:-} == any ]] && any=1
+            OS_RELEASE_FILE=$d/$2 XDG_CURRENT_DESKTOP=$3 DOTFILES_SYSTEM_CHECKED= DOTFILES_ANY_SYSTEM=$any \
+              bash -c "$load; check_system ${4/any/} && echo continues" </dev/null >$d/out 2>&1
             echo "$? $(grep -q continues $d/out && echo continues || echo stops)"
           }
           for impl in lib boot; do
             test "$(run $impl ok GNOME)" = "0 continues"
             test "$(run $impl old GNOME)" = "0 stops"            # asks; no answer = no
-            test "$(run $impl old GNOME --yes)" = "0 continues"
+            test "$(run $impl old GNOME --yes)" = "0 stops"       # the website's --yes doesn't skip it
+            test "$(run $impl old GNOME any)" = "0 continues"     # DOTFILES_ANY_SYSTEM=1 does
             test "$(run $impl mint X-Cinnamon)" = "0 stops"
             test "$(run $impl ok KDE)" = "0 stops"
             test "$(run $impl fedora GNOME)" = "1 stops"

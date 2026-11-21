@@ -185,9 +185,10 @@ function settings(on, total, off) {
   return vars;
 }
 
+// --yes: the picks on this page are the answers, so setup doesn't ask how to answer.
 function command(vars) {
   const prefix = vars.map(([k, v]) => `${k}=${sq(v)} `).join("");
-  return `${prefix}bash <(wget -qO- ${data.raw}/bootstrap.sh)`;
+  return `${prefix}bash <(wget -qO- ${data.raw}/bootstrap.sh) --yes`;
 }
 
 // The picks in words, for comments in autoinstall.yaml (lines of up to ~84 characters).

@@ -8,12 +8,14 @@ mkdir -p "$HOME/.config" && : > "$marker"
 
 URL="https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/bootstrap.sh"
 # /etc/dotfiles-choices (written by an autoinstall.yaml from the website) holds what you
-# picked and your git name and email; it's read inside the new terminal.
+# picked and your git name and email; it's read inside the new terminal. --yes: the choices
+# were made in the installer, so it doesn't ask how to answer questions (only your git
+# name and email, if the file doesn't have them).
 exec xdg-terminal-exec bash -c '
   if [ -r /etc/dotfiles-choices ]; then set -a; . /etc/dotfiles-choices; set +a; fi
   echo "Setting up this computer from your dotfiles."
   echo "Waiting for the internet connection..."
   for i in $(seq 1 60); do wget -q --spider https://github.com && break; sleep 2; done
-  bash <(wget -qO- "'"$URL"'") || echo "Setup stopped. Run it again with the command in the dotfiles README."
+  bash <(wget -qO- "'"$URL"'") --yes || echo "Setup stopped. Run it again with the command in the dotfiles README."
   echo; read -rp "Press Enter to close this window. " _
 '

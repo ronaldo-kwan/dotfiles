@@ -34,7 +34,7 @@ header "Fresh install" \
   "Uses sudo and takes a while. Yes to everything also accepts the" \
   "Microsoft fonts licence (codecs) and restarts at the end."
 yes_flag "$@"
-check_system "$@"
+check_system
 # gum draws the menus. If the first command didn't install it, get it now (needs the
 # password and a correct clock first), so the questions below are menus too.
 if ! have gum && [[ -z "$YES_ALL" && -t 0 ]]; then

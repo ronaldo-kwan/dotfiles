@@ -19,7 +19,8 @@ set -euo pipefail
 
 # Is this a system these dotfiles are made for? Ubuntu 26.04 with GNOME carries on without
 # a word. Another Ubuntu version, an Ubuntu-based system (Mint, Pop!_OS) or another desktop
-# says why and asks first (Enter = no; --yes carries on). Anything else stops before
+# says why and asks first (Enter = no; DOTFILES_ANY_SYSTEM=1 carries on, --yes doesn't, since
+# the website's commands have it). Anything else stops before
 # changing anything. OS_RELEASE_FILE is for tests. (A copy of check_system in lib.sh.)
 check_system() {
   local id like ver name problems=() a
@@ -40,11 +41,11 @@ check_system() {
   (( ${#problems[@]} )) || return 0
   echo
   for a in "${problems[@]}"; do printf '! %s\n' "$a"; done
-  for a in "$@"; do [[ "$a" == -y || "$a" == --yes || "$a" == --all ]] && { echo "  Carrying on (--yes)."; return 0; }; done
+  [[ -n "${DOTFILES_ANY_SYSTEM:-}" ]] && { echo "  Carrying on (DOTFILES_ANY_SYSTEM is set)."; return 0; }
   a=""; if [[ -t 0 ]]; then read -rp "Carry on anyway? [y/N] " a || true; fi
   [[ "$a" =~ ^[Yy] ]] || { echo "Nothing was changed."; exit 0; }
 }
-check_system "$@"
+check_system
 export DOTFILES_SYSTEM_CHECKED=1   # fresh-install.sh doesn't ask again
 
 REPO="${DOTFILES_REPO:-https://github.com/ronaldo-kwan/dotfiles.git}"
