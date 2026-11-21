@@ -1,80 +1,125 @@
+<div align="center">
+
 # dotfiles
 
-My Ubuntu (GNOME) setup: bash, ble.sh, Starship, fzf, zoxide, eza, bat, Ghostty, btop, lazygit and VS Code, all in Catppuccin Mocha with Roboto fonts everywhere (RobotoMono Nerd Font in the terminal), plus my apps, desktop settings and weekly updates.
+**My Ubuntu 26.04 GNOME setup, rebuilt on a new computer with one command.**
 
-## New computer
+Terminal, desktop look, apps and upkeep, all in Catppuccin Mocha with Roboto fonts.
 
-**Pick what you want on the website: [ronaldo-kwan.github.io/dotfiles](https://ronaldo-kwan.github.io/dotfiles/).** Choose groups (terminal, desktop look, updates, firewall, ...) and single apps, then copy your own one-line command or download an `autoinstall.yaml`. Or take everything:
+[![check](https://github.com/ronaldo-kwan/dotfiles/actions/workflows/check.yml/badge.svg)](https://github.com/ronaldo-kwan/dotfiles/actions/workflows/check.yml)
+[![website](https://github.com/ronaldo-kwan/dotfiles/actions/workflows/pages.yml/badge.svg)](https://ronaldo-kwan.github.io/dotfiles/)
+[![Ubuntu 26.04](https://img.shields.io/badge/Ubuntu-26.04-E95420?logo=ubuntu&logoColor=white)](https://ubuntu.com/download/desktop)
+[![MIT licence](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
 
-Install Ubuntu 26.04 (first read [Before installing](docs/new-computer.md#before-installing-ubuntu-lenovo-legion-5)), open a terminal (<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>) and run this one command. No GitHub account or sign-in needed:
+[**Pick your setup on the website**](https://ronaldo-kwan.github.io/dotfiles/) · [Quick start](#quick-start) · [Everyday use](#everyday-use) · [Docs](#documentation)
 
-```bash
-bash <(wget -qO- https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/bootstrap.sh)
+</div>
+
+## What's inside
+
+| Area | What you get |
+|---|---|
+| **Terminal** | bash with [ble.sh](https://github.com/akinomyoga/ble.sh), the [Starship](https://starship.rs) prompt, [Ghostty](https://ghostty.org), fzf, zoxide, eza, bat, btop and lazygit, with the RobotoMono Nerd Font |
+| **Desktop** | Adwaita dark with a blue accent, Roboto fonts, close-only window buttons, 4 workspaces, GNOME extensions, keyboard shortcuts, dock and wallpaper |
+| **Apps** | Chrome, VS Code, Claude Desktop, Claude Code, Proton VPN, OBS, ONLYOFFICE and Steam from their makers; Ubuntu apps; Flatpaks such as Firefox, Bitwarden, Discord and Obsidian |
+| **System** | NVIDIA driver, firmware updates, firewall, weekly updates and a monthly clean-up |
+| **Safety** | A secret check before every commit, signed commits, a weekly reminder to save settings, and a health check |
+
+## Quick start
+
+> [!TIP]
+> Only want some of it? [The website](https://ronaldo-kwan.github.io/dotfiles/) lets you pick groups and single apps, then gives you your own command or `autoinstall.yaml`.
+
+### Option 1: one command after installing Ubuntu
+
+1. Install Ubuntu 26.04. On a Lenovo Legion 5, read [Before installing Ubuntu](docs/new-computer.md#before-installing-ubuntu) first.
+2. Open a terminal (<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>) and run:
+
+   ```bash
+   bash <(wget -qO- https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/bootstrap.sh)
+   ```
+
+3. Type your name and email for git, press <kbd>Enter</kbd> for **Yes to everything**, and type your password once. It runs by itself and restarts at the end.
+
+No GitHub account or sign-in is needed. Afterwards, `gh auth login` signs you in to GitHub for your notes, pushing and signed commits.
+
+### Option 2: automated install from the Ubuntu installer
+
+In the Ubuntu installer, choose the **automated installation** and give it this address:
+
+```text
+https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/setup/autoinstall.yaml
 ```
 
-It installs git and gum, downloads the dotfiles to `~/dotfiles`, asks your name and email for git (once), and one question: press <kbd>Enter</kbd> for **Yes to everything**, type your password once, and it runs by itself: it updates the system, installs everything and restarts at the end. Afterwards, `gh auth login` signs you in to GitHub for your notes, pushing and signed commits. Details: [docs/new-computer.md](docs/new-computer.md).
+You only pick the disk and type your name and password. The setup starts by itself at your first login.
 
-**Even simpler, from the installer:** choose the automated installation and give it `https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/setup/autoinstall.yaml`. You only pick the disk and type your name and password; at your first login the setup starts by itself. See [Automated install](docs/new-computer.md#automated-install-from-the-installer).
+Both options are explained step by step in [Setting up a new computer](docs/new-computer.md).
 
-## Everyday
+## Everyday use
 
-Everything goes through one command, `dot`. On its own, **`dot` opens a menu**: pick with the arrow keys, Enter runs it, and the top shows whether anything is unsaved. Or type the command directly (`dot help` lists them; <kbd>Tab</kbd> completes):
+Everything goes through one command, `dot`. On its own, **`dot` opens a menu**: arrow keys to pick, <kbd>Enter</kbd> to run, and the top line shows whether anything is unsaved. Or type a command directly (`dot help` lists them; <kbd>Tab</kbd> completes):
 
 | Command | What it does |
 |---|---|
 | `dot save` | Refreshes the snapshots in `setup/` (apps, extensions, dock, desktop settings) and shows what changed |
-| `dot push "message"` | Saves to GitHub: commits everything and pushes (the secret check runs first) |
-| `dot notes` | Same for your Obsidian notes |
-| `dot check` | Health check: links, tools, apps, extensions, firewall, signing, backups, unsaved changes. Changes nothing; each ✘ says what fixes it |
-| `dot check --fix` | The same, then offers to fix each problem in order (asks first; Enter = yes) |
-| `dot status` / `dot cd` / `dot edit` | What changed / go to `~/dotfiles` / open it in VS Code |
-| `dot install`, `dot apps`, `dot fresh`, `dot upgrade`, `dot ssh` | The setup scripts (see below) |
-| `update` | Updates Ubuntu packages now (it also happens weekly by itself) |
+| `dot push "message"` | Commits everything and pushes to GitHub (the secret check runs first) |
+| `dot notes` | The same for your Obsidian notes |
+| `dot check` | Health check: links, tools, apps, extensions, firewall, signing, backups, unsaved changes. Changes nothing |
+| `dot check --fix` | The same, then offers to fix each problem in order (asks first) |
+| `dot status` · `dot cd` · `dot edit` | What changed · go to `~/dotfiles` · open it in VS Code |
+| `dot install` · `dot apps` · `dot fresh` | Run the setup scripts again (each is safe to rerun) |
+| `update` | Update Ubuntu packages now (it also happens weekly by itself) |
 
-`dotsave` and `dotcheck` still work as before.
+> [!NOTE]
+> Config files like `~/.bashrc` are links into `~/dotfiles`, so editing either place edits the same file.
 
-Config files like `~/.bashrc` are links into this folder, so editing either place edits the same file. A **weekly reminder** (Sunday evening, or your next login) tells you if settings changed since the last `dot save`, you installed Ubuntu apps that aren't saved, automatic backups are off, or changes aren't committed. It never commits anything.
+### When to run what
 
-A **secret check** runs before every commit here and in your notes repo, and stops the commit if something looks like a password, token or key. False alarm? `git commit --no-verify`.
+| When | Run |
+|---|---|
+| You changed settings, apps, extensions or the dock | `dot save`, then `dot push "Describe the change"` |
+| Something seems off or missing | `dot check --fix` |
+| First time on a computer, for **Verified** commits | `dot ssh` (one approval in the browser) |
+| After upgrading Ubuntu to a new release | `dot upgrade` ([why](docs/maintenance.md#after-upgrading-ubuntu)) |
 
-## Signed commits
+### What runs by itself
 
-```bash
-dot ssh
-```
+- **Weekly updates** for Ubuntu and Flatpak apps, and a **monthly clean-up** of unused packages.
+- **A weekly reminder** (Sunday evening, or your next login) if settings changed since the last `dot save`, Ubuntu apps aren't saved, backups are off, or changes aren't pushed. It never commits anything.
+- **A secret check** before every commit here and in your notes repo. It stops the commit if something looks like a password, token or key.
 
-Creates an SSH key for this computer (if there's none), signs your commits with it, and adds it to GitHub, so your commits show **Verified**. One approval in the browser. Run it once per computer.
+## Use it yourself
 
-## After upgrading Ubuntu to a new release
+You're welcome to use or adapt this. The scripts install *my* apps and settings, so:
 
-```bash
-dot upgrade
-```
-
-The upgrade switches off the apps' own update sources (Chrome, VS Code, Claude, Proton VPN, ONLYOFFICE, OBS). This switches them back on, updates everything, puts back anything that went missing (and removes the Snap Firefox if it came back), reinstalls GNOME extensions for the new GNOME, and checks the NVIDIA driver. See [docs/maintenance.md](docs/maintenance.md#after-upgrading-ubuntu).
-
-## Using this yourself
-
-You're welcome to use or adapt this (MIT licence). The scripts install *my* apps and settings, so:
-
-1. **Fork** this repo on GitHub, then in your fork edit:
-   - `setup/git-identity`: your name and email (suggested for git commits; saved per computer, never committed)
+1. **Fork** this repo, then in your fork edit:
+   - `setup/git-identity`: your name and email, suggested for git commits (saved per computer, never committed)
    - `setup/apt-packages.txt`, `setup/flatpaks.txt`, `setup/vscode-extensions.txt`, `setup/gnome-extensions.txt`: your apps
-   - `install-apps.sh` (the `APPS` list): which outside apps to install (Chrome, VS Code, Steam, ...)
-   - the configs in `bash/`, `ghostty/`, `starship/` ... to taste; `claude/` holds my Claude Code instructions, delete it if you don't want them
+   - the `APPS` list in `install-apps.sh`: which outside apps to install
+   - the configs in `bash/`, `ghostty/`, `starship/` and so on, to taste. `claude/` holds my Claude Code instructions; delete it if you don't want them.
 2. On a fresh Ubuntu, run the one command with your fork:
+
    ```bash
    DOTFILES_REPO=https://github.com/YOU/dotfiles.git bash <(wget -qO- https://raw.githubusercontent.com/YOU/dotfiles/main/bootstrap.sh)
    ```
-3. On your current computer, `dot save` then saves your own desktop settings into `setup/`.
 
-Your notes, if any, aren't part of it: `install.sh` looks for a private repo of yours called `obsidian-vault` and skips it if there's none.
+3. On your current computer, run `dot save` to save your own desktop settings into `setup/`.
 
-## More
+Notes aren't part of it: `install.sh` looks for a private repo of yours called `obsidian-vault` and skips it if there's none.
 
-- [docs/new-computer.md](docs/new-computer.md): before installing, what `fresh-install.sh` does, the RTX 5060, manual setup
-- [docs/apps.md](docs/apps.md): `install-apps.sh`, where each app comes from, Steam, Obsidian, GNOME extensions
-- [docs/maintenance.md](docs/maintenance.md): `dot save`, `dot check`, `dot ssh`, weekly updates, monthly clean-up, the reminder, the secret check, `post-upgrade.sh`, GitHub checks
-- [docs/files.md](docs/files.md): what every file and folder here is
+## Documentation
 
-MIT licensed (see [LICENSE](LICENSE)); the Catppuccin themes keep their own MIT licence.
+| Page | What it covers |
+|---|---|
+| [Setting up a new computer](docs/new-computer.md) | Before installing, both install options, what the setup does, after the restart, disk encryption, the RTX 5060, manual setup |
+| [Apps](docs/apps.md) | `install-apps.sh`, where each app comes from, Steam, Obsidian, GNOME extensions |
+| [Keeping things up to date](docs/maintenance.md) | `dot save`, `dot check`, `dot ssh`, the reminder, the secret check, updates, upgrading Ubuntu, GitHub checks, the website |
+| [What's in this repo](docs/files.md) | Every file and folder |
+
+## Credits
+
+Built with [GNU Stow](https://www.gnu.org/software/stow/) and [gum](https://github.com/charmbracelet/gum). Colours by [Catppuccin](https://catppuccin.com); the wallpaper is from [catppuccin-wallpapers](https://github.com/zhichaoh/catppuccin-wallpapers).
+
+## Licence
+
+[MIT](LICENSE). The Catppuccin themes keep their own MIT licence.
