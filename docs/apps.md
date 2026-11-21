@@ -95,6 +95,8 @@ The [secret check](maintenance.md#secret-check-before-commits) also guards commi
 
 ## GNOME extensions
 
-`install.sh` installs and enables the extensions in [`setup/gnome-extensions.txt`](../setup/gnome-extensions.txt) (Alphabetical App Grid, Caffeine, Clipboard Indicator) and restores their settings. It also sets exactly which extensions are on or off, including Ubuntu's built-in ones: Ubuntu Dock, desktop icons and web search are off. They start after you log out and back in.
+`install.sh` installs and enables the extensions in [`setup/gnome-extensions.txt`](../setup/gnome-extensions.txt) (Alphabetical App Grid, Blur my Shell, Caffeine, Clipboard Indicator) and restores their settings. It also sets exactly which extensions are on or off, including Ubuntu's built-in ones: Ubuntu Dock, desktop icons and web search are off. They start after you log out and back in.
+
+**Blur my Shell** gives the glass look: a blurred top bar, overview, app grid and lock screen, and frosted Ghostty windows. Ghostty's background is 85% opaque (`background-opacity` in its config) and Blur my Shell blurs what's behind it; it's set to keep the window itself, and so the text, fully solid (`opacity=255` under `[blur-my-shell/applications]` in [`setup/gnome-extension-settings.dconf`](../setup/gnome-extension-settings.dconf)). Its per-app blur is marked experimental by its author. It switches itself off in Power Saver mode.
 
 To add another extension, put its ID in that file. The ID is shown on its extensions.gnome.org page, or by `gnome-extensions list`.

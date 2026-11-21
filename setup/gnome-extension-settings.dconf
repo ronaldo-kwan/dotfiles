@@ -1,3 +1,15 @@
+[blur-my-shell]
+settings-version=10
+
+[blur-my-shell/applications]
+blur=true
+dynamic-opacity=false
+opacity=255
+whitelist=['com.mitchellh.ghostty']
+
+[blur-my-shell/popup]
+screenshot-corner-radius=36
+
 [caffeine]
 user-enabled=true
 

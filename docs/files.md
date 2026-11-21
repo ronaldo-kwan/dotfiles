@@ -40,7 +40,7 @@ These folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). E
 | `bash` | `~/.bashrc` | Aliases (`update`, the `dot` command, ...), history, and loading for ble.sh, Starship, zoxide, fzf, eza and bat; ble.sh's colours as you type, and man pages in colour through bat |
 | `git` | `~/.gitconfig` | `main` as the default branch, `gh` for GitHub sign-in, and includes for your per-computer name and email (`~/.config/git/user.gitconfig`) and signing (`~/.config/git/signing.gitconfig`) |
 | `starship` | `~/.config/starship.toml` | The prompt: the shape of Starship's `tokyo-night` preset, in Catppuccin Mocha colours, with the Ubuntu logo, how long a slow command took, and a red `❯` after one that failed |
-| `ghostty` | `~/.config/ghostty/config` | Catppuccin Mocha (title bar too), Nerd Font, a bar cursor, a little extra line spacing, padding |
+| `ghostty` | `~/.config/ghostty/` | Catppuccin Mocha (title bar too), a frosted-glass background (85% opaque, blurred behind by Blur my Shell), Nerd Font, a bar cursor with a smooth trail (`shaders/cursor-trail.glsl`; delete its `custom-shader` line to switch it off), a little extra line spacing, padding, the window's starting size |
 | `btop` | `~/.config/btop/` | Catppuccin Mocha theme and settings |
 | `lazygit` | `~/.config/lazygit/config.yml` | Catppuccin Mocha and Nerd Font icons |
 | `bat` | `~/.config/bat/` | Catppuccin Mocha theme (`install.sh` runs `batcat cache --build` for it), line numbers and git changes |

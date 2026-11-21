@@ -1,6 +1,7 @@
 # GNOME Shell extensions to install from extensions.gnome.org.
 # install.sh downloads the version matching this computer's GNOME and enables them.
 AlphabeticalAppGrid@stuarthayhurst
+blur-my-shell@aunetx
 caffeine@patapon.info
 clipboard-indicator@tudmotu.com
 

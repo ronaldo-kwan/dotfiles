@@ -6,6 +6,12 @@
 theme = Catppuccin Mocha
 # The window's title bar and tabs take the terminal's colours instead of GNOME's grey
 window-theme = ghostty
+# Frosted glass: the background (not the text) is slightly see-through, and the Blur my
+# Shell extension blurs what's behind Ghostty's windows (setup/gnome-extension-settings.dconf,
+# [blur-my-shell/applications]). Without that extension (or on KDE, where Ghostty blurs
+# by itself) it's see-through without blur. 1 makes it solid again.
+background-opacity = 0.85
+background-blur = true
 
 # Font
 font-family = RobotoMono Nerd Font
@@ -18,11 +24,22 @@ cursor-style = bar
 cursor-style-blink = true
 cursor-color = #f5e0dc
 
+# Cursor trail: the cursor glides to where it moves, with a short fading streak
+# (shaders/cursor-trail.glsl). It redraws while the window is focused, which costs a
+# little battery; delete this line to switch it off.
+custom-shader = shaders/cursor-trail.glsl
+
 # Breathing room around the text, in the background colour right to the edges
-window-padding-x = 10
-window-padding-y = 8
+window-padding-x = 14
+window-padding-y = 12
 window-padding-balance = true
 window-padding-color = extend
+
+# A new window opens at a comfortable size (in characters and lines)
+window-width = 110
+window-height = 32
+# Split windows: the one you're not typing in is dimmed a little
+unfocused-split-opacity = 0.85
 
 # Hide the mouse pointer while typing
 mouse-hide-while-typing = true

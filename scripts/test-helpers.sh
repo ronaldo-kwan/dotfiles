@@ -126,6 +126,18 @@ else
   echo "  (skipped: no script command)"
 fi
 
+echo "Terminal configs"
+# Every custom-shader the Ghostty config names is a file next to it (Ghostty only logs a
+# missing or broken shader, so nothing else would notice).
+shaders_exist() {
+  local s ok=0
+  while read -r s; do
+    [[ -f "$ROOT/ghostty/.config/ghostty/$s" ]] || { echo "      missing: $s"; ok=1; }
+  done < <(sed -n 's/^custom-shader *= *//p' "$ROOT/ghostty/.config/ghostty/config")
+  return "$ok"
+}
+t "Ghostty's shaders are in the ghostty package" shaders_exist
+
 echo "App table (install-apps.sh)"
 t "every app: entry has its APP_PARTS" bash -c '
   for e in "${@:2}"; do c="${e%%|*}"; [[ "$c" != app:* ]] || [[ " $1 " == *" $c "* ]] || { echo "      missing APP_PARTS for $c"; exit 1; }; done' \
