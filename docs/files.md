@@ -38,7 +38,7 @@ These folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). E
 |---|---|---|
 | `bash` | `~/.bashrc` | Aliases (`update`, the `dot` command, ...), history, and loading for ble.sh, Starship, zoxide, fzf, eza and bat |
 | `git` | `~/.gitconfig` | `main` as the default branch, `gh` for GitHub sign-in, and includes for your per-computer name and email (`~/.config/git/user.gitconfig`) and signing (`~/.config/git/signing.gitconfig`) |
-| `starship` | `~/.config/starship.toml` | Minimal prompt (`pure-preset`) |
+| `starship` | `~/.config/starship.toml` | The Tokyo Night prompt (Starship's `tokyo-night` preset, with the Ubuntu logo) |
 | `ghostty` | `~/.config/ghostty/config` | Catppuccin Mocha, Nerd Font, padding |
 | `btop` | `~/.config/btop/` | Catppuccin Mocha theme and settings |
 | `lazygit` | `~/.config/lazygit/config.yml` | Catppuccin Mocha and Nerd Font icons |
