@@ -597,7 +597,9 @@ ui_panel_draw() {
       pending)   icon='·' col="$C_DIM";  right='' ;;
       running)   icon="${frames:now%10:1}" col="$C_B"; right="$(fmt_time $((now - start)))"
                  [[ -n "$sub" ]] && name+=" › $sub" ;;
-      ok)        icon='✔' col="$C_OK";   right="$( ((d >= 2)) && fmt_time "$d")" ;;
+      # (Not right="$( ((d >= 2)) && ...)": that assignment fails for a short step, which
+      # stops a step that's drawing the panel from its spinner, under set -e.)
+      ok)        icon='✔' col="$C_OK";   right=''; if (( d >= 2 )); then right="$(fmt_time "$d")"; fi ;;
       already)   icon='✔' col="$C_DIM";  right='already done' ;;
       skip)      icon='↷' col="$C_WARN"; right='skipped' ;;
       notneeded) icon='–' col="$C_DIM";  right='not needed' ;;

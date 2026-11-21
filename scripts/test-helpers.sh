@@ -92,6 +92,27 @@ t "repo_state of a clean repo without upstream" same "$(repo_state "$T/repo")" "
 touch "$T/repo/new"
 t "repo_state with a new file" same "$(repo_state "$T/repo")" "uncommitted"
 
+echo "Progress panel (in a terminal)"
+# The pinned step list only shows in a real terminal, which GitHub's checks don't have, so
+# this runs two steps in one made by `script`. A step with a spinner after a quick one used
+# to fail with "exit code 1" and no message (a panel redraw under set -e).
+if have script; then
+  cat > "$T/panel.sh" <<EOF
+set -uo pipefail
+source "$ROOT/lib.sh"
+fast() { :; }
+slow() { quiet "a quiet command" sleep 0.3; echo "    SPINNER-STEP-FINISHED"; }
+run_steps "Fast step|fast" "Step with a spinner|slow"
+summary
+EOF
+  # As if started on its own (UI_DEPTH would make it a nested script, which has no panel).
+  panel="$(script -qc "stty rows 40 cols 100; env -u NO_COLOR -u DOT_PLAIN -u UI_LOG -u UI_DEPTH TERM=xterm-256color bash '$T/panel.sh'" /dev/null 2>&1 | tr -d '\r')"
+  t "the panel shows (its · marks a step still to come)" grep -q '· Step with a spinner' <<< "$panel"
+  t "a spinner step after a quick step finishes" grep -q 'SPINNER-STEP-FINISHED' <<< "$panel"
+else
+  echo "  (skipped: no script command)"
+fi
+
 echo "App table (install-apps.sh)"
 t "every app: entry has its APP_PARTS" bash -c '
   for e in "${@:2}"; do c="${e%%|*}"; [[ "$c" != app:* ]] || [[ " $1 " == *" $c "* ]] || { echo "      missing APP_PARTS for $c"; exit 1; }; done' \
