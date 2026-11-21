@@ -122,7 +122,7 @@ jobs:
           test ! -e /etc/cron.weekly/system-update
           left="$(find "$HOME" -type l | while read -r l; do [[ "$(readlink -f "$l")" == "$PWD"/* ]] && echo "$l"; done)"
           test -z "$left" || { echo "still linked: $left"; exit 1; }
-          test -f "$HOME/.bashrc" && ! test -L "$HOME/.bashrc"
+          if [[ -L "$HOME/.bashrc" || ! -f "$HOME/.bashrc" ]]; then echo "~/.bashrc is still a link, or missing"; exit 1; fi
           test -z "$(git config core.hooksPath || true)"
 
   choices:
