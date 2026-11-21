@@ -428,8 +428,9 @@ done
 title="Apps and system jobs"; [[ "$DRY_RUN" == 1 ]] && title+=" (dry run: installs nothing)"
 header "$title" \
   "Apps from their makers' official sources, kept updated by apt:" \
-  "Chrome, VS Code, Claude, Proton VPN, OBS, ONLYOFFICE, Steam, Ubuntu apps;" \
-  "the NVIDIA driver, weekly updates, monthly clean-up, no Snap Firefox." \
+  "Chrome, VS Code, Claude Desktop, Claude Code, ChatGPT, Proton VPN," \
+  "OBS, ONLYOFFICE, Steam and Ubuntu apps; the NVIDIA driver, weekly" \
+  "updates, monthly clean-up, the firewall and no Snap Firefox." \
   "Uses sudo. Yes to everything also accepts the Microsoft fonts licence."
 # shellcheck disable=SC2034  # read by step_begin in lib.sh
 STEP_TOTAL=${#APPS[@]}

@@ -1,7 +1,7 @@
 # Checks every push: script mistakes (shellcheck), and that install.sh works on a
 # clean Ubuntu 26.04 (a container without a desktop, so desktop steps are skipped).
 # Also runs every Monday, so a maker changing a download link or signing key
-# (Chrome, VS Code, Claude, Proton VPN, ONLYOFFICE) shows up as a failed run and an
+# (Chrome, VS Code, Claude, ChatGPT, Proton VPN, ONLYOFFICE) shows up as a failed run and an
 # email from GitHub, not on the day you set up a new computer.
 name: check
 
