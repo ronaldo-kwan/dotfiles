@@ -3,6 +3,7 @@
 # install-apps.sh. Changes nothing outside a temporary folder; needs no network or sudo.
 # Run by GitHub's checks (.github/workflows/check.yml), or by hand:
 #   bash scripts/test-helpers.sh
+# shellcheck disable=SC2034  # DOTFILES_CHOICES and DOTFILES_SKIP are set here for chosen (lib.sh)
 
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
