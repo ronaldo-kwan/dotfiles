@@ -11,7 +11,8 @@
 set -euo pipefail
 
 DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT="${1:-$DOTFILES/setup}/apps"   # optional argument: a different setup folder
+SETUP_DIR="${1:-$DOTFILES/setup}"   # optional argument: a different setup folder
+OUT="$SETUP_DIR/apps"
 # Only the parts this computer chose on the website (see snapshot.sh); everything otherwise.
 # shellcheck source=../lib.sh
 source "$DOTFILES/lib.sh"
@@ -19,11 +20,16 @@ CFG="$HOME/.config"
 
 mkdir -p "$OUT"
 
-# 1. Apps that start at login: one small .desktop file per app
-if chosen desktop; then rm -rf "$OUT/autostart"; fi
-if chosen desktop && compgen -G "$CFG/autostart/*.desktop" >/dev/null; then
-  mkdir -p "$OUT/autostart"
-  cp "$CFG"/autostart/*.desktop "$OUT/autostart/"
+# 1. Apps that start at login: one small .desktop file per app, only for the Flatpak apps
+#    in flatpaks.txt. install.sh puts back only those (each file is named after its app's
+#    Flatpak ID), so others (an app you since removed, one from elsewhere) aren't saved.
+if chosen desktop; then
+  rm -rf "$OUT/autostart"
+  for f in "$CFG"/autostart/*.desktop; do
+    [[ -f "$f" ]] && grep -qxF "$(basename "$f" .desktop)" "$SETUP_DIR/flatpaks.txt" 2>/dev/null || continue
+    mkdir -p "$OUT/autostart"
+    cp "$f" "$OUT/autostart/"
+  done
 fi
 
 # 2. Default apps

@@ -22,7 +22,7 @@ dotfiles/
 ├── dot, check.sh, lib.sh             the dot command, the health check, shared helpers
 ├── bash/ git/ starship/ ghostty/ …   config files, linked into ~ by Stow
 ├── setup/                            snapshots: apps, extensions, desktop settings
-├── scripts/                          snapshot, SSH and website helpers
+├── scripts/                          snapshot, SSH, website and test helpers
 ├── system/                           weekly and monthly jobs, the first-login step
 ├── site/                             the installer website
 ├── docs/                             these pages (images/: the README screenshot)
@@ -74,6 +74,7 @@ These folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). E
 | `scripts/snapshot.sh` | Writes the snapshots in `setup/` (used by `dot save`, and by `check.sh` into a temporary copy) |
 | `scripts/dump-desktop-settings.sh` | Writes `setup/desktop-settings.dconf` |
 | `scripts/save-app-settings.sh` | Writes `setup/apps/` |
+| `scripts/test-helpers.sh` | Quick checks of the helpers in `lib.sh` and the app table in `install-apps.sh`; GitHub's checks run it |
 
 ### Shared
 
@@ -97,7 +98,7 @@ Written by `dot save` and restored by `install.sh`, except `apt-packages.txt`, w
 | `gnome-extension-settings.dconf` | Settings for Caffeine, Clipboard Indicator, Ubuntu Dock, Tiling Assistant |
 | `dock-favorites.txt` | Apps pinned to the dock, in order |
 | `gnome-extensions.txt` | GNOME extensions that `install.sh` installs from extensions.gnome.org |
-| `apps/` | Apps that start at login, default apps (Chrome as browser, Showtime for video, Calendar), qBittorrent settings and theme, Obsidian vault settings, theme and the list of community plugins (not the notes or the plugins themselves). Cookies and window sizes are left out, and home-folder paths are stored as `@HOME@` |
+| `apps/` | Apps that start at login (only Flatpak apps from `flatpaks.txt`, since only those are put back), default apps (Chrome as browser, Showtime for video, Calendar), qBittorrent settings and theme, Obsidian vault settings, theme and the list of community plugins (not the notes or the plugins themselves). Cookies and window sizes are left out, and home-folder paths are stored as `@HOME@` |
 | `keys/chatgpt.asc` | OpenAI's public signing key for the ChatGPT app's update source (OpenAI doesn't publish it at an address of its own); `install-apps.sh` checks its fingerprint |
 | `autoinstall.yaml` | Answers for the Ubuntu installer's [automated install](new-computer.md#option-2-automated-install) (no passwords in it) |
 

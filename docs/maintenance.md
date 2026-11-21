@@ -177,10 +177,29 @@ Then restart. If an extension is still off, switch it on in the Extensions app.
 
 [`.github/workflows/check.yml`](../.github/workflows/check.yml) runs on every push, and every Monday, so a maker changing a download link or signing key shows up as a failed run (GitHub emails you) rather than on the day you set up a new computer. In a clean Ubuntu 26.04 container it runs:
 
-- `shellcheck` on all scripts, and the system check (both copies must agree)
+- `shellcheck` on all scripts, the system check (both copies must agree), and [`scripts/test-helpers.sh`](../scripts/test-helpers.sh): quick checks of the shared helpers in `lib.sh` and of the app table in `install-apps.sh` (run it yourself with `bash scripts/test-helpers.sh`)
+- dry runs of `install.sh` (which also checks the pinned downloads) and `uninstall.sh --apps`, which must change nothing
 - `install.sh` (twice), a dry run of `install-apps.sh`, `post-upgrade.sh` on test files, and `uninstall.sh --apps` (no links, test apps or jobs may be left)
 - the secret check, the website build and a schema check of `setup/autoinstall.yaml`
 - the website's choices: `install.sh` with only some parts chosen must link only those, and `dot check` must show the rest as "not chosen"
+
+### Pinned downloads
+
+The fonts and the wallpaper aren't in this repo. `install.sh` downloads one fixed version of each and uses it only if its checksum matches, so every computer gets the same files and a changed file is never used:
+
+| What | Where (in `install.sh`) |
+|---|---|
+| RobotoMono Nerd Font | `NERD_FONT_URL` (a Nerd Fonts release) and `NERD_FONT_SHA256` |
+| Roboto Mono | `ROBOTO_MONO_URL` (a commit of Google Fonts' repo) and `ROBOTO_MONO_FILES` |
+| Wallpaper | `WALLPAPER_URL` and `WALLPAPER_SHA256` |
+
+To move to a newer version, change the address, download the file and put its checksum next to it:
+
+```bash
+curl -fsSL -o /tmp/f "<new address>" && sha256sum /tmp/f
+```
+
+Nerd Fonts publishes its checksums with each release (`SHA-256.txt`), so you can compare. Then run `DRY_RUN=1 dot install --yes`: it downloads and checks the files without installing them.
 
 [Dependabot](../.github/dependabot.yml) opens a pull request once a month when the actions the workflows use have new versions. The checks run on it; merge it on GitHub if they pass.
 

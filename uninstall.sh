@@ -15,7 +15,7 @@
 #   ~/dotfiles/uninstall.sh                 asks first
 #   ~/dotfiles/uninstall.sh --apps          also the apps (a checklist)
 #   ~/dotfiles/uninstall.sh --apps --yes    everything, without asking
-#   DRY_RUN=1 ~/dotfiles/uninstall.sh --apps --yes   only shows what it would do
+#   DRY_RUN=1 ~/dotfiles/uninstall.sh --apps --yes   only shows what it would do (all of it)
 
 set -uo pipefail
 # shellcheck source=lib.sh
@@ -23,11 +23,14 @@ source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib.sh"   # VAULT, WALLP
 # shellcheck source=install-apps.sh
 source "$DOTFILES/install-apps.sh"   # only loads APPS and APP_PARTS: the apps and what each adds
 
+# Each step below changes things only through run, copy and did (lib.sh), so a dry run
+# (DRY_RUN=1) shows the same steps as "would run: ..." lines and changes nothing.
+
 # 1. The weekly reminder runs from a linked unit file, so switch it off before unlinking.
 reminder_off() {
   if has_user_systemd; then
-    systemctl --user disable --now dotfiles-reminder.timer >/dev/null 2>&1 || true
-    echo "    weekly reminder off"
+    run_quiet systemctl --user disable --now dotfiles-reminder.timer || true
+    did "weekly reminder off"
   else
     skip "no systemd user session"
   fi
@@ -36,21 +39,21 @@ reminder_off() {
 # 2. Remove the links into ~/dotfiles (only those: a file of yours with the same name
 #    stays), then put back what was there before.
 unlink_configs() {
-  local f src target n=0 links=0
+  local f src target n=0 links=0 gone
   while IFS= read -r -d '' f; do
-    src="$DOTFILES/$f" target="$HOME/${f#*/}"
+    src="$DOTFILES/$f" target="$HOME/${f#*/}" gone=0
     if [[ -L "$target" && "$(readlink -f "$target")" == "$(readlink -f "$src")" ]]; then
-      rm "$target"; links=$((links + 1))
-      rmdir --ignore-fail-on-non-empty "$(dirname "$target")" 2>/dev/null || true
+      run rm "$target"; links=$((links + 1)) gone=1
+      [[ "$DRY_RUN" == 1 ]] || rmdir --ignore-fail-on-non-empty "$(dirname "$target")" 2>/dev/null || true
     fi
-    [[ -e "$target" || -L "$target" ]] && continue
+    (( gone )) || [[ ! -e "$target" && ! -L "$target" ]] || continue
     if [[ -e "$target.orig" ]]; then
-      mv "$target.orig" "$target"; echo "    put back your ${target/#$HOME/\~}"; n=$((n + 1))
+      run mv "$target.orig" "$target"; did "put back your ${target/#$HOME/\~}"; n=$((n + 1))
     elif [[ -f "/etc/skel/${f#*/}" ]]; then
-      cp "/etc/skel/${f#*/}" "$target"; echo "    ${target/#$HOME/\~}: Ubuntu's default"; n=$((n + 1))
+      run cp "/etc/skel/${f#*/}" "$target"; did "${target/#$HOME/\~}: Ubuntu's default"; n=$((n + 1))
     fi
   done < <(config_files "${PACKAGES[@]}")
-  echo "    $links links removed, $n of your own files put back"
+  did "$links links removed, $n of your own files put back"
 }
 
 # 3. ~/.gitconfig was a link that included your name and email from
@@ -60,9 +63,9 @@ keep_git_identity() {
   [[ -f "$f" ]] || { skip "no saved git name and email"; return 0; }
   name="$(git config --file "$f" user.name || true)"; email="$(git config --file "$f" user.email || true)"
   if [[ -z "$(git config --global user.name || true)" && -n "$name" ]]; then
-    git config --global user.name "$name"
-    git config --global user.email "$email"
-    echo "    git name and email kept in ~/.gitconfig: $name <$email>"
+    run git config --global user.name "$name"
+    run git config --global user.email "$email"
+    did "git name and email kept in ~/.gitconfig: $name <$email>"
   else
     echo "    git name and email already set: $(git config --global user.name)"
   fi
@@ -93,17 +96,20 @@ EOF
 )"
   local p n=0
   while IFS= read -r p; do
-    [[ -n "$p" ]] && dconf reset "$p" && n=$((n + 1))
+    [[ -n "$p" ]] || continue
+    n=$((n + 1))
+    [[ "$DRY_RUN" == 1 ]] || dconf reset "$p"   # (a dry run lists the count, not each key)
   done <<< "$paths"
+  [[ "$DRY_RUN" == 1 ]] && echo "    would reset $n settings from setup/*.dconf to Ubuntu's defaults"
   if have gsettings; then
-    gsettings reset org.gnome.shell favorite-apps
-    gsettings reset org.gnome.shell enabled-extensions
-    gsettings reset org.gnome.shell disabled-extensions
-    gsettings reset org.gnome.desktop.background picture-uri
-    gsettings reset org.gnome.desktop.background picture-uri-dark
-    gsettings reset org.gnome.desktop.screensaver picture-uri
+    run gsettings reset org.gnome.shell favorite-apps
+    run gsettings reset org.gnome.shell enabled-extensions
+    run gsettings reset org.gnome.shell disabled-extensions
+    run gsettings reset org.gnome.desktop.background picture-uri
+    run gsettings reset org.gnome.desktop.background picture-uri-dark
+    run gsettings reset org.gnome.desktop.screensaver picture-uri
   fi
-  echo "    $n settings back to Ubuntu's defaults, plus the dock, extensions and wallpaper"
+  did "$n settings back to Ubuntu's defaults, plus the dock, extensions and wallpaper"
 }
 
 # 5. The extensions install.sh downloaded (Ubuntu's own ones stay).
@@ -112,8 +118,8 @@ remove_extensions() {
   local uuid n=0
   while read -r uuid; do
     [[ -d "$HOME/.local/share/gnome-shell/extensions/$uuid" ]] || continue
-    gnome-extensions uninstall "$uuid" 2>/dev/null || rm -rf "$HOME/.local/share/gnome-shell/extensions/$uuid"
-    echo "    $uuid"; n=$((n + 1))
+    run gnome-extensions uninstall "$uuid" 2>/dev/null || rm -rf "$HOME/.local/share/gnome-shell/extensions/$uuid"
+    did "$uuid"; n=$((n + 1))
   done < <(list_of gnome-extensions.txt)
   (( n )) || echo "    none installed"
 }
@@ -122,12 +128,14 @@ remove_extensions() {
 remove_fonts_wallpaper() {
   local d removed=0
   for d in "$MONO_FONT_DIR" "$NERD_FONT_DIR"; do
-    [[ -d "$d" ]] && rm -rf "$d" && echo "    ${d/#$HOME/\~}" && removed=1
+    [[ -d "$d" ]] || continue
+    run rm -rf "$d" && did "${d/#$HOME/\~}" && removed=1
   done
-  if (( removed )) && have fc-cache; then fc-cache -f >/dev/null 2>&1 || true; fi   # a warning here is harmless
+  if (( removed )) && have fc-cache; then run_quiet fc-cache -f || true; fi   # a warning here is harmless
   if [[ -f "$WALLPAPER" ]]; then
-    rm -f "$WALLPAPER"; rmdir "$(dirname "$WALLPAPER")" 2>/dev/null || true
-    echo "    ${WALLPAPER/#$HOME/\~}"
+    run rm -f "$WALLPAPER"
+    [[ "$DRY_RUN" == 1 ]] || rmdir "$(dirname "$WALLPAPER")" 2>/dev/null || true
+    did "${WALLPAPER/#$HOME/\~}"
   fi
   return 0
 }
@@ -141,13 +149,14 @@ remove_copies() {
     local saved="$conf"
     [[ "$f" == */autostart/* ]] && saved="$SETUP/apps/autostart/$(basename "$f")"
     [[ -f "$saved" ]] && cmp -s <(fill_home "$saved") "$f" || continue
-    rm -f "$f"; n=$((n + 1))
-    [[ -f "$f.orig" ]] && mv "$f.orig" "$f"
+    run rm -f "$f"; n=$((n + 1))
+    if [[ -f "$f.orig" ]]; then run mv "$f.orig" "$f"; fi
   done
   for f in "$HOME/.config/mimeapps.list" "$HOME/.config/qBittorrent/qBittorrent.conf"; do
-    [[ -f "$f.orig" ]] && mv "$f.orig" "$f" && echo "    put back your ${f/#$HOME/\~}"
+    [[ -f "$f.orig" ]] || continue
+    run mv "$f.orig" "$f" && did "put back your ${f/#$HOME/\~}"
   done
-  echo "    $n copies removed"
+  did "$n copies removed"
 }
 
 # 8. Secret check (git hooks) and the website's saved choices.
@@ -156,11 +165,11 @@ safety_off() {
   for d in "$DOTFILES" "$VAULT"; do
     [[ -d "$d/.git" ]] || continue
     if [[ "$(git -C "$d" config core.hooksPath || true)" == "$DOTFILES/.githooks" ]]; then
-      git -C "$d" config --unset core.hooksPath && echo "    secret check off: ${d/#$HOME/\~}"
+      run git -C "$d" config --unset core.hooksPath && did "secret check off: ${d/#$HOME/\~}"
     fi
   done
   if [[ -d "$HOME/.config/dotfiles" ]]; then
-    rm -rf "$HOME/.config/dotfiles"; echo "    saved choices deleted (~/.config/dotfiles)"
+    run rm -rf "$HOME/.config/dotfiles"; did "saved choices deleted (~/.config/dotfiles)"
   fi
   return 0
 }
@@ -250,13 +259,10 @@ remove_apt_apps() {
   apt_get_as "Removing ${#pkgs[@]} packages" remove -y "${pkgs[@]}"
   # Their update sources and keys, so apt stops checking them
   for f in "${files[@]}"; do
-    if [[ "$DRY_RUN" == 1 ]]; then
-      [[ "$f" == ppa:* ]] && run sudo add-apt-repository -y --remove "$f"
-      [[ -e "$f" ]] && run sudo rm -f "$f"
-    elif [[ "$f" == ppa:* ]]; then
-      sudo add-apt-repository -y --remove "$f" >/dev/null 2>&1 && echo "    removed $f" || true
+    if [[ "$f" == ppa:* ]]; then
+      run_quiet sudo add-apt-repository -y --remove "$f" && did "removed $f" || true
     elif [[ -e "$f" ]]; then
-      sudo rm -f "$f" && echo "    removed $f"
+      run sudo rm -f "$f" && did "removed $f"
     fi
   done
   apt_get_as "Removing what only they needed" autoremove -y
@@ -267,9 +273,8 @@ remove_flatpak_apps() {
   while IFS='|' read -r what _; do ids+=("$what"); done < <(chosen_of flatpak)
   (( ${#ids[@]} )) || { skip "none chosen"; return 0; }
   echo "    ${ids[*]}"
-  if [[ "$DRY_RUN" == 1 ]]; then run flatpak uninstall -y --noninteractive "${ids[@]}"
-  else quiet "Removing ${#ids[@]} Flatpak apps" flatpak uninstall -y --noninteractive "${ids[@]}"
-       quiet "Removing runtimes nothing uses" flatpak uninstall -y --noninteractive --unused; fi
+  quiet "Removing ${#ids[@]} Flatpak apps" flatpak uninstall -y --noninteractive "${ids[@]}"
+  quiet "Removing runtimes nothing uses" flatpak uninstall -y --noninteractive --unused
 }
 
 remove_system_parts() {
@@ -277,16 +282,15 @@ remove_system_parts() {
   while IFS='|' read -r what f; do
     for what in $f; do
       [[ -e "$what" ]] || continue
-      if [[ "$DRY_RUN" == 1 ]]; then run sudo rm -f "$what"; else sudo rm -f "$what" && echo "    removed $what"; fi
+      run sudo rm -f "$what" && did "removed $what"
     done; any=1
   done < <(chosen_of jobs)
   if [[ -n "$(chosen_of firewall)" ]]; then
-    if [[ "$DRY_RUN" == 1 ]]; then run sudo ufw disable; else sudo ufw disable >/dev/null && echo "    firewall off"; fi
+    run_quiet sudo ufw disable && did "firewall off"
     any=1
   fi
   if [[ -n "$(chosen_of snapfirefox)" ]]; then
-    if [[ "$DRY_RUN" == 1 ]]; then run sudo snap install firefox
-    else quiet "Installing Ubuntu's Snap Firefox" sudo snap install firefox; fi
+    quiet "Installing Ubuntu's Snap Firefox" sudo snap install firefox
     any=1
   fi
   (( any )) || skip "none chosen"
@@ -313,11 +317,6 @@ if (( APPS_TOO )); then
            "System jobs, firewall, Snap Firefox|remove_system_parts")
   fi
 fi
-if [[ "$DRY_RUN" == 1 ]]; then   # the user-level part has no dry run; show only the apps part
-  (( ${#steps[@]} )) && run_steps "${steps[@]}"
-  exit 0
-fi
-
 run_steps \
   "Weekly reminder off|reminder_off" \
   "Config links removed, your own files back|unlink_configs" \
@@ -330,6 +329,7 @@ run_steps \
   ${steps[@]+"${steps[@]}"}
 
 summary; ok=$?
+[[ "$DRY_RUN" == 1 ]] && exit "$ok"
 printf '\n%sStill to do%s\n' "$C_B" "$C_N"
 note "Log out and back in, so GNOME drops the removed extensions and fonts"
 if (( ! APPS_TOO )); then

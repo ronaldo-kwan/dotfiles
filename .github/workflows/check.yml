@@ -30,6 +30,8 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
           shellcheck -x -S warning *.sh dot scripts/*.sh .githooks/pre-commit system/etc/cron.*/* system/first-login/dotfiles-first-login
+      - name: Shared helpers and the app table (scripts/test-helpers.sh)
+        run: bash scripts/test-helpers.sh
       - name: The website's options build from the repo's lists
         run: python3 scripts/build-site.py
       - name: autoinstall.yaml matches the Ubuntu installer's schema
@@ -83,6 +85,13 @@ jobs:
           # System-wide, because install.sh replaces ~/.gitconfig with the one in this repo
           git config --system --add safe.directory '*'
       - uses: actions/checkout@v5
+      - name: install.sh dry run (checks the pinned downloads, changes nothing)
+        run: |
+          DRY_RUN=1 ./install.sh --yes | tee dry.txt
+          grep -q 'would run: stow' dry.txt
+          if [[ -e "$HOME/.bashrc" && -L "$HOME/.bashrc" ]] || [[ -d "$HOME/.local/share/fonts/RobotoMonoNerdFont" ]]; then
+            echo "the dry run changed something"; exit 1
+          fi
       - name: install.sh
         run: ./install.sh --yes
       - name: install.sh again (must be safe to run twice)
@@ -110,6 +119,13 @@ jobs:
           cd "$(mktemp -d)" && git init -q
           printf 'TOKEN=%s\n' "ghp_$(printf 'a%.0s' $(seq 36))" > leak.sh && git add leak.sh
           if "$GITHUB_WORKSPACE/.githooks/pre-commit"; then echo "should have been stopped"; exit 1; fi
+      - name: uninstall.sh dry run changes nothing
+        run: |
+          before="$(find "$HOME" -type l | sort)"
+          DRY_RUN=1 ./uninstall.sh --apps --yes | tee dry.txt
+          grep -q 'would run: rm' dry.txt
+          test "$before" = "$(find "$HOME" -type l | sort)"
+          test "$(git config core.hooksPath)" = "$PWD/.githooks"
       - name: uninstall.sh --apps removes every link, the apps and the jobs
         run: |
           # Two terminal tools and a weekly job to remove (sudo: the scripts use it)

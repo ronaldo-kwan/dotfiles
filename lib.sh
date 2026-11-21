@@ -215,6 +215,7 @@ run_steps() {
 # its output. The output goes to the log; if it fails, the last lines are shown.
 quiet() {
   local label="$1"; shift
+  [[ "${DRY_RUN:-0}" == 1 ]] && { run "$@"; return 0; }
   local t0=$SECONDS rc=0 pid i=0 frames='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
   mkdir -p "$(dirname "$UI_LOG")"
   printf '\n### %s  %s\n' "$(date '+%F %T')" "$*" >> "$UI_LOG"
@@ -353,11 +354,37 @@ keep_sudo() {
 # means any package it matches.)
 installed() { dpkg-query -W -f='${Status}\n' "$1" 2>/dev/null | grep -q "install ok installed"; }
 
-# --- Running commands that need sudo --------------------------------------------------
-# DRY_RUN=1 (install-apps.sh, uninstall.sh --apps): show what would happen, change nothing.
+# --- Dry runs and changes ----------------------------------------------------------------
+# DRY_RUN=1 (install.sh, install-apps.sh, uninstall.sh): show what would change, change
+# nothing. Downloads are still made into a temporary folder and checked.
 DRY_RUN="${DRY_RUN:-0}"
 # run <command>...: run it, or only print it in a dry run.
 run() { if [[ "$DRY_RUN" == 1 ]]; then printf '    would run: %s\n' "$*"; else "$@"; fi; }
+# run_quiet <command>...: the same, without the command's own output.
+run_quiet() { if [[ "$DRY_RUN" == 1 ]]; then run "$@"; else "$@" >/dev/null 2>&1; fi; }
+# did "what": a line saying what a step just changed; silent in a dry run, where the
+# "would ..." lines say it instead.
+did() { [[ "$DRY_RUN" == 1 ]] || printf '    %s\n' "$*"; }
+# copy_into <folder> <file>...: copy files into a folder (made if needed), or say so.
+copy_into() {
+  local d="$1"; shift
+  if [[ "$DRY_RUN" == 1 ]]; then printf '    would copy %s file(s) into %s\n' "$#" "${d/#$HOME/\~}"; return 0; fi
+  mkdir -p "$d" && cp "$@" "$d/"
+}
+
+# fetch_checked <URL> <sha256> <file>: download it and keep it only if its checksum
+# matches, so a file that changed (or was changed) is never used. Pinned downloads.
+fetch_checked() {
+  local url="$1" sum="$2" file="$3" tmp
+  tmp="$(mktemp "$file.XXXXXX")" || return 1
+  if ! curl -fsSL --retry 3 -o "$tmp" "$url"; then rm -f "$tmp"; return 1; fi
+  if [[ "$(sha256sum "$tmp" | cut -d' ' -f1)" != "$sum" ]]; then
+    rm -f "$tmp"
+    echo "    ${url##*/}: not the expected file (its checksum differs), so it isn't used" >&2
+    return 1
+  fi
+  mv "$tmp" "$file"
+}
 
 # Wait while another program (such as Ubuntu's automatic updates) is using apt.
 # Only one program can install or refresh package lists at a time.

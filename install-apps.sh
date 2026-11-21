@@ -162,15 +162,6 @@ is_done() { if [[ "$1" == check_* ]]; then "$1"; else installed "$1"; fi; }
 # Download a file (also done in dry-run mode, to check the link still works).
 fetch() { curl -fsSL --retry 3 -o "$1" "$2"; }
 
-# Download a large installer. In dry-run mode, only check that the link works.
-fetch_big() {
-  if [[ "$DRY_RUN" == 1 ]]; then
-    curl -fsIL --retry 3 -o /dev/null "$2" && printf '    download link works: %s\n' "$2"
-  else
-    fetch "$1" "$2"
-  fi
-}
-
 # key_ok <key file> <expected fingerprint>: the file must hold exactly one key, and
 # it must be that one. (apt trusts every key in a signing-key file, so a file with an
 # extra key added would otherwise pass a check of only the first one.)
@@ -191,18 +182,31 @@ repo_lookup() { # repo_lookup <Packages URL> <package>  -> prints "path sha256"
     END{print f, s}'
 }
 
-# add_source <name> <key URL> <fingerprint> <keyring file> <deb line>: add a maker's update
-# source, signed with that key (checked first), as $APT_SOURCES/<name>.list, then refresh
-# the package lists. A keyring file ending in .gpg gets the key converted to binary.
+# add_source <source file> <keyring file> <key> <fingerprint> <source>: add a maker's update
+# source (<source> is the file's text: a deb line, or deb822 fields) as $APT_SOURCES/<source
+# file>, trusting only <key> (a URL, or a key file kept in setup/keys/). The key must be
+# exactly the one with that fingerprint, and the source's package list (InRelease) must be
+# signed with it; both are checked first, in dry runs too, so a maker changing its key or
+# its source fails GitHub's weekly check instead of a new computer. A keyring file ending
+# in .gpg gets the key in binary form. Then the package lists are refreshed.
 add_source() {
-  local name="$1" url="$2" fpr="$3" keyring="$4" line="$5"
-  fetch "$TMP/$name.key" "$url"
-  key_ok "$TMP/$name.key" "$fpr" || return 1
-  if [[ "$keyring" == *.gpg ]]; then gpg --dearmor < "$TMP/$name.key" > "$TMP/$name.keyring"
-  else cp "$TMP/$name.key" "$TMP/$name.keyring"; fi
-  echo "$line" > "$TMP/$name.list"
-  run sudo install -m 644 "$TMP/$name.keyring" "$APT_KEYS/$keyring"
-  run sudo install -m 644 "$TMP/$name.list" "$APT_SOURCES/$name.list"
+  local file="$1" keyring="$2" key="$3" fpr="$4" src="$5" repo suite
+  if [[ "$key" == http* ]]; then fetch "$TMP/$file.key" "$key"; else cp "$key" "$TMP/$file.key"; fi
+  key_ok "$TMP/$file.key" "$fpr" || return 1
+  gpg --dearmor < "$TMP/$file.key" > "$TMP/$file.gpg"
+  read -r repo suite < <(awk '/^URIs:/ {r = $2} /^Suites:/ {s = $2}
+    /^deb / {for (i = 2; i <= NF; i++) if ($i ~ /^https?:/) {r = $i; s = $(i + 1); break}}
+    END {print r, s}' <<< "$src")
+  fetch "$TMP/$file.InRelease" "${repo%/}/dists/$suite/InRelease"
+  if ! gpgv --keyring "$TMP/$file.gpg" "$TMP/$file.InRelease" >/dev/null 2>&1; then
+    echo "    ${repo%/} isn't signed with the expected key. Not installing." >&2
+    return 1
+  fi
+  echo "    update source signed with the expected key"
+  if [[ "$keyring" == *.gpg ]]; then cp "$TMP/$file.gpg" "$TMP/$file.keyring"; else cp "$TMP/$file.key" "$TMP/$file.keyring"; fi
+  printf '%s\n' "$src" > "$TMP/$file"
+  run sudo install -m 644 "$TMP/$file.keyring" "$APT_KEYS/$keyring"
+  run sudo install -m 644 "$TMP/$file" "$APT_SOURCES/$file"
   apt_get update
 }
 
@@ -211,22 +215,36 @@ add_source() {
 ANTHROPIC_KEY=31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
 
 install_chrome() {
-  # Google's .deb adds Google's update source itself.
-  fetch_big "$TMP/chrome.deb" https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-  apt_get install -y "$TMP/chrome.deb"
+  # Google's update source: the same file Chrome itself writes and then keeps up to date.
+  add_source google-chrome.sources google-chrome.gpg https://dl.google.com/linux/linux_signing_key.pub \
+    EB4C1BFD4F042F6DDDCCEC917721F63BD38B4796 "X-Repolib-Name: Google Chrome
+Types: deb
+URIs: https://dl.google.com/linux/chrome-stable/deb/
+Suites: stable
+Components: main
+Architectures: amd64
+Signed-By: $APT_KEYS/google-chrome.gpg"
+  apt_get install -y google-chrome-stable
 }
 
 install_vscode() {
-  # Microsoft's .deb adds Microsoft's update source when this is answered "yes".
+  # Microsoft's update source: the same file VS Code writes and keeps up to date when
+  # this question is answered "yes".
   echo "code code/add-microsoft-repo boolean true" > "$TMP/code.debconf"
   run sudo debconf-set-selections "$TMP/code.debconf"
-  fetch_big "$TMP/code.deb" "https://code.visualstudio.com/sha/download?build=stable&os=linux-deb-x64"
-  apt_get install -y "$TMP/code.deb"
+  add_source vscode.sources microsoft.gpg https://packages.microsoft.com/keys/microsoft.asc \
+    BC528686B50D79E339D3721CEB3E94ADBE1229CF "Types: deb
+URIs: https://packages.microsoft.com/repos/code
+Suites: stable
+Components: main
+Architectures: amd64
+Signed-By: $APT_KEYS/microsoft.gpg"
+  apt_get install -y code
 }
 
 install_claude() {
-  add_source claude-desktop https://downloads.claude.ai/claude-desktop/key.asc "$ANTHROPIC_KEY" \
-    claude-desktop-archive-keyring.asc \
+  add_source claude-desktop.list claude-desktop-archive-keyring.asc \
+    https://downloads.claude.ai/claude-desktop/key.asc "$ANTHROPIC_KEY" \
     "deb [arch=amd64,arm64 signed-by=$APT_KEYS/claude-desktop-archive-keyring.asc] https://downloads.claude.ai/claude-desktop/apt/stable stable main"
   apt_get install -y claude-desktop
 }
@@ -234,31 +252,22 @@ install_claude() {
 install_chatgpt() {
   # OpenAI's ChatGPT desktop app (with Codex), from OpenAI's own update source. OpenAI
   # ships its signing key inside the app's package, not at a download address, so a copy
-  # is kept in setup/keys/chatgpt.asc (it's public), pinned to this fingerprint. The
-  # source's signature is checked with it first (in dry runs too), so if OpenAI changes
-  # the key, GitHub's weekly checks fail instead of a new computer.
-  local expected=3BFA0E4AE8B8CC16A2D9BA684A3B4A566C4660E4
-  local url=https://persistent.oaistatic.com/codex-app-prod/linux/deb
-  key_ok "$SETUP/keys/chatgpt.asc" "$expected" || return 1
-  gpg --dearmor < "$SETUP/keys/chatgpt.asc" > "$TMP/chatgpt.gpg"
-  fetch "$TMP/chatgpt-InRelease" "$url/dists/stable/InRelease"
-  if ! gpgv --keyring "$TMP/chatgpt.gpg" "$TMP/chatgpt-InRelease" >/dev/null 2>&1; then
-    echo "    OpenAI's update source isn't signed with the expected key. Not installing." >&2
-    return 1
-  fi
-  echo "    update source signed with the expected key"
-  printf 'X-Repolib-Name: ChatGPT\nTypes: deb\nURIs: %s\nSuites: stable\nComponents: main\nArchitectures: amd64\nSigned-By: %s\n' \
-    "$url" "$APT_KEYS/chatgpt-archive-keyring.gpg" > "$TMP/chatgpt.sources"
-  run sudo install -m 644 "$TMP/chatgpt.gpg" "$APT_KEYS/chatgpt-archive-keyring.gpg"
-  run sudo install -m 644 "$TMP/chatgpt.sources" "$APT_SOURCES/chatgpt.sources"
-  apt_get update
+  # is kept in setup/keys/chatgpt.asc (it's public), pinned to this fingerprint.
+  add_source chatgpt.sources chatgpt-archive-keyring.gpg "$SETUP/keys/chatgpt.asc" \
+    3BFA0E4AE8B8CC16A2D9BA684A3B4A566C4660E4 "X-Repolib-Name: ChatGPT
+Types: deb
+URIs: https://persistent.oaistatic.com/codex-app-prod/linux/deb
+Suites: stable
+Components: main
+Architectures: amd64
+Signed-By: $APT_KEYS/chatgpt-archive-keyring.gpg"
   apt_get install -y chatgpt
 }
 
 install_claude_code() {
   # Claude Code (the `claude` command for the terminal), from Anthropic's own update
   # source, signed with the same key as Claude Desktop's. Updates come with apt.
-  add_source claude-code https://downloads.claude.ai/keys/claude-code.asc "$ANTHROPIC_KEY" claude-code.asc \
+  add_source claude-code.list claude-code.asc https://downloads.claude.ai/keys/claude-code.asc "$ANTHROPIC_KEY" \
     "deb [arch=amd64,arm64 signed-by=$APT_KEYS/claude-code.asc] https://downloads.claude.ai/claude-code/apt/stable stable main"
   apt_get install -y claude-code
 }
@@ -284,8 +293,8 @@ install_obs() {
 
 install_onlyoffice() {
   # ONLYOFFICE's update source, signed with this key (same key as on Ubuntu's keyserver):
-  add_source onlyoffice https://download.onlyoffice.com/GPG-KEY-ONLYOFFICE \
-    E09CA29F6E178040EF22B4098320CA65CB2DE8E5 onlyoffice.gpg \
+  add_source onlyoffice.list onlyoffice.gpg https://download.onlyoffice.com/GPG-KEY-ONLYOFFICE \
+    E09CA29F6E178040EF22B4098320CA65CB2DE8E5 \
     "deb [signed-by=$APT_KEYS/onlyoffice.gpg] https://download.onlyoffice.com/repo/debian squeeze main"
   apt_get install -y onlyoffice-desktopeditors
 }

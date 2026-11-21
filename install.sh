@@ -6,11 +6,15 @@
 #
 # Does NOT use sudo. Steps that need sudo or a sign-in are listed at the end.
 # If one step fails, the others still run, and failures are listed at the end.
+#
+#   ~/dotfiles/install.sh                 asks first
+#   ~/dotfiles/install.sh --yes           without asking
+#   DRY_RUN=1 ~/dotfiles/install.sh --yes  only shows what it would change (downloads are checked)
 
 set -uo pipefail
 
 # shellcheck source=lib.sh
-source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, skip, have, run_step, DOTFILES, SETUP
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, skip, have, run, did, run_steps, DOTFILES, SETUP
 
 # 1. Link config files with stow ------------------------------------------------
 link_configs() {
@@ -23,14 +27,14 @@ link_configs() {
   while IFS= read -r -d '' f; do
     target="$HOME/${f#*/}"
     if [[ -e "$target" && ! -L "$target" ]]; then
-      mv "$target" "$target.orig"
-      echo "    kept existing ${target/#$HOME/\~} as ${target/#$HOME/\~}.orig"
+      run mv "$target" "$target.orig"
+      did "kept existing ${target/#$HOME/\~} as ${target/#$HOME/\~}.orig"
     fi
   done < <(config_files "${pkgs[@]}")
   # --no-folding links individual files, so apps that write extra files into
   # their config folder (like btop's log) don't write them into this repo.
-  stow --dir="$DOTFILES" --target="$HOME" --no-folding --restow "${pkgs[@]}"
-  echo "    linked: ${pkgs[*]}"
+  run stow --dir="$DOTFILES" --target="$HOME" --no-folding --restow "${pkgs[@]}"
+  did "linked: ${pkgs[*]}"
 }
 
 # 2. Fonts -----------------------------------------------------------------------
@@ -38,9 +42,16 @@ link_configs() {
 # install-apps.sh from setup/apt-packages.txt); these two aren't packaged:
 #   - RobotoMono Nerd Font (terminal): Roboto Mono plus the icons the prompt uses
 #   - Roboto Mono (desktop): the monospace font, from Google Fonts' own repo
-ROBOTO_MONO_URL="https://raw.githubusercontent.com/google/fonts/main/ofl/robotomono"
+# Both are pinned: one version, checked against its checksum, so every computer gets the
+# same font and a changed file is never used. Moving to a newer version: docs/maintenance.md.
+NERD_FONT_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/RobotoMono.tar.xz"
+NERD_FONT_SHA256="61f53438b240a00c87c92dc2c372db0bbb264473b36a8144ea62babf787f8383"
+ROBOTO_MONO_URL="https://raw.githubusercontent.com/google/fonts/333480ba7b601a89b75e5e84352c6cdf48086593/ofl/robotomono"
+ROBOTO_MONO_FILES=(   # file|sha256
+  "RobotoMono[wght].ttf|66a80e79d17e4c7cabd162e2916578a4cc08fd19eef6e2a643305eae9c567b2b"
+  "RobotoMono-Italic[wght].ttf|49ac343bb7b070071e53f0a8a501d68d140ed98ebd0a43b6b8fb96cf22f09ff7")
 install_fonts() {
-  local want_nerd=0 want_mono=0 tmp
+  local want_nerd=0 want_mono=0 tmp f name url
   chosen terminal && ! has_nerd_font && want_nerd=1
   chosen desktop && ! has_roboto_mono && want_mono=1
   if (( !want_nerd && !want_mono )); then
@@ -54,21 +65,23 @@ install_fonts() {
   fi
   tmp="$(mktemp -d)"
   if (( want_nerd )); then
-    curl -fsSL -o "$tmp/RobotoMono.tar.xz" \
-      https://github.com/ryanoasis/nerd-fonts/releases/latest/download/RobotoMono.tar.xz
-    mkdir -p "$tmp/extract" "$NERD_FONT_DIR"
+    fetch_checked "$NERD_FONT_URL" "$NERD_FONT_SHA256" "$tmp/RobotoMono.tar.xz"
+    mkdir -p "$tmp/extract"
     tar -xJf "$tmp/RobotoMono.tar.xz" -C "$tmp/extract"
-    cp "$tmp"/extract/RobotoMonoNerdFont*.ttf "$NERD_FONT_DIR/"
-    echo "    RobotoMono Nerd Font"
+    copy_into "$NERD_FONT_DIR" "$tmp"/extract/RobotoMonoNerdFont*.ttf
+    did "RobotoMono Nerd Font"
   fi
   if (( want_mono )); then
-    mkdir -p "$MONO_FONT_DIR"
-    curl -fsSL -o "$MONO_FONT_DIR/RobotoMono[wght].ttf" "$ROBOTO_MONO_URL/RobotoMono%5Bwght%5D.ttf"
-    curl -fsSL -o "$MONO_FONT_DIR/RobotoMono-Italic[wght].ttf" "$ROBOTO_MONO_URL/RobotoMono-Italic%5Bwght%5D.ttf"
-    echo "    Roboto Mono"
+    mkdir -p "$tmp/mono"
+    for f in "${ROBOTO_MONO_FILES[@]}"; do
+      name="${f%%|*}"; url="${name//\[/%5B}"; url="${url//\]/%5D}"
+      fetch_checked "$ROBOTO_MONO_URL/$url" "${f#*|}" "$tmp/mono/$name"
+    done
+    copy_into "$MONO_FONT_DIR" "$tmp"/mono/*.ttf
+    did "Roboto Mono"
   fi
   rm -rf "$tmp"
-  fc-cache -f "$HOME/.local/share/fonts"
+  run fc-cache -f "$HOME/.local/share/fonts"
 }
 
 # 3. VS Code extensions --------------------------------------------------------------
@@ -80,7 +93,7 @@ install_vscode_extensions() {
   fi
   local ext
   while read -r ext; do
-    code --install-extension "$ext" >/dev/null && echo "    $ext"
+    run_quiet code --install-extension "$ext" && did "$ext"
   done < <(list_of vscode-extensions.txt)
 }
 
@@ -110,9 +123,11 @@ flatpak_fonts() {
   local conf="$DOTFILES/fontconfig/.config/fontconfig/fonts.conf" app n=0
   while read -r app; do
     [[ -n "$app" ]] || continue
-    put_file "$conf" "$HOME/.var/app/$app/config/fontconfig/fonts.conf" >/dev/null; n=$((n + 1))
+    if [[ "$DRY_RUN" == 1 ]]; then put_file "$conf" "$HOME/.var/app/$app/config/fontconfig/fonts.conf"
+    else put_file "$conf" "$HOME/.var/app/$app/config/fontconfig/fonts.conf" >/dev/null; fi   # one line for all
+    n=$((n + 1))
   done < <(flatpak list --app --columns=application 2>/dev/null)
-  echo "    $n Flatpak apps use Roboto"
+  did "$n Flatpak apps use Roboto"
 }
 
 # 5. GNOME extensions ----------------------------------------------------------------
@@ -140,13 +155,13 @@ install_gnome_extensions() {
         --data-urlencode "uuid=$uuid" --data-urlencode "shell_version=$shell_version")"
       url="$(python3 -I -c 'import sys,json; print(json.load(sys.stdin)["download_url"])' <<< "$info")"
       curl -fsSL -o "$tmp/ext.zip" "https://extensions.gnome.org$url"
-      gnome-extensions install --force "$tmp/ext.zip"
-      echo "    $uuid: installed"
+      run gnome-extensions install --force "$tmp/ext.zip"
+      did "$uuid: installed"
     fi
     # Add it to the enabled list (keeps everything already enabled). Held back during
     # fresh-install.sh, which switches everything on just before its restart.
     [[ "${DEFER_DESKTOP:-0}" == 1 ]] && continue
-    gsettings set org.gnome.shell enabled-extensions "$(python3 -I -c '
+    run gsettings set org.gnome.shell enabled-extensions "$(python3 -I -c '
 import sys, ast
 current = ast.literal_eval(sys.argv[1].removeprefix("@as "))
 if sys.argv[2] not in current:
@@ -157,8 +172,8 @@ print(current)' "$(gsettings get org.gnome.shell enabled-extensions)" "$uuid")"
   if [[ "${DEFER_DESKTOP:-0}" == 1 ]]; then
     note "downloaded; switched on at the end, just before the restart"; return 0
   fi
-  gsettings set org.gnome.shell disable-user-extensions false
-  echo "    enabled (they start after you log out and back in)"
+  run gsettings set org.gnome.shell disable-user-extensions false
+  did "enabled (they start after you log out and back in)"
 }
 
 # 6. GNOME settings ----------------------------------------------------------------
@@ -181,18 +196,20 @@ restore_gnome_settings() {
   local e f palette='' uuid
   for e in "${DCONF_FILES[@]}"; do
     f="$SETUP/${e%%|*}"
-    if [[ -f "$f" ]]; then fill_home "$f" | dconf load "${e#*|}"; fi
+    [[ -f "$f" ]] || continue
+    if [[ "$DRY_RUN" == 1 ]]; then echo "    would load setup/${e%%|*} into dconf ${e#*|}"
+    else fill_home "$f" | dconf load "${e#*|}"; fi
   done
-  gsettings set org.gnome.shell favorite-apps "$(cat "$SETUP/dock-favorites.txt")"
+  run gsettings set org.gnome.shell favorite-apps "$(cat "$SETUP/dock-favorites.txt")"
   # Ptyxis keeps its colours in a profile with a different ID on each computer.
   if [[ -f "$SETUP/desktop-settings.dconf" ]]; then
     palette="$(sed -n 's/^# ptyxis-palette=//p' "$SETUP/desktop-settings.dconf")"
   fi
   uuid="$(dconf read /org/gnome/Ptyxis/default-profile-uuid | tr -d "'")"
   if [[ -n "$palette" && -n "$uuid" ]]; then
-    dconf write "/org/gnome/Ptyxis/Profiles/$uuid/palette" "$palette"
+    run dconf write "/org/gnome/Ptyxis/Profiles/$uuid/palette" "$palette"
   fi
-  echo "    restored"
+  did "restored"
 }
 
 # 7. Wallpaper -----------------------------------------------------------------------
@@ -209,21 +226,18 @@ set_wallpaper() {
   fi
   [[ "${DEFER_DESKTOP:-0}" == 1 ]] && { held_back; return 0; }
   local wall="$WALLPAPER" uri tmp
-  mkdir -p "$(dirname "$wall")"
   if [[ ! -f "$wall" ]]; then
     have curl || { skip "curl isn't installed, so the wallpaper wasn't downloaded"; return 0; }
-    tmp="$(mktemp)"
-    curl -fsSL --retry 3 -o "$tmp" "$WALLPAPER_URL"
-    if [[ "$(sha256sum "$tmp" | cut -d' ' -f1)" != "$WALLPAPER_SHA256" ]]; then
-      rm -f "$tmp"; echo "    the downloaded wallpaper isn't the expected file; not using it" >&2; return 1
-    fi
-    mv "$tmp" "$wall"
+    tmp="$(mktemp -d)"
+    fetch_checked "$WALLPAPER_URL" "$WALLPAPER_SHA256" "$tmp/${wall##*/}"
+    copy_into "$(dirname "$wall")" "$tmp/${wall##*/}"
+    rm -rf "$tmp"
   fi
   uri="file://$wall"
-  gsettings set org.gnome.desktop.background picture-uri "$uri"
-  gsettings set org.gnome.desktop.background picture-uri-dark "$uri"
-  gsettings set org.gnome.desktop.screensaver picture-uri "$uri"   # lock screen
-  echo "    set"
+  run gsettings set org.gnome.desktop.background picture-uri "$uri"
+  run gsettings set org.gnome.desktop.background picture-uri-dark "$uri"
+  run gsettings set org.gnome.desktop.screensaver picture-uri "$uri"   # lock screen
+  did "set"
 }
 
 # 8. App settings -------------------------------------------------------------------
@@ -231,8 +245,11 @@ set_wallpaper() {
 # Existing files that differ are kept as <name>.orig.
 put_file() { # put_file <saved file> <destination>: copy, turning @HOME@ into this home folder
   local src="$1" dst="$2"
-  mkdir -p "$(dirname "$dst")"
   if [[ -f "$dst" ]] && cmp -s <(fill_home "$src") "$dst"; then return 0; fi
+  if [[ "$DRY_RUN" == 1 ]]; then
+    echo "    would write ${dst/#$HOME/\~}$([[ -f "$dst" ]] && echo " (yours kept as .orig)")"; return 0
+  fi
+  mkdir -p "$(dirname "$dst")"
   [[ -f "$dst" ]] && mv "$dst" "$dst.orig"
   fill_home "$src" > "$dst"
   echo "    ${dst/#$HOME/\~}"
@@ -265,14 +282,16 @@ restore_obsidian() {
   need notes || return 0
   if [[ ! -d "$VAULT" ]]; then
     if have gh && gh repo view obsidian-vault >/dev/null 2>&1; then
-      gh repo clone obsidian-vault "$VAULT" -- --quiet
-      echo "    notes cloned to ${VAULT/#$HOME/\~}"
+      run gh repo clone obsidian-vault "$VAULT" -- --quiet
+      did "notes cloned to ${VAULT/#$HOME/\~}"
     else
       skip "no obsidian-vault repo found on GitHub (or gh isn't signed in), so no notes cloned"
     fi
   elif [[ -d "$VAULT/.git" ]] && ! git -C "$VAULT" rev-parse -q --verify HEAD >/dev/null; then
     # The vault was cloned while the notes repo was still empty: fetch the notes now.
-    if git -C "$VAULT" fetch -q origin 2>/dev/null \
+    if [[ "$DRY_RUN" == 1 ]]; then
+      echo "    would fetch the notes into ${VAULT/#$HOME/\~}, if the notes repo has any by now"
+    elif git -C "$VAULT" fetch -q origin 2>/dev/null \
        && git -C "$VAULT" rev-parse -q --verify origin/main >/dev/null; then
       git -C "$VAULT" checkout -q -f -B main origin/main
       git -C "$VAULT" branch -q -u origin/main
@@ -286,9 +305,9 @@ restore_obsidian() {
   # Only into a vault that's there: creating the folder here would stop the notes
   # from being cloned on a later run.
   if [[ -d "$SETUP/apps/obsidian" && -d "$VAULT" && ! -f "$VAULT/.obsidian/appearance.json" ]]; then
-    mkdir -p "$VAULT/.obsidian"
-    cp -r --update=none "$SETUP/apps/obsidian/." "$VAULT/.obsidian/"
-    echo "    Obsidian settings and Catppuccin theme added to the vault"
+    run mkdir -p "$VAULT/.obsidian"
+    run cp -r --update=none "$SETUP/apps/obsidian/." "$VAULT/.obsidian/"
+    did "Obsidian settings and Catppuccin theme added to the vault"
   fi
   register_obsidian_vault
 }
@@ -311,6 +330,7 @@ register_obsidian_vault() {
     echo "    Obsidian is open: close it and run install.sh again, or choose \"Open folder as vault\""
     return 0
   fi
+  if [[ "$DRY_RUN" == 1 ]]; then echo "    would make Obsidian open your vault (${list/#$HOME/\~})"; return 0; fi
   mkdir -p "$(dirname "$list")"
   python3 -I -c '
 import json, os, secrets, sys, time
@@ -344,15 +364,15 @@ setup_safety_checks() {
   local d
   for d in "$DOTFILES" "$VAULT"; do
     [[ -d "$d/.git" ]] || continue
-    git -C "$d" config core.hooksPath "$DOTFILES/.githooks"
-    echo "    secret check before commits: ${d/#$HOME/\~}"
+    run git -C "$d" config core.hooksPath "$DOTFILES/.githooks"
+    did "secret check before commits: ${d/#$HOME/\~}"
   done
   # Signed commits, if this computer has an SSH key (dot ssh creates one).
-  bash "$DOTFILES/scripts/ssh-setup.sh" --signing-only
+  run bash "$DOTFILES/scripts/ssh-setup.sh" --signing-only
   if has_user_systemd; then
-    systemctl --user daemon-reload
-    systemctl --user enable --now dotfiles-reminder.timer 2>/dev/null
-    echo "    weekly reminder on (see: systemctl --user list-timers dotfiles-reminder.timer)"
+    run systemctl --user daemon-reload
+    run systemctl --user enable --now dotfiles-reminder.timer 2>/dev/null
+    did "weekly reminder on (see: systemctl --user list-timers dotfiles-reminder.timer)"
   else
     skip "no systemd user session, so the weekly reminder isn't switched on"
   fi
@@ -362,7 +382,7 @@ setup_safety_checks() {
 # --desktop-only: just the visible part (extensions on, theme, fonts, shortcuts, settings,
 # wallpaper), in one go. fresh-install.sh runs this right before restarting.
 if [[ "${1:-}" == "--desktop-only" ]]; then
-  switch_on_extensions() { have gsettings && gsettings set org.gnome.shell disable-user-extensions false; return 0; }
+  switch_on_extensions() { have gsettings && run gsettings set org.gnome.shell disable-user-extensions false; return 0; }
   run_steps \
     "Desktop look, shortcuts and settings, extensions on or off|restore_gnome_settings" \
     "Allow GNOME extensions|switch_on_extensions" \
@@ -370,15 +390,17 @@ if [[ "${1:-}" == "--desktop-only" ]]; then
   summary; exit $?
 fi
 
-header "Set up configs and desktop" \
+title="Set up configs and desktop"; [[ "$DRY_RUN" == 1 ]] && title+=" (dry run: changes nothing)"
+header "$title" \
   "Config links, Roboto fonts, VS Code extensions, Flatpak apps, GNOME extensions," \
   "desktop look, shortcuts and settings, wallpaper, app settings, Obsidian," \
   "secret check before commits and a weekly reminder. No sudo needed." \
   "Files it replaces are kept as <name>.orig."
 # -y / --yes (used by fresh-install.sh), or Yes to everything chosen earlier, skips this.
 yes_flag "$@"
+[[ "$DRY_RUN" == 1 ]] && note "Dry run: shows what it would change; downloads are made and checked, nothing is installed."
 ask_or_quit "Continue?"
-git_identity
+[[ "$DRY_RUN" == 1 ]] || git_identity
 
 run_steps \
   "Linking config files|link_configs" \
@@ -394,7 +416,7 @@ run_steps \
   "Secret check, signed commits and weekly reminder|setup_safety_checks"
 
 summary; ok=$?
-if [[ "$UI_NESTED" == 0 ]]; then
+if [[ "$UI_NESTED" == 0 && "$DRY_RUN" != 1 ]]; then
   printf '\n%sStill to do yourself%s\n' "$C_B" "$C_N"
   note "Run ~/dotfiles/install-apps.sh (apps, NVIDIA driver, weekly updates), then this again for VS Code's extensions and Obsidian"
   note "Log out and back in (starts the GNOME extensions), then open a new terminal"

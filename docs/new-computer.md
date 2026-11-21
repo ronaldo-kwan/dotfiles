@@ -148,7 +148,7 @@ Each script can also run on its own, for example on a computer that's already se
 
 | Script | Needs sudo | What it does |
 |---|---|---|
-| `~/dotfiles/install.sh` (`dot install`) | No | Links the config files (keeping existing ones as `.orig`), installs the Roboto Mono fonts, VS Code extensions, Flatpak apps and GNOME extensions for this GNOME version, and restores the desktop look, shortcuts, settings, dock, wallpaper, app settings and the Obsidian vault. Switches on the secret check and the weekly reminder. Extensions start after you log out and back in |
+| `~/dotfiles/install.sh` (`dot install`) | No | Links the config files (keeping existing ones as `.orig`), installs the Roboto Mono fonts, VS Code extensions, Flatpak apps and GNOME extensions for this GNOME version, and restores the desktop look, shortcuts, settings, dock, wallpaper, app settings and the Obsidian vault. Switches on the secret check and the weekly reminder. Extensions start after you log out and back in. `DRY_RUN=1 dot install --yes` only shows what it would change |
 | `~/dotfiles/install-apps.sh` (`dot apps`) | Yes | Apps and system parts; see [Apps](apps.md) |
 | `~/dotfiles/fresh-install.sh` (`dot fresh`) | Yes | All of the above, plus the system and firmware update |
 | `~/dotfiles/check.sh` (`dot check`) | No | Shows what's missing. Changes nothing |
@@ -184,7 +184,7 @@ Apps stay unless you ask, because the uninstall can't tell which ones you had be
 | Weekly updates and monthly clean-up, the firewall | Deletes the jobs; switches the firewall off |
 | Ubuntu's Snap Firefox | Puts it back |
 
-Apps' own settings and data (your Steam games, browser profiles) stay in your home folder, so reinstalling one brings it back as it was. The NVIDIA driver always stays: removing it can leave you without a screen. To see the list without changing anything: `DRY_RUN=1 dot uninstall --apps --yes`. `~/dotfiles` itself stays; delete it with `rm -rf ~/dotfiles`.
+Apps' own settings and data (your Steam games, browser profiles) stay in your home folder, so reinstalling one brings it back as it was. The NVIDIA driver always stays: removing it can leave you without a screen. To see everything it would do without changing anything: `DRY_RUN=1 dot uninstall --apps --yes`. `~/dotfiles` itself stays; delete it with `rm -rf ~/dotfiles`.
 
 ## Manual setup
 

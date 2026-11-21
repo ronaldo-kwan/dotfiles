@@ -30,14 +30,14 @@ It first asks whether to answer Yes to everything. Choose **Let me choose** to g
 
 ## Where each app comes from
 
-Each app comes from its maker's official source, so `sudo apt upgrade` keeps it updated. The Claude Desktop, Claude Code, ChatGPT and ONLYOFFICE signing keys' fingerprints and Proton's setup-package checksum are checked before installing. If ONLYOFFICE is installed without its update source (for example from a downloaded `.deb`), the script offers to add the source.
+Each app comes from its maker's official source, so `sudo apt upgrade` keeps it updated. For Chrome, VS Code, Claude Desktop, Claude Code, ChatGPT and ONLYOFFICE, the maker's signing key is checked against a fixed fingerprint, and the source's package list must be signed with it, before the source is added (in dry runs too, so GitHub's Monday check notices a changed key). Proton's setup package is checked against its checksum. If ONLYOFFICE is installed without its update source (for example from a downloaded `.deb`), the script offers to add the source.
 
 If a maker changes its download link, update the script; the table shows the manual way.
 
 | App | Where to get it | Package |
 |---|---|---|
-| Google Chrome | google.com/chrome (`.deb`) | `google-chrome-stable` |
-| VS Code | code.visualstudio.com (`.deb`) | `code` |
+| Google Chrome | Google's apt source, `dl.google.com/linux/chrome-stable/deb` (the same source Chrome's own `.deb` from google.com/chrome sets up) | `google-chrome-stable` |
+| VS Code | Microsoft's apt source, `packages.microsoft.com/repos/code` (the same source VS Code's own `.deb` from code.visualstudio.com sets up) | `code` |
 | Claude Desktop | claude.ai/download | `claude-desktop` |
 | Claude Code | Anthropic's apt source, `downloads.claude.ai/claude-code/apt/stable` (key from `downloads.claude.ai/keys/claude-code.asc`) | `claude-code` |
 | ChatGPT (with Codex) | OpenAI's apt source, `persistent.oaistatic.com/codex-app-prod/linux/deb` (OpenAI ships the key inside its `.deb`; a copy is in [`setup/keys/chatgpt.asc`](../setup/keys/chatgpt.asc)) | `chatgpt` |
