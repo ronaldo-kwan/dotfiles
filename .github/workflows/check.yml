@@ -158,6 +158,28 @@ jobs:
           if [[ -L "$HOME/.bashrc" || ! -f "$HOME/.bashrc" ]]; then echo "~/.bashrc is still a link, or missing"; exit 1; fi
           test -z "$(git config core.hooksPath || true)"
 
+  desktop:
+    name: desktop settings go on and come off (no screen)
+    runs-on: ubuntu-latest
+    container: ubuntu:26.04
+    defaults:
+      run:
+        shell: bash   # a container's default is sh, which lacks [[ ]]
+    steps:
+      - name: Tools, and GNOME's settings (dconf, gsettings and their schemas) without a desktop
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            git stow curl ca-certificates python3 fontconfig xz-utils \
+            dbus-daemon dconf-cli dconf-gsettings-backend libglib2.0-bin \
+            gsettings-desktop-schemas gnome-shell-common >/dev/null
+          git config --system --add safe.directory '*'
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: install.sh loads every saved setting, uninstall.sh resets them (scripts/test-desktop.sh)
+        env:
+          CI: true
+        run: dbus-run-session -- bash scripts/test-desktop.sh
+
   choices:
     name: install.sh follows the website's choices
     runs-on: ubuntu-latest

@@ -37,8 +37,10 @@ make_key() {
 # 2. Signing (also run by install.sh, which never creates keys) -----------------------
 signing_config() {
   if [[ ! -f "$KEY.pub" ]]; then skip "no SSH key yet (run: dot ssh)"; return 0; fi
+  # GitHub matches a signature to you by this email, so it's needed first.
+  local email; email="$(git config user.email || true)"
+  if [[ -z "$email" ]]; then skip "git doesn't know your email yet (dot install asks for it)"; return 0; fi
   mkdir -p "$(dirname "$SIGNING")"
-  local email; email="$(git config user.email)"
   printf '%s %s\n' "$email" "$(cut -d' ' -f1,2 "$KEY.pub")" > "$SIGNERS"
   cat > "$SIGNING" <<EOF
 # Written by ~/dotfiles (dot ssh / install.sh): sign commits and tags with this

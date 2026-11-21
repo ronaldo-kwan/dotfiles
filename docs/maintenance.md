@@ -59,7 +59,7 @@ DOT_PLAIN=1 dot apps
 <details>
 <summary>Everything it checks</summary>
 
-- Config links, terminal tools and the Nerd Font
+- Config links, terminal tools, and the two fonts: installed, and the pinned version (an older copy shows ✘; `dot install` replaces it)
 - Every app and system job from `install-apps.sh`, and the NVIDIA driver
 - Flatpaks, GNOME extensions and VS Code extensions
 - The firewall, the Obsidian vault, the secret check, signed commits and the reminder
@@ -182,15 +182,16 @@ Then restart. If an extension is still off, switch it on in the Extensions app.
 - dry runs of `fresh-install.sh` (every step of setting up a new computer, including `install.sh` and `install-apps.sh`), `post-upgrade.sh` on test files, `install.sh` (which also checks the pinned downloads) and `uninstall.sh --apps`; none may change anything
 - `install.sh` (twice), a dry run of `install-apps.sh`, `post-upgrade.sh` on test files, and `uninstall.sh --apps` (no links, test apps or jobs may be left)
 - the secret check, the website build and a schema check of `setup/autoinstall.yaml`
+- the desktop settings, for real in a container without a screen ([`scripts/test-desktop.sh`](../scripts/test-desktop.sh)): `install.sh` must load every saved setting, the dock and the wallpaper, and `uninstall.sh` must put them all back to Ubuntu's defaults
 - the website's choices: `install.sh` with only some parts chosen must link only those, and `dot check` must show the rest as "not chosen"
 
 ### Pinned downloads
 
 The fonts aren't in this repo. `install.sh` downloads one fixed version of each and uses it only if its checksum matches, so every computer gets the same files and a changed file is never used:
 
-| What | Where (in `install.sh`) |
+| What | Where (in `lib.sh`) |
 |---|---|
-| RobotoMono Nerd Font | `NERD_FONT_URL` (a Nerd Fonts release) and `NERD_FONT_SHA256` |
+| RobotoMono Nerd Font | `NERD_FONT_VERSION` (a Nerd Fonts release) and `NERD_FONT_SHA256` (of its `RobotoMono.tar.xz`) |
 | Roboto Mono | `ROBOTO_MONO_URL` (a commit of Google Fonts' repo) and `ROBOTO_MONO_FILES` |
 
 The wallpaper is in the repo itself, in [`setup/wallpaper/`](../setup/wallpaper/) with its MIT licence. To use another, replace the file there, keeping its name (or change `WALLPAPER` in `lib.sh`).
@@ -201,7 +202,7 @@ To move to a newer version, change the address, download the file and put its ch
 curl -fsSL -o /tmp/f "<new address>" && sha256sum /tmp/f
 ```
 
-Nerd Fonts publishes its checksums with each release (`SHA-256.txt`), so you can compare. Then run `DRY_RUN=1 dot install --yes`: it downloads and checks the files without installing them.
+Nerd Fonts publishes its checksums with each release (`SHA-256.txt`), so you can compare. Then run `DRY_RUN=1 dot install --yes`: it downloads and checks the files without installing them. After the change, `dot check` shows ✘ on each computer until `dot install` has put the new version there.
 
 [Dependabot](../.github/dependabot.yml) opens a pull request once a month when the actions the workflows use have new versions. The workflows name each action by its commit ID, with the version as a comment (`actions/checkout@fbc6f39… # v5.1.0`), since a tag like `v5` can be moved to other code; Dependabot updates both. The checks run on its pull request; merge it on GitHub if they pass.
 

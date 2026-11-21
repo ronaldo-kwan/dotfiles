@@ -42,18 +42,13 @@ link_configs() {
 # install-apps.sh from setup/apt-packages.txt); these two aren't packaged:
 #   - RobotoMono Nerd Font (terminal): Roboto Mono plus the icons the prompt uses
 #   - Roboto Mono (desktop): the monospace font, from Google Fonts' own repo
-# Both are pinned: one version, checked against its checksum, so every computer gets the
-# same font and a changed file is never used. Moving to a newer version: docs/maintenance.md.
-NERD_FONT_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/RobotoMono.tar.xz"
-NERD_FONT_SHA256="61f53438b240a00c87c92dc2c372db0bbb264473b36a8144ea62babf787f8383"
-ROBOTO_MONO_URL="https://raw.githubusercontent.com/google/fonts/333480ba7b601a89b75e5e84352c6cdf48086593/ofl/robotomono"
-ROBOTO_MONO_FILES=(   # file|sha256
-  "RobotoMono[wght].ttf|66a80e79d17e4c7cabd162e2916578a4cc08fd19eef6e2a643305eae9c567b2b"
-  "RobotoMono-Italic[wght].ttf|49ac343bb7b070071e53f0a8a501d68d140ed98ebd0a43b6b8fb96cf22f09ff7")
+# Both are pinned to one version (NERD_FONT_VERSION, ROBOTO_MONO_FILES in lib.sh), checked
+# against its checksum, so every computer gets the same font and a changed file is never
+# used. A missing or other version is (re)installed. Newer version: docs/maintenance.md.
 install_fonts() {
   local want_nerd=0 want_mono=0 tmp f name url
-  chosen terminal && ! has_nerd_font && want_nerd=1
-  chosen desktop && ! has_roboto_mono && want_mono=1
+  chosen terminal && ! nerd_font_current && want_nerd=1
+  chosen desktop && ! roboto_mono_current && want_mono=1
   if (( !want_nerd && !want_mono )); then
     chosen terminal || chosen desktop || { skip "not chosen"; return 0; }
     echo "    already installed"
@@ -69,7 +64,9 @@ install_fonts() {
     mkdir -p "$tmp/extract"
     tar -xJf "$tmp/RobotoMono.tar.xz" -C "$tmp/extract"
     copy_into "$NERD_FONT_DIR" "$tmp"/extract/RobotoMonoNerdFont*.ttf
-    did "RobotoMono Nerd Font"
+    # Which version this is, for dot check (the files themselves don't say).
+    [[ "$DRY_RUN" == 1 ]] || echo "$NERD_FONT_SHA256" > "$NERD_FONT_PIN"
+    did "RobotoMono Nerd Font $NERD_FONT_VERSION"
   fi
   if (( want_mono )); then
     mkdir -p "$tmp/mono"
@@ -91,10 +88,12 @@ install_vscode_extensions() {
     skip "VS Code isn't installed yet"
     return 0
   fi
-  local ext
+  local ext failed=()
   while read -r ext; do
-    run_quiet code --install-extension "$ext" && did "$ext"
+    if run_quiet code --install-extension "$ext"; then did "$ext"; else failed+=("$ext"); fi
   done < <(list_of vscode-extensions.txt)
+  # The others are installed; say which didn't (often no internet), so the step shows ✘.
+  (( ${#failed[@]} == 0 )) || { warn "couldn't install: ${failed[*]} (run dot install again)"; return 1; }
 }
 
 # 4. Flatpak apps ---------------------------------------------------------------
@@ -144,18 +143,22 @@ install_gnome_extensions() {
     skip "needs ${missing[*]}"
     return 0
   fi
-  local shell_version tmp uuid info url
+  local shell_version tmp uuid info url failed=()
   shell_version="$(gnome-shell --version | grep -oE '[0-9]+' | head -1)"
   tmp="$(mktemp -d)"
   while read -r uuid; do
     if [[ "${REINSTALL_EXTENSIONS:-0}" != 1 ]] && gnome-extensions info "$uuid" >/dev/null 2>&1; then
       echo "    $uuid: already installed"
+    # One that isn't available for this GNOME version (common just after an Ubuntu
+    # upgrade) or doesn't download is left out; the others still go ahead.
+    elif ! info="$(curl -fsSG https://extensions.gnome.org/extension-info/ \
+           --data-urlencode "uuid=$uuid" --data-urlencode "shell_version=$shell_version")" \
+      || ! url="$(python3 -I -c 'import sys,json; print(json.load(sys.stdin)["download_url"])' <<< "$info" 2>/dev/null)" \
+      || ! curl -fsSL -o "$tmp/ext.zip" "https://extensions.gnome.org$url" \
+      || ! run gnome-extensions install --force "$tmp/ext.zip"; then
+      warn "$uuid: not available for GNOME $shell_version, or the download failed"
+      failed+=("$uuid"); continue
     else
-      info="$(curl -fsSG https://extensions.gnome.org/extension-info/ \
-        --data-urlencode "uuid=$uuid" --data-urlencode "shell_version=$shell_version")"
-      url="$(python3 -I -c 'import sys,json; print(json.load(sys.stdin)["download_url"])' <<< "$info")"
-      curl -fsSL -o "$tmp/ext.zip" "https://extensions.gnome.org$url"
-      run gnome-extensions install --force "$tmp/ext.zip"
       did "$uuid: installed"
     fi
     # Add it to the enabled list (keeps everything already enabled). Held back during
@@ -170,10 +173,13 @@ print(current)' "$(gsettings get org.gnome.shell enabled-extensions)" "$uuid")"
   done < <(list_of gnome-extensions.txt)
   rm -rf "$tmp"
   if [[ "${DEFER_DESKTOP:-0}" == 1 ]]; then
-    note "downloaded; switched on at the end, just before the restart"; return 0
+    note "downloaded; switched on at the end, just before the restart"
+    (( ${#failed[@]} == 0 )) || { warn "missing: ${failed[*]}; try again later with dot install"; return 1; }
+    return 0
   fi
   run gsettings set org.gnome.shell disable-user-extensions false
   did "enabled (they start after you log out and back in)"
+  (( ${#failed[@]} == 0 )) || { warn "missing: ${failed[*]}; try again later with dot install"; return 1; }
 }
 
 # 6. GNOME settings ----------------------------------------------------------------

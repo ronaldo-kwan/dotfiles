@@ -167,10 +167,15 @@ list_missing "all config files linked (${pkgs[*]})" install "${broken[@]}"
 section "Terminal tools"
 for t in "${TOOLS[@]}"; do installed "$t" || MISSING_TOOLS+=("$t"); done
 list_missing "${#TOOLS[@]} tools installed" tools "${MISSING_TOOLS[@]}"
+# The fonts install.sh downloads: installed, and the pinned version (lib.sh)?
 if ! chosen terminal; then info "RobotoMono Nerd Font: not chosen"
-elif has_nerd_font; then ok "RobotoMono Nerd Font"; else bad "RobotoMono Nerd Font not installed" install; fi
+elif nerd_font_current; then ok "RobotoMono Nerd Font $NERD_FONT_VERSION"
+elif has_nerd_font; then bad "RobotoMono Nerd Font: not the pinned version ($NERD_FONT_VERSION)" install
+else bad "RobotoMono Nerd Font not installed" install; fi
 if ! chosen desktop; then info "Roboto Mono: not chosen"
-elif has_roboto_mono; then ok "Roboto Mono"; else bad "Roboto Mono not installed" install; fi
+elif roboto_mono_current; then ok "Roboto Mono"
+elif has_roboto_mono; then bad "Roboto Mono: not the pinned version" install
+else bad "Roboto Mono not installed" install; fi
 
 section "Apps and system jobs (install-apps.sh)"
 for entry in "${APPS[@]}"; do

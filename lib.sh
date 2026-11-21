@@ -44,7 +44,7 @@ config_files() { local p; for p in "$@"; do find "$DOTFILES/$p" -type f -printf 
 has_user_systemd() { have systemctl && systemctl --user show-environment >/dev/null 2>&1; }
 
 # Does this computer have an NVIDIA graphics card?
-has_nvidia() { lspci 2>/dev/null | grep -qiE '(vga|3d|display).*nvidia'; }
+has_nvidia() { grep -qiE '(vga|3d|display).*nvidia' <<< "$(lspci 2>/dev/null)"; }
 
 # --- Choices: what to set up (picked on the website, or everything) ----------------------
 # DOTFILES_CHOICES lists what to set up, separated by spaces. Groups: terminal desktop
@@ -352,7 +352,8 @@ keep_sudo() {
 
 # installed <package>: is this apt package installed? (A pattern like 'nvidia-driver-*'
 # means any package it matches.)
-installed() { dpkg-query -W -f='${Status}\n' "$1" 2>/dev/null | grep -q "install ok installed"; }
+# (Not `dpkg-query | grep -q`: with pipefail that can fail when grep stops reading early.)
+installed() { [[ "$(dpkg-query -W -f='${Status}\n' "$1" 2>/dev/null)" == *"install ok installed"* ]]; }
 
 # --- Dry runs and changes ----------------------------------------------------------------
 # DRY_RUN=1 (install.sh, install-apps.sh, uninstall.sh): show what would change, change
@@ -687,6 +688,28 @@ clock_step() {
     echo "    The clock is still $CLOCK_OFF. Check: timedatectl"
   fi
   ask "Continue anyway? Installs will probably fail." || { echo "Stopped. Nothing was installed."; exit 1; }
+}
+
+# --- Fonts ----------------------------------------------------------------------------
+# The two fonts install.sh downloads, each pinned to one version and its checksum (moving
+# to a newer one: docs/maintenance.md). dot check compares what's installed with these.
+NERD_FONT_VERSION="v3.5.1"
+NERD_FONT_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/$NERD_FONT_VERSION/RobotoMono.tar.xz"
+NERD_FONT_SHA256="61f53438b240a00c87c92dc2c372db0bbb264473b36a8144ea62babf787f8383"
+NERD_FONT_PIN="$NERD_FONT_DIR/.pinned-sha256"   # written by install.sh: which archive it came from
+ROBOTO_MONO_URL="https://raw.githubusercontent.com/google/fonts/333480ba7b601a89b75e5e84352c6cdf48086593/ofl/robotomono"
+ROBOTO_MONO_FILES=(   # file|sha256
+  "RobotoMono[wght].ttf|66a80e79d17e4c7cabd162e2916578a4cc08fd19eef6e2a643305eae9c567b2b"
+  "RobotoMono-Italic[wght].ttf|49ac343bb7b070071e53f0a8a501d68d140ed98ebd0a43b6b8fb96cf22f09ff7")
+# Is the pinned version installed (and seen by fontconfig)?
+nerd_font_current() { [[ "$(cat "$NERD_FONT_PIN" 2>/dev/null)" == "$NERD_FONT_SHA256" ]] && has_nerd_font; }
+roboto_mono_current() {
+  local f file
+  for f in "${ROBOTO_MONO_FILES[@]}"; do
+    file="$MONO_FONT_DIR/${f%%|*}"
+    [[ -f "$file" && "$(sha256sum "$file" | cut -d' ' -f1)" == "${f#*|}" ]] || return 1
+  done
+  has_roboto_mono
 }
 
 # Is a font family installed? (Not `fc-list | grep -q`: with pipefail that fails when

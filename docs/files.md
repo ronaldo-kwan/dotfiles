@@ -75,6 +75,7 @@ These folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). E
 | `scripts/dump-desktop-settings.sh` | Writes `setup/desktop-settings.dconf` |
 | `scripts/save-app-settings.sh` | Writes `setup/apps/` |
 | `scripts/test-helpers.sh` | Quick checks of the helpers in `lib.sh` and the app table in `install-apps.sh`; GitHub's checks run it |
+| `scripts/test-desktop.sh` | Loads the saved desktop settings and resets them again, checking each one; only runs in GitHub's checks (it changes desktop settings) |
 
 ### Shared
 
