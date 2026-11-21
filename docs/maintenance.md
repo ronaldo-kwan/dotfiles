@@ -60,7 +60,7 @@ DOT_PLAIN=1 dot apps
 <summary>Everything it checks</summary>
 
 - Config links, terminal tools, and the two fonts: installed, and the pinned version (an older copy shows ✘; `dot install` replaces it)
-- Every app and system job from `install-apps.sh`, and the NVIDIA driver
+- Every app and system job from `install-apps.sh`, and the NVIDIA driver. If it isn't running because Ubuntu installed a new kernel before the NVIDIA module for it (this happens; the module follows within days), it says so, names an older kernel to start from the boot menu (**Advanced options for Ubuntu**) meanwhile, and tells you once Ubuntu has published the module (`sudo apt update && sudo apt full-upgrade`, then restart)
 - Flatpaks, GNOME extensions and VS Code extensions
 - The firewall, the Obsidian vault, the secret check, signed commits and the reminder
 - Automatic backups

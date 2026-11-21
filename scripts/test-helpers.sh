@@ -138,6 +138,15 @@ shaders_exist() {
 }
 t "Ghostty's shaders are in the ghostty package" shaders_exist
 
+echo "NVIDIA"
+# When the driver isn't running, nvidia-smi prints its error message as output; the driver
+# version must then come from the installed package (or be empty), never be that message.
+mkdir -p "$T/bin"
+printf '#!/bin/sh\necho "NVIDIA-SMI has failed because it could not communicate with the NVIDIA driver."\nexit 9\n' > "$T/bin/nvidia-smi"
+chmod +x "$T/bin/nvidia-smi"
+major="$(PATH="$T/bin:$PATH" nvidia_major)"
+t "nvidia_major ignores nvidia-smi's error text (got: ${major:-empty})" bash -c '[[ -z "$1" || "$1" =~ ^[0-9]+$ ]]' _ "$major"
+
 echo "App table (install-apps.sh)"
 t "every app: entry has its APP_PARTS" bash -c '
   for e in "${@:2}"; do c="${e%%|*}"; [[ "$c" != app:* ]] || [[ " $1 " == *" $c "* ]] || { echo "      missing APP_PARTS for $c"; exit 1; }; done' \

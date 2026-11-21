@@ -117,6 +117,8 @@ check_nvidia_driver() {
 nvidia_major() {
   local v
   v="$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 | cut -d. -f1)"
+  # When the driver isn't running, nvidia-smi prints its error message as output: only a number counts.
+  [[ "$v" =~ ^[0-9]+$ ]] || v=""
   [[ -n "$v" ]] || v="$(dpkg-query -W -f='${Package} ${Status}\n' 'nvidia-driver-*' 2>/dev/null \
     | awk '/install ok installed/ {print $1}' | grep -oE '[0-9]+' | head -1)"
   echo "$v"

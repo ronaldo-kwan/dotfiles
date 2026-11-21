@@ -44,6 +44,9 @@ fix_hint() {
     pull)    echo "dot pull" ;;
     notes)   echo "dot notes" ;;
     restart) echo "restart; with Secure Boot, enrol the key on the blue MOK screen" ;;
+    nvidiakernel)
+      if [[ -n "$NV_READY" ]]; then echo "Ubuntu has it now: sudo apt update && sudo apt full-upgrade, then restart"
+      else echo "Ubuntu hasn't published it yet; meanwhile start ${NV_OLD:-the previous kernel} (boot menu: Advanced options for Ubuntu), later run sudo apt update && sudo apt full-upgrade"; fi ;;
     ghkeys)  echo "gh auth refresh -h github.com --remove-scopes $GH_KEY_SCOPES" ;;
   esac
 }
@@ -191,9 +194,28 @@ for entry in "${APPS[@]}"; do
   else ok "$name"
   fi
 done
+# The NVIDIA driver: running? If not, is it because this kernel has no NVIDIA module?
+# (Ubuntu sometimes installs a new kernel days before the NVIDIA module for it.)
+nvidia_module_for() { modinfo -k "$1" nvidia >/dev/null 2>&1; }   # <kernel>: does it have one?
 if has_nvidia && have nvidia-smi; then
-  nvidia-smi >/dev/null 2>&1 && ok "NVIDIA driver running (nvidia-smi)" \
-    || bad "NVIDIA driver installed but not running" restart
+  if nvidia-smi >/dev/null 2>&1; then ok "NVIDIA driver running (nvidia-smi)"
+  elif ! nvidia_module_for "$(uname -r)"; then
+    NV_KERNEL="$(uname -r)" NV_OLD="" NV_READY=""
+    # The newest other installed kernel that has a module: start that one meanwhile.
+    while read -r k; do
+      [[ "$k" != "$NV_KERNEL" ]] && nvidia_module_for "$k" && { NV_OLD="$k"; break; }
+    done < <(ls /boot | sed -n 's/^vmlinuz-//p' | sort -rV)
+    # Has Ubuntu published the module for this kernel yet? (the installed driver series,
+    # e.g. linux-modules-nvidia-595-open-, with this kernel's version)
+    NV_PKG="$(dpkg-query -W -f='${Package}\n' 'linux-modules-nvidia-*' 2>/dev/null \
+      | sed -n "s/-${NV_OLD:-none}\$//p" | head -1)"
+    if [[ -n "$NV_PKG" ]] && apt-cache policy "$NV_PKG-$NV_KERNEL" 2>/dev/null | grep -q 'Candidate: [0-9]'; then
+      NV_READY=1
+    fi
+    bad "no NVIDIA driver module for this kernel ($NV_KERNEL) yet, so the NVIDIA card isn't used" nvidiakernel
+  else
+    bad "NVIDIA driver installed but not running" restart
+  fi
 fi
 
 section "Flatpaks and extensions"
@@ -314,6 +336,7 @@ has_fix backups && fix_step "Automatic backups" "Open Backups to turn them on?" 
 has_fix ghkeys  && fix_step "GitHub CLI permissions" "Remove its permission to add SSH keys (approve in the browser)?" \
                      gh auth refresh -h github.com --remove-scopes "$GH_KEY_SCOPES"
 has_fix restart && warn "The NVIDIA driver needs a restart (and with Secure Boot, the blue MOK screen)."
+has_fix nvidiakernel && warn "NVIDIA: $(fix_hint nvidiakernel)"
 # Save last, after anything above that changed files.
 has_fix save    && fix_step "Snapshots" "Refresh them (dot save)?" "$DOTFILES/dot" save
 [[ -n "$(repo_state "$DOTFILES")" ]] && fix_step "Save ~/dotfiles to GitHub" "Run dot push?" "$DOTFILES/dot" push
