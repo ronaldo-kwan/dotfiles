@@ -71,6 +71,9 @@ jobs:
     name: install.sh on a clean Ubuntu 26.04
     runs-on: ubuntu-latest
     container: ubuntu:26.04
+    defaults:
+      run:
+        shell: bash   # a container's default is sh, which lacks [[ ]]
     steps:
       - name: Tools that fresh-install.sh installs first (the ones a container can use)
         run: |
@@ -111,7 +114,7 @@ jobs:
         run: |
           # Two terminal tools and a weekly job to remove (sudo: the scripts use it)
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sudo bat fzf >/dev/null
-          printf '#!/bin/sh\n' > /etc/cron.weekly/system-update
+          mkdir -p /etc/cron.weekly && printf '#!/bin/sh\n' > /etc/cron.weekly/system-update
           ./uninstall.sh --apps --yes
           for p in bat fzf; do
             if dpkg -s "$p" >/dev/null 2>&1; then echo "still installed: $p"; exit 1; fi
@@ -126,6 +129,9 @@ jobs:
     name: install.sh follows the website's choices
     runs-on: ubuntu-latest
     container: ubuntu:26.04
+    defaults:
+      run:
+        shell: bash   # a container's default is sh, which lacks [[ ]]
     steps:
       - name: Tools
         run: |
