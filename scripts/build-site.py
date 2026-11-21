@@ -26,21 +26,19 @@ GROUPS = [
 ]
 GROUP_DEFAULT_OFF = {"claude-md"}
 
-# install-apps.sh entries that are single apps, by their install function.
-APP_TOKENS = {
-    "install_chrome": ("app:chrome", "Google's browser, from Google's own update source"),
-    "install_vscode": ("app:code", "Microsoft's code editor, with the Catppuccin theme"),
-    "install_claude": ("app:claude", "Anthropic's desktop app"),
-    "install_claude_code": ("app:claude-code", "Anthropic's AI coding assistant for the terminal (the claude command)"),
-    "install_chatgpt": ("app:chatgpt", "OpenAI's desktop app, with Codex"),
-    "install_protonvpn": ("app:protonvpn", "Proton's VPN app"),
-    "install_obs": ("app:obs", "Screen recording and streaming"),
-    "install_onlyoffice": ("app:onlyoffice", "Office suite (documents, spreadsheets, slides)"),
-    "install_steam": ("app:steam", "Valve's game store"),
+# A description for each single app in install-apps.sh (its APPS entries with an app:
+# choice; the others belong to a group or the Ubuntu apps list).
+APP_DESCRIPTIONS = {
+    "app:chrome": "Google's browser, from Google's own update source",
+    "app:code": "Microsoft's code editor, with the Catppuccin theme",
+    "app:claude": "Anthropic's desktop app",
+    "app:claude-code": "Anthropic's AI coding assistant for the terminal (the claude command)",
+    "app:chatgpt": "OpenAI's desktop app, with Codex",
+    "app:protonvpn": "Proton's VPN app",
+    "app:obs": "Screen recording and streaming",
+    "app:onlyoffice": "Office suite (documents, spreadsheets, slides)",
+    "app:steam": "Valve's game store",
 }
-# Entries handled by groups or the Ubuntu apps list (not shown as single apps).
-NOT_SINGLE_APPS = {"install_ubuntu_apps", "install_nvidia_driver", "setup_steam_nvidia",
-                   "setup_weekly_updates", "setup_monthly_cleanup", "setup_firewall", "remove_snap_firefox"}
 
 FLATPAK_NAMES = {
     "com.discordapp.Discord": ("Discord", "Chat and voice"),
@@ -60,16 +58,13 @@ def outside_apps():
     block = re.search(r"^APPS=\(\n(.*?)^\)", text, re.S | re.M).group(1)
     apps = []
     for line in block.splitlines():
-        m = re.match(r'\s*"([^|]*)\|[^|]*\|([^|"]*)', line)
+        m = re.match(r'\s*"(app:[^|]*)\|([^|]*)\|', line)   # choice|name|...
         if not m:
             continue
-        name, fn = m.group(1), m.group(2)
-        if fn in NOT_SINGLE_APPS:
-            continue
-        if fn not in APP_TOKENS:
-            sys.exit(f"build-site.py: install-apps.sh has a new entry '{fn}': add it to APP_TOKENS")
-        token, desc = APP_TOKENS[fn]
-        apps.append({"token": token, "name": name, "desc": desc})
+        token, name = m.group(1), m.group(2)
+        if token not in APP_DESCRIPTIONS:
+            sys.exit(f"build-site.py: install-apps.sh has a new app '{token}': add it to APP_DESCRIPTIONS")
+        apps.append({"token": token, "name": name, "desc": APP_DESCRIPTIONS[token]})
     return apps
 
 

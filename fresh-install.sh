@@ -19,7 +19,7 @@
 set -uo pipefail
 
 # shellcheck source=lib.sh
-source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, ask, run_step, show_failures, DOTFILES
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, ask, apt_get, run_steps, summary, DOTFILES
 # Plugged in? A computer without a battery (a desktop) always counts as plugged in.
 on_charger() {
   compgen -G '/sys/class/power_supply/BAT*' >/dev/null || return 0
@@ -41,20 +41,18 @@ if ! have gum && [[ -z "$YES_ALL" && -t 0 ]]; then
   note "Getting the menus ready: installing gum (asks for your password once)"
   keep_sudo || exit 1
   clock_step
-  quiet "Installing gum" sudo env DEBIAN_FRONTEND=noninteractive bash -c \
-    'apt-get -o DPkg::Lock::Timeout=300 update && apt-get -o DPkg::Lock::Timeout=300 install -y gum' || true
+  { apt_get update && apt_get install -y gum; } || true
 fi
 git_identity
 choose_answer_mode
-ask "Start?" || { echo "Nothing changed."; exit 0; }
+ask_or_quit "Start?"
 keep_sudo || exit 1
 clock_step   # before the first update: apt rejects updates while the clock is wrong
 
 # 1. Update the system --------------------------------------------------------------
 update_system() {
-  quiet "Refreshing package lists" sudo apt-get -o DPkg::Lock::Timeout=300 update
-  quiet "Upgrading all packages" sudo env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 \
-    -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold -y full-upgrade
+  apt_get update
+  apt_get -y full-upgrade
 }
 
 # 2. Firmware (BIOS, SSD, devices) ---------------------------------------------------
@@ -77,8 +75,7 @@ update_firmware() {
 
 # 3. Terminal tools and Flathub ---------------------------------------------------------
 install_tools() {
-  quiet "Installing ${#TOOLS[@]} terminal tools" sudo env DEBIAN_FRONTEND=noninteractive \
-    apt-get -o DPkg::Lock::Timeout=300 install -y "${TOOLS[@]}"
+  apt_get_as "Installing ${#TOOLS[@]} terminal tools" install -y "${TOOLS[@]}"
   sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 }
 

@@ -18,17 +18,15 @@ link_configs() {
     skip "stow isn't installed (sudo apt install stow), so nothing was linked"
     return 0
   fi
-  local pkgs; mapfile -t pkgs < <(chosen_packages)
-  for pkg in "${pkgs[@]}"; do
-    # Move aside real files that stow would refuse to replace.
-    while IFS= read -r -d '' src; do
-      target="$HOME/${src#"$DOTFILES/$pkg/"}"
-      if [[ -e "$target" && ! -L "$target" ]]; then
-        mv "$target" "$target.orig"
-        echo "    kept existing ${target/#$HOME/\~} as ${target/#$HOME/\~}.orig"
-      fi
-    done < <(find "$DOTFILES/$pkg" -type f -print0)
-  done
+  local pkgs f target; mapfile -t pkgs < <(chosen_packages)
+  # Move aside real files that stow would refuse to replace.
+  while IFS= read -r -d '' f; do
+    target="$HOME/${f#*/}"
+    if [[ -e "$target" && ! -L "$target" ]]; then
+      mv "$target" "$target.orig"
+      echo "    kept existing ${target/#$HOME/\~} as ${target/#$HOME/\~}.orig"
+    fi
+  done < <(config_files "${pkgs[@]}")
   # --no-folding links individual files, so apps that write extra files into
   # their config folder (like btop's log) don't write them into this repo.
   stow --dir="$DOTFILES" --target="$HOME" --no-folding --restow "${pkgs[@]}"
@@ -42,7 +40,7 @@ link_configs() {
 #   - Roboto Mono (desktop): the monospace font, from Google Fonts' own repo
 ROBOTO_MONO_URL="https://raw.githubusercontent.com/google/fonts/main/ofl/robotomono"
 install_fonts() {
-  local want_nerd=0 want_mono=0 tmp dir
+  local want_nerd=0 want_mono=0 tmp
   chosen terminal && ! has_nerd_font && want_nerd=1
   chosen desktop && ! has_roboto_mono && want_mono=1
   if (( !want_nerd && !want_mono )); then
@@ -56,19 +54,17 @@ install_fonts() {
   fi
   tmp="$(mktemp -d)"
   if (( want_nerd )); then
-    dir="$HOME/.local/share/fonts/RobotoMonoNerdFont"
     curl -fsSL -o "$tmp/RobotoMono.tar.xz" \
       https://github.com/ryanoasis/nerd-fonts/releases/latest/download/RobotoMono.tar.xz
-    mkdir -p "$tmp/extract" "$dir"
+    mkdir -p "$tmp/extract" "$NERD_FONT_DIR"
     tar -xJf "$tmp/RobotoMono.tar.xz" -C "$tmp/extract"
-    cp "$tmp"/extract/RobotoMonoNerdFont*.ttf "$dir/"
+    cp "$tmp"/extract/RobotoMonoNerdFont*.ttf "$NERD_FONT_DIR/"
     echo "    RobotoMono Nerd Font"
   fi
   if (( want_mono )); then
-    dir="$HOME/.local/share/fonts/RobotoMono"
-    mkdir -p "$dir"
-    curl -fsSL -o "$dir/RobotoMono[wght].ttf" "$ROBOTO_MONO_URL/RobotoMono%5Bwght%5D.ttf"
-    curl -fsSL -o "$dir/RobotoMono-Italic[wght].ttf" "$ROBOTO_MONO_URL/RobotoMono-Italic%5Bwght%5D.ttf"
+    mkdir -p "$MONO_FONT_DIR"
+    curl -fsSL -o "$MONO_FONT_DIR/RobotoMono[wght].ttf" "$ROBOTO_MONO_URL/RobotoMono%5Bwght%5D.ttf"
+    curl -fsSL -o "$MONO_FONT_DIR/RobotoMono-Italic[wght].ttf" "$ROBOTO_MONO_URL/RobotoMono-Italic%5Bwght%5D.ttf"
     echo "    Roboto Mono"
   fi
   rm -rf "$tmp"
@@ -82,10 +78,10 @@ install_vscode_extensions() {
     skip "VS Code isn't installed yet"
     return 0
   fi
+  local ext
   while read -r ext; do
-    [[ -z "$ext" ]] && continue
     code --install-extension "$ext" >/dev/null && echo "    $ext"
-  done < "$SETUP/vscode-extensions.txt"
+  done < <(list_of vscode-extensions.txt)
 }
 
 # 4. Flatpak apps ---------------------------------------------------------------
@@ -99,7 +95,7 @@ install_flatpaks() {
     return 0
   fi
   local -a apps
-  mapfile -t apps < <(grep -v '^\s*$' "$SETUP/flatpaks.txt" | while read -r a; do chosen "flatpak:$a" && echo "$a"; done)
+  mapfile -t apps < <(chosen_from flatpaks.txt flatpak:)
   (( ${#apps[@]} )) || { skip "no Flatpak apps chosen"; return 0; }
   quiet "Installing ${#apps[@]} Flatpak apps (already installed ones are skipped)" \
     flatpak install -y --noninteractive flathub "${apps[@]}"
@@ -137,7 +133,6 @@ install_gnome_extensions() {
   shell_version="$(gnome-shell --version | grep -oE '[0-9]+' | head -1)"
   tmp="$(mktemp -d)"
   while read -r uuid; do
-    [[ -z "$uuid" || "$uuid" == \#* ]] && continue
     if [[ "${REINSTALL_EXTENSIONS:-0}" != 1 ]] && gnome-extensions info "$uuid" >/dev/null 2>&1; then
       echo "    $uuid: already installed"
     else
@@ -157,7 +152,7 @@ current = ast.literal_eval(sys.argv[1].removeprefix("@as "))
 if sys.argv[2] not in current:
     current.append(sys.argv[2])
 print(current)' "$(gsettings get org.gnome.shell enabled-extensions)" "$uuid")"
-  done < "$SETUP/gnome-extensions.txt"
+  done < <(list_of gnome-extensions.txt)
   rm -rf "$tmp"
   if [[ "${DEFER_DESKTOP:-0}" == 1 ]]; then
     note "downloaded; switched on at the end, just before the restart"; return 0
@@ -178,25 +173,24 @@ restore_gnome_settings() {
     return 0
   fi
   [[ "${DEFER_DESKTOP:-0}" == 1 ]] && { held_back; return 0; }
-  # Theme, icons, fonts, accent colour, dark mode, window buttons, workspaces, and
-  # exactly which extensions are on or off (this also switches off Ubuntu's
-  # built-in ones you turned off, like Ubuntu Dock and desktop icons).
-  dconf load /org/gnome/ < "$SETUP/gnome-desktop.dconf"
-  dconf load /org/gnome/settings-daemon/plugins/media-keys/ < "$SETUP/gnome-shortcuts.dconf"
-  dconf load /org/gnome/shell/extensions/ < "$SETUP/gnome-extension-settings.dconf"
+  # The look (theme, icons, fonts, accent colour, dark mode, window buttons, workspaces,
+  # exactly which extensions are on or off, including Ubuntu's built-in ones like Ubuntu
+  # Dock), shortcuts, extension settings, and the rest: power, sound, Files, file dialogs,
+  # search order, backups and app settings (see DCONF_FILES in lib.sh). @HOME@, in the
+  # folders Backups leaves out, becomes this computer's home folder.
+  local e f palette='' uuid
+  for e in "${DCONF_FILES[@]}"; do
+    f="$SETUP/${e%%|*}"
+    if [[ -f "$f" ]]; then fill_home "$f" | dconf load "${e#*|}"; fi
+  done
   gsettings set org.gnome.shell favorite-apps "$(cat "$SETUP/dock-favorites.txt")"
-  # Window and screenshot shortcuts, power, sound, Files, file dialogs, search order,
-  # backups and app settings.
+  # Ptyxis keeps its colours in a profile with a different ID on each computer.
   if [[ -f "$SETUP/desktop-settings.dconf" ]]; then
-    # @HOME@ (in the folders Backups leaves out) becomes this computer's home folder.
-    sed "s|@HOME@|$HOME|g" "$SETUP/desktop-settings.dconf" | dconf load /
-    # Ptyxis keeps its colours in a profile with a different ID on each computer.
-    local palette uuid
     palette="$(sed -n 's/^# ptyxis-palette=//p' "$SETUP/desktop-settings.dconf")"
-    uuid="$(dconf read /org/gnome/Ptyxis/default-profile-uuid | tr -d "'")"
-    if [[ -n "$palette" && -n "$uuid" ]]; then
-      dconf write "/org/gnome/Ptyxis/Profiles/$uuid/palette" "$palette"
-    fi
+  fi
+  uuid="$(dconf read /org/gnome/Ptyxis/default-profile-uuid | tr -d "'")"
+  if [[ -n "$palette" && -n "$uuid" ]]; then
+    dconf write "/org/gnome/Ptyxis/Profiles/$uuid/palette" "$palette"
   fi
   echo "    restored"
 }
@@ -214,9 +208,8 @@ set_wallpaper() {
     return 0
   fi
   [[ "${DEFER_DESKTOP:-0}" == 1 ]] && { held_back; return 0; }
-  local wall_dir="$HOME/Pictures/Wallpapers/current" wall uri tmp
-  wall="$wall_dir/catppuccin-tropic-island-night.jpg"
-  mkdir -p "$wall_dir"
+  local wall="$WALLPAPER" uri tmp
+  mkdir -p "$(dirname "$wall")"
   if [[ ! -f "$wall" ]]; then
     have curl || { skip "curl isn't installed, so the wallpaper wasn't downloaded"; return 0; }
     tmp="$(mktemp)"
@@ -239,9 +232,9 @@ set_wallpaper() {
 put_file() { # put_file <saved file> <destination>: copy, turning @HOME@ into this home folder
   local src="$1" dst="$2"
   mkdir -p "$(dirname "$dst")"
-  if [[ -f "$dst" ]] && cmp -s <(sed "s|@HOME@|$HOME|g" "$src") "$dst"; then return 0; fi
+  if [[ -f "$dst" ]] && cmp -s <(fill_home "$src") "$dst"; then return 0; fi
   [[ -f "$dst" ]] && mv "$dst" "$dst.orig"
-  sed "s|@HOME@|$HOME|g" "$src" > "$dst"
+  fill_home "$src" > "$dst"
   echo "    ${dst/#$HOME/\~}"
 }
 
@@ -268,34 +261,33 @@ restore_app_settings() {
 # 9. Obsidian -----------------------------------------------------------------------
 # Notes come from your private GitHub repo "obsidian-vault" (not from this repo);
 # vault settings (theme, which plugins are on) come from setup/apps/obsidian/ if the vault has none.
-OBSIDIAN_VAULT="$HOME/Documents/Obsidian Vault"
 restore_obsidian() {
   need notes || return 0
-  if [[ ! -d "$OBSIDIAN_VAULT" ]]; then
+  if [[ ! -d "$VAULT" ]]; then
     if have gh && gh repo view obsidian-vault >/dev/null 2>&1; then
-      gh repo clone obsidian-vault "$OBSIDIAN_VAULT" -- --quiet
-      echo "    notes cloned to ${OBSIDIAN_VAULT/#$HOME/\~}"
+      gh repo clone obsidian-vault "$VAULT" -- --quiet
+      echo "    notes cloned to ${VAULT/#$HOME/\~}"
     else
       skip "no obsidian-vault repo found on GitHub (or gh isn't signed in), so no notes cloned"
     fi
-  elif [[ -d "$OBSIDIAN_VAULT/.git" ]] && ! git -C "$OBSIDIAN_VAULT" rev-parse -q --verify HEAD >/dev/null; then
+  elif [[ -d "$VAULT/.git" ]] && ! git -C "$VAULT" rev-parse -q --verify HEAD >/dev/null; then
     # The vault was cloned while the notes repo was still empty: fetch the notes now.
-    if git -C "$OBSIDIAN_VAULT" fetch -q origin 2>/dev/null \
-       && git -C "$OBSIDIAN_VAULT" rev-parse -q --verify origin/main >/dev/null; then
-      git -C "$OBSIDIAN_VAULT" checkout -q -f -B main origin/main
-      git -C "$OBSIDIAN_VAULT" branch -q -u origin/main
-      echo "    notes fetched into ${OBSIDIAN_VAULT/#$HOME/\~}"
+    if git -C "$VAULT" fetch -q origin 2>/dev/null \
+       && git -C "$VAULT" rev-parse -q --verify origin/main >/dev/null; then
+      git -C "$VAULT" checkout -q -f -B main origin/main
+      git -C "$VAULT" branch -q -u origin/main
+      echo "    notes fetched into ${VAULT/#$HOME/\~}"
     else
       echo "    vault already there; the notes repo is still empty"
     fi
   else
-    echo "    vault already there: ${OBSIDIAN_VAULT/#$HOME/\~}"
+    echo "    vault already there: ${VAULT/#$HOME/\~}"
   fi
   # Only into a vault that's there: creating the folder here would stop the notes
   # from being cloned on a later run.
-  if [[ -d "$SETUP/apps/obsidian" && -d "$OBSIDIAN_VAULT" && ! -f "$OBSIDIAN_VAULT/.obsidian/appearance.json" ]]; then
-    mkdir -p "$OBSIDIAN_VAULT/.obsidian"
-    cp -r --update=none "$SETUP/apps/obsidian/." "$OBSIDIAN_VAULT/.obsidian/"
+  if [[ -d "$SETUP/apps/obsidian" && -d "$VAULT" && ! -f "$VAULT/.obsidian/appearance.json" ]]; then
+    mkdir -p "$VAULT/.obsidian"
+    cp -r --update=none "$SETUP/apps/obsidian/." "$VAULT/.obsidian/"
     echo "    Obsidian settings and Catppuccin theme added to the vault"
   fi
   register_obsidian_vault
@@ -305,7 +297,7 @@ restore_obsidian() {
 # Obsidian opens straight into it instead of asking. Only while Obsidian is closed,
 # because Obsidian rewrites this list when it quits.
 register_obsidian_vault() {
-  [[ -d "$OBSIDIAN_VAULT" ]] || return 0
+  [[ -d "$VAULT" ]] || return 0
   local list
   if have flatpak && flatpak info md.obsidian.Obsidian >/dev/null 2>&1; then
     list="$HOME/.var/app/md.obsidian.Obsidian/config/obsidian/obsidian.json"
@@ -340,7 +332,7 @@ else:
     vaults[secrets.token_hex(8)] = {"path": vault, "ts": int(time.time() * 1000), "open": True}
     print("    vault added to Obsidian; it opens straight into it")
 json.dump(data, open(path, "w"))
-' "$list" "$OBSIDIAN_VAULT"
+' "$list" "$VAULT"
 }
 
 # 10. Safety checks ---------------------------------------------------------------------
@@ -350,14 +342,14 @@ json.dump(data, open(path, "w"))
 setup_safety_checks() {
   need safety || return 0
   local d
-  for d in "$DOTFILES" "$OBSIDIAN_VAULT"; do
+  for d in "$DOTFILES" "$VAULT"; do
     [[ -d "$d/.git" ]] || continue
     git -C "$d" config core.hooksPath "$DOTFILES/.githooks"
     echo "    secret check before commits: ${d/#$HOME/\~}"
   done
   # Signed commits, if this computer has an SSH key (dot ssh creates one).
   bash "$DOTFILES/scripts/ssh-setup.sh" --signing-only
-  if have systemctl && systemctl --user show-environment >/dev/null 2>&1; then
+  if has_user_systemd; then
     systemctl --user daemon-reload
     systemctl --user enable --now dotfiles-reminder.timer 2>/dev/null
     echo "    weekly reminder on (see: systemctl --user list-timers dotfiles-reminder.timer)"
@@ -385,7 +377,7 @@ header "Set up configs and desktop" \
   "Files it replaces are kept as <name>.orig."
 # -y / --yes (used by fresh-install.sh), or Yes to everything chosen earlier, skips this.
 yes_flag "$@"
-ask "Continue?" || { echo "Nothing changed."; exit 0; }
+ask_or_quit "Continue?"
 git_identity
 
 run_steps \

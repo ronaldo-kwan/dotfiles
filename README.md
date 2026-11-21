@@ -104,7 +104,7 @@ You're welcome to use or adapt this. The scripts install *my* apps and settings,
 1. **Fork** this repo, then in your fork edit:
    - `setup/git-identity`: your name and email, suggested for git commits (saved per computer, never committed)
    - `setup/apt-packages.txt`, `setup/flatpaks.txt`, `setup/vscode-extensions.txt`, `setup/gnome-extensions.txt`: your apps
-   - the `APPS` list in `install-apps.sh`: which outside apps to install
+   - the `APPS` list in `install-apps.sh`: which outside apps to install (and `APP_PARTS` below it: what each one adds, so `dot uninstall --apps` can remove it)
    - the configs in `bash/`, `ghostty/`, `starship/` and so on, to taste. `claude/` holds my Claude Code instructions; delete it if you don't want them.
 2. On a fresh Ubuntu, run the one command with your fork:
 

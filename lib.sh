@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
-# Shared helpers for install.sh, install-apps.sh, fresh-install.sh, check.sh and
-# post-upgrade.sh. Source it after setting -uo pipefail:
+# Shared helpers and settings for every script here (install.sh, install-apps.sh,
+# uninstall.sh, fresh-install.sh, post-upgrade.sh, check.sh, dot, scripts/).
+# Source it after setting -uo pipefail:
 #   source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
-# shellcheck disable=SC2034  # DOTFILES, SETUP and FAILED are used by the scripts that source this
+# shellcheck disable=SC2034  # the settings below are used by the scripts that source this
+
+# Loaded once per script (install-apps.sh loads it too when check.sh or uninstall.sh
+# reads its app list). Not exported: scripts started from this one load it themselves.
+[[ -n "${DOTFILES_LIB_LOADED:-}" ]] && return 0
+DOTFILES_LIB_LOADED=1
 
 DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SETUP="$DOTFILES/setup"
@@ -12,7 +18,33 @@ TOOLS=(git gh gum curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty
 # Stow packages: folders here whose files are linked into your home folder
 PACKAGES=(bash git starship ghostty btop lazygit terminal-default vscode claude systemd fontconfig)
 
+# Places outside ~/dotfiles that install.sh fills, and check.sh, dot and uninstall.sh look at
+VAULT="$HOME/Documents/Obsidian Vault"   # your notes: the private GitHub repo obsidian-vault
+WALLPAPER="$HOME/Pictures/Wallpapers/current/catppuccin-tropic-island-night.jpg"
+NERD_FONT_DIR="$HOME/.local/share/fonts/RobotoMonoNerdFont"   # the terminal's font
+MONO_FONT_DIR="$HOME/.local/share/fonts/RobotoMono"           # the desktop's monospace font
+# The desktop settings in setup/ and where in dconf each goes: install.sh loads them,
+# uninstall.sh resets every key in them.
+DCONF_FILES=("gnome-desktop.dconf|/org/gnome/"
+  "gnome-shortcuts.dconf|/org/gnome/settings-daemon/plugins/media-keys/"
+  "gnome-extension-settings.dconf|/org/gnome/shell/extensions/"
+  "desktop-settings.dconf|/")
+
 have() { command -v "$1" >/dev/null 2>&1; }
+
+# list_of <file in setup/>: its entries, one per line, without comments, blank lines and
+# "-name" lines (apt-packages.txt: on purpose not for new computers).
+list_of() { sed 's/#.*//' "$SETUP/$1" | awk 'NF && $1 !~ /^-/ {print $1}'; }
+
+# config_files <stow package>...: each of their files as "<package>/<path in your home
+# folder>", NUL-separated. The file is $DOTFILES/<that>; its link is ~/<that without the package>.
+config_files() { local p; for p in "$@"; do find "$DOTFILES/$p" -type f -printf "$p/%P\\0"; done; }
+
+# Is there a systemd user session (for the weekly reminder)? Not in containers or CI.
+has_user_systemd() { have systemctl && systemctl --user show-environment >/dev/null 2>&1; }
+
+# Does this computer have an NVIDIA graphics card?
+has_nvidia() { lspci 2>/dev/null | grep -qiE '(vga|3d|display).*nvidia'; }
 
 # --- Choices: what to set up (picked on the website, or everything) ----------------------
 # DOTFILES_CHOICES lists what to set up, separated by spaces. Groups: terminal desktop
@@ -39,6 +71,13 @@ chosen() {
 need() { chosen "$1" && return 0; skip "not chosen"; return 1; }
 # Is any choice starting with <prefix> (e.g. "pkg:") picked?
 chosen_any() { [[ -z "$DOTFILES_CHOICES" || " $DOTFILES_CHOICES" == *" $1"* ]]; }
+# chosen_from <file in setup/> <prefix>: its entries that were chosen as <prefix><entry>
+# (flatpaks.txt with flatpak:, apt-packages.txt with pkg:).
+chosen_from() {
+  local e
+  while read -r e; do chosen "$2$e" && echo "$e"; done < <(list_of "$1")
+  return 0
+}
 
 # The stow packages for what was chosen (git always: name, email and signing).
 chosen_packages() {
@@ -296,6 +335,8 @@ ask() {
   fi
   local a; read -rp "    ${C_INFO}?${C_N} $1 ${C_DIM}[Y/n]${C_N} " a; [[ ! "$a" =~ ^[Nn]$ ]]
 }
+# ask_or_quit "Question?": the first question of a script; No ends it without changes.
+ask_or_quit() { ask "$1" || { echo "Nothing changed."; exit 0; }; }
 
 # keep_sudo: ask for the password once, then keep sudo signed in until this script
 # ends, so a long run (big downloads) doesn't stop halfway to ask again.
@@ -308,15 +349,64 @@ keep_sudo() {
   disown 2>/dev/null || true
 }
 
-# installed <package>: is this apt package installed?
-installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"; }
+# installed <package>: is this apt package installed? (A pattern like 'nvidia-driver-*'
+# means any package it matches.)
+installed() { dpkg-query -W -f='${Status}\n' "$1" 2>/dev/null | grep -q "install ok installed"; }
 
-# repo_state <dir>: prints "uncommitted" and/or "unpushed"
+# --- Running commands that need sudo --------------------------------------------------
+# DRY_RUN=1 (install-apps.sh, uninstall.sh --apps): show what would happen, change nothing.
+DRY_RUN="${DRY_RUN:-0}"
+# run <command>...: run it, or only print it in a dry run.
+run() { if [[ "$DRY_RUN" == 1 ]]; then printf '    would run: %s\n' "$*"; else "$@"; fi; }
+
+# Wait while another program (such as Ubuntu's automatic updates) is using apt.
+# Only one program can install or refresh package lists at a time.
+APT_LOCKS=(/var/lib/apt/lists/lock /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/cache/apt/archives/lock)
+apt_wait() {
+  [[ "$DRY_RUN" == 1 ]] && return 0
+  command -v fuser >/dev/null || return 0
+  local waited=0
+  while sudo fuser "${APT_LOCKS[@]}" >/dev/null 2>&1; do
+    (( waited == 0 )) && echo "    waiting for another software update to finish (often Ubuntu's automatic updates)..."
+    sleep 5; waited=$(( waited + 5 ))
+    if (( waited >= 900 )); then echo "    still busy after 15 minutes; trying anyway"; break; fi
+  done
+}
+
+# apt_get <apt-get arguments>: sudo apt-get with a spinner and a short label (full output
+# in the log), after other updates finish. It never stops to ask: config files you changed
+# are kept, and DPkg::Lock::Timeout makes apt wait (up to 5 minutes) if something starts
+# in between. apt_get_as "label" <arguments> is the same with your own label.
+apt_get() {
+  local label a pkgs=()
+  for a in "$@"; do
+    [[ "$a" == -* || " install remove update full-upgrade autoremove " == *" $a "* ]] || pkgs+=("${a##*/}")
+  done
+  case " $* " in
+    *" update "*)       label="Refreshing package lists" ;;
+    *" full-upgrade "*) label="Upgrading all packages" ;;
+    *" autoremove "*)   label="Removing packages nothing needs any more" ;;
+    *" remove "*)       label="Removing ${pkgs[*]}" ;;
+    *)                  label="Installing ${pkgs[*]}" ;;
+  esac
+  (( ${#label} > 60 )) && label="${label:0:57}..."
+  apt_get_as "$label" "$@"
+}
+apt_get_as() {
+  local label="$1"; shift
+  apt_wait
+  if [[ "$DRY_RUN" == 1 ]]; then run sudo apt-get "$@"; return 0; fi
+  quiet "$label" sudo env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 \
+    -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold "$@"
+}
+
+# repo_state <dir>: prints "uncommitted", "unpushed", "uncommitted and unpushed", or nothing
 repo_state() {
-  local d="$1"
-  [[ -n "$(git -C "$d" status --porcelain 2>/dev/null)" ]] && echo uncommitted
-  [[ -n "$(git -C "$d" log --oneline '@{u}..' 2>/dev/null)" ]] && echo unpushed
-  return 0
+  local d="$1" s=()
+  [[ -n "$(git -C "$d" status --porcelain 2>/dev/null)" ]] && s+=(uncommitted)
+  [[ -n "$(git -C "$d" log --oneline '@{u}..' 2>/dev/null)" ]] && s+=(unpushed)
+  (( ${#s[@]} )) || return 0
+  printf '%s\n' "${s[*]}" | sed 's/ / and /'
 }
 
 # Is this a system these dotfiles are made for? Ubuntu 26.04 with GNOME carries on without
@@ -581,52 +671,8 @@ has_nerd_font() { has_font "RobotoMono Nerd Font"; }
 # Ubuntu has no package for it; Roboto itself comes from fonts-roboto (apt-packages.txt).
 has_roboto_mono() { has_font "Roboto Mono"; }   # (the Nerd Font is "RobotoMono", no space)
 
-# Packages that install-apps.sh installs itself (not from setup/apt-packages.txt).
-APP_PACKAGES=(google-chrome-stable code claude-desktop claude-code chatgpt protonvpn-stable-release proton-vpn-gnome-desktop
-  obs-studio onlyoffice-desktopeditors steam-installer 'nvidia-driver-*' 'libnvidia-gl-*'
-  'linux-modules-nvidia-*' ufw)
-# Added by Ubuntu itself (language support adds dictionaries for your languages).
-UBUNTU_AUTO_PACKAGES=('language-pack-*' 'hunspell-*' 'hyphen-*' 'mythes-*' wbritish wamerican)
-
-# unsaved_apt_packages: Ubuntu packages you installed yourself (apt, App Center, a .deb)
-# that are still installed but in none of the dotfiles lists, so a new computer
-# wouldn't get them. Read from apt's history; Ubuntu's installer is left out.
-# A line "-name" in setup/apt-packages.txt marks one as "on purpose, not for new computers".
-# from_ubuntu <package>: can Ubuntu's own archive install it? Apps that only come from
-# their maker's source, a PPA or a downloaded .deb can't go in setup/apt-packages.txt: a
-# new computer doesn't have that source. (Ubuntu's sources are the ones apt labels
-# o=Ubuntu, so any mirror works.)
-UBUNTU_SOURCES=""
-from_ubuntu() {
-  [[ -n "$UBUNTU_SOURCES" ]] || UBUNTU_SOURCES="$(apt-cache policy 2>/dev/null | awk '
-    $2 ~ /^(https?|ftp|file|cdrom|mirror\+[a-z]+):/ { src = $2 " " $3 }
-    /^ +release .*o=Ubuntu,/ { print src }')"
-  local s
-  while read -r s; do
-    [[ -n "$s" ]] && grep -qxF "$s" <<< "$UBUNTU_SOURCES" && return 0
-  done < <(apt-cache madison "$1" 2>/dev/null | awk -F'|' '{ split($3, a, " "); print a[1] " " a[2] }')
-  return 1
-}
-
-unsaved_apt_packages() {
-  local known manual
-  known="$( { printf '%s\n' "${TOOLS[@]}" "${APP_PACKAGES[@]}" "${UBUNTU_AUTO_PACKAGES[@]}"
-              sed 's/#.*//' "$SETUP/apt-packages.txt" | awk 'NF{sub(/^-/, "", $1); print $1}'; } )"
-  manual="$(apt-mark showmanual 2>/dev/null)"
-  { cat /var/log/apt/history.log 2>/dev/null; zcat /var/log/apt/history.log.*.gz 2>/dev/null; } | awk '
-    /^Commandline:/ { mine = !/force-unsafe-io|pkgDepCache::AutoInstall|unattended-upgrade/; next }
-    /^Install:/ && mine {
-      sub(/^Install: /, ""); n = split($0, parts, /\), /)
-      for (i = 1; i <= n; i++) if (parts[i] !~ /automatic/) { split(parts[i], w, /[: ]/); print w[1] }
-    }' | sort -u | while read -r p; do
-      grep -qxF "$p" <<< "$manual" || continue                 # removed, or only a dependency
-      local k hit=0
-      # shellcheck disable=SC2053  # $k may be a pattern like nvidia-driver-*
-      while read -r k; do [[ -n "$k" && "$p" == $k ]] && { hit=1; break; }; done <<< "$known"
-      (( hit )) || echo "$p"
-    done
-  return 0
-}
-
 # fill_user <file>: print a system/ script with @USER@ replaced by this user's name.
 fill_user() { sed "s/@USER@/$(id -un)/g" "$1"; }
+# fill_home <file>: print a saved setup/ file with @HOME@ replaced by this home folder
+# (scripts/save-app-settings.sh and dump-desktop-settings.sh store it that way).
+fill_home() { sed "s|@HOME@|$HOME|g" "$1"; }

@@ -15,10 +15,11 @@
 #   ~/dotfiles/post-upgrade.sh --yes            Yes to everything without asking
 #   ~/dotfiles/post-upgrade.sh --sources-only   only step 1
 # For testing: SOURCES_DIR=<folder> SUDO= ./post-upgrade.sh --sources-only
+# (SUDO is only for step 1; the updates in step 2 always use sudo)
 
 set -uo pipefail
 # shellcheck source=lib.sh
-source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, skip, have, ask, installed, run_step, show_failures
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, skip, have, ask, apt_get, has_nvidia, run_steps, summary
 
 SOURCES_DIR="${SOURCES_DIR:-/etc/apt/sources.list.d}"
 SUDO="${SUDO-sudo}"
@@ -66,15 +67,14 @@ reenable_sources() {
 
 # 2. Update everything -----------------------------------------------------------------
 update_all() {
-  quiet "Refreshing package lists" $SUDO apt-get -o DPkg::Lock::Timeout=300 update
-  quiet "Upgrading all packages" $SUDO env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 \
-    -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold -y full-upgrade
+  apt_get update
+  apt_get -y full-upgrade
   if have flatpak; then quiet "Updating Flatpak apps" flatpak update -y --noninteractive; fi
 }
 
 # 5. NVIDIA ------------------------------------------------------------------------------
 check_nvidia() {
-  if ! lspci 2>/dev/null | grep -qiE '(vga|3d|display).*nvidia'; then
+  if ! has_nvidia; then
     echo "    no NVIDIA card visible"; return 0
   fi
   if nvidia-smi >/dev/null 2>&1; then
@@ -101,7 +101,7 @@ header "After an Ubuntu upgrade" \
   "the NVIDIA driver. Uses sudo."
 yes_flag "$@"
 choose_answer_mode
-ask "Continue?" || { echo "Nothing changed."; exit 0; }
+ask_or_quit "Continue?"
 [[ -z "$SUDO" ]] || keep_sudo || exit 1
 [[ -z "$SUDO" ]] || clock_step   # apt rejects updates while the clock is wrong
 

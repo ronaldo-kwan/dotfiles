@@ -79,7 +79,7 @@ These folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). E
 
 | File | What it is |
 |---|---|
-| `lib.sh` | Helpers shared by the scripts (questions, gum, the progress panel, steps, spinner, summary, clock check), plus the lists of terminal tools and stow packages |
+| `lib.sh` | Helpers shared by the scripts (questions, gum, the progress panel, steps, spinner, summary, clock check, apt-get, dry runs, reading the `setup/` lists), plus the lists of terminal tools and stow packages and the places outside `~/dotfiles` the scripts use (notes vault, wallpaper, fonts, which dconf file goes where) |
 
 ## Snapshots (`setup/`)
 

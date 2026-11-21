@@ -19,14 +19,13 @@
 
 set -uo pipefail
 # shellcheck source=lib.sh
-source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib.sh"
-SETUP="$DOTFILES/setup"
-VAULT="$HOME/Documents/Obsidian Vault"
-WALLPAPER="$HOME/Pictures/Wallpapers/current/catppuccin-tropic-island-night.jpg"
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib.sh"   # VAULT, WALLPAPER, DCONF_FILES, run, apt_get
+# shellcheck source=install-apps.sh
+source "$DOTFILES/install-apps.sh"   # only loads APPS and APP_PARTS: the apps and what each adds
 
 # 1. The weekly reminder runs from a linked unit file, so switch it off before unlinking.
 reminder_off() {
-  if have systemctl && systemctl --user show-environment >/dev/null 2>&1; then
+  if has_user_systemd; then
     systemctl --user disable --now dotfiles-reminder.timer >/dev/null 2>&1 || true
     echo "    weekly reminder off"
   else
@@ -37,22 +36,20 @@ reminder_off() {
 # 2. Remove the links into ~/dotfiles (only those: a file of yours with the same name
 #    stays), then put back what was there before.
 unlink_configs() {
-  local pkg src target n=0 links=0
-  for pkg in "${PACKAGES[@]}"; do
-    while IFS= read -r -d '' src; do
-      target="$HOME/${src#"$DOTFILES/$pkg/"}"
-      if [[ -L "$target" && "$(readlink -f "$target")" == "$(readlink -f "$src")" ]]; then
-        rm "$target"; links=$((links + 1))
-        rmdir --ignore-fail-on-non-empty "$(dirname "$target")" 2>/dev/null || true
-      fi
-      [[ -e "$target" || -L "$target" ]] && continue
-      if [[ -e "$target.orig" ]]; then
-        mv "$target.orig" "$target"; echo "    put back your ${target/#$HOME/\~}"; n=$((n + 1))
-      elif [[ -f "/etc/skel/${target#"$HOME/"}" ]]; then
-        cp "/etc/skel/${target#"$HOME/"}" "$target"; echo "    ${target/#$HOME/\~}: Ubuntu's default"; n=$((n + 1))
-      fi
-    done < <(find "$DOTFILES/$pkg" -type f -print0)
-  done
+  local f src target n=0 links=0
+  while IFS= read -r -d '' f; do
+    src="$DOTFILES/$f" target="$HOME/${f#*/}"
+    if [[ -L "$target" && "$(readlink -f "$target")" == "$(readlink -f "$src")" ]]; then
+      rm "$target"; links=$((links + 1))
+      rmdir --ignore-fail-on-non-empty "$(dirname "$target")" 2>/dev/null || true
+    fi
+    [[ -e "$target" || -L "$target" ]] && continue
+    if [[ -e "$target.orig" ]]; then
+      mv "$target.orig" "$target"; echo "    put back your ${target/#$HOME/\~}"; n=$((n + 1))
+    elif [[ -f "/etc/skel/${f#*/}" ]]; then
+      cp "/etc/skel/${f#*/}" "$target"; echo "    ${target/#$HOME/\~}: Ubuntu's default"; n=$((n + 1))
+    fi
+  done < <(config_files "${PACKAGES[@]}")
   echo "    $links links removed, $n of your own files put back"
 }
 
@@ -76,11 +73,10 @@ keep_git_identity() {
 reset_desktop() {
   have dconf || { skip "dconf isn't installed (no desktop)"; return 0; }
   local paths
-  paths="$(python3 -I - "$SETUP" <<'EOF'
+  paths="$(python3 -I - "$SETUP" "${DCONF_FILES[@]}" <<'EOF'
 import sys, re, pathlib
 setup = pathlib.Path(sys.argv[1])
-files = {"gnome-desktop.dconf": "/org/gnome/", "gnome-shortcuts.dconf": "/org/gnome/settings-daemon/plugins/media-keys/",
-         "gnome-extension-settings.dconf": "/org/gnome/shell/extensions/", "desktop-settings.dconf": "/"}
+files = dict(a.split("|", 1) for a in sys.argv[2:])   # file in setup/ -> where in dconf it goes
 for name, prefix in files.items():
     f = setup / name
     if not f.exists():
@@ -115,18 +111,17 @@ remove_extensions() {
   have gnome-extensions || { skip "gnome-extensions isn't installed"; return 0; }
   local uuid n=0
   while read -r uuid; do
-    [[ -z "$uuid" || "$uuid" == \#* ]] && continue
     [[ -d "$HOME/.local/share/gnome-shell/extensions/$uuid" ]] || continue
     gnome-extensions uninstall "$uuid" 2>/dev/null || rm -rf "$HOME/.local/share/gnome-shell/extensions/$uuid"
     echo "    $uuid"; n=$((n + 1))
-  done < "$SETUP/gnome-extensions.txt"
+  done < <(list_of gnome-extensions.txt)
   (( n )) || echo "    none installed"
 }
 
 # 6. Fonts and wallpaper install.sh downloaded.
 remove_fonts_wallpaper() {
   local d removed=0
-  for d in "$HOME/.local/share/fonts/RobotoMono" "$HOME/.local/share/fonts/RobotoMonoNerdFont"; do
+  for d in "$MONO_FONT_DIR" "$NERD_FONT_DIR"; do
     [[ -d "$d" ]] && rm -rf "$d" && echo "    ${d/#$HOME/\~}" && removed=1
   done
   if (( removed )) && have fc-cache; then fc-cache -f >/dev/null 2>&1 || true; fi   # a warning here is harmless
@@ -145,7 +140,7 @@ remove_copies() {
     [[ -f "$f" ]] || continue
     local saved="$conf"
     [[ "$f" == */autostart/* ]] && saved="$SETUP/apps/autostart/$(basename "$f")"
-    [[ -f "$saved" ]] && cmp -s <(sed "s|@HOME@|$HOME|g" "$saved") "$f" || continue
+    [[ -f "$saved" ]] && cmp -s <(fill_home "$saved") "$f" || continue
     rm -f "$f"; n=$((n + 1))
     [[ -f "$f.orig" ]] && mv "$f.orig" "$f"
   done
@@ -171,41 +166,34 @@ safety_off() {
 }
 
 # --- --apps: the apps and system parts too --------------------------------------------
-DRY_RUN="${DRY_RUN:-0}"
-run() { if [[ "$DRY_RUN" == 1 ]]; then printf '    would run: %s\n' "$*"; else "$@"; fi; }
-pkg_installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q 'ok installed'; }
-installed_of() { local p; for p in "$@"; do pkg_installed "$p" && echo "$p"; done; return 0; }
+installed_of() { local p; for p in "$@"; do installed "$p" && echo "$p"; done; return 0; }
 
 # app_items: one line per thing that can be removed, "label|kind|what|files". kind is apt
 # (what = packages), flatpak (an app ID), jobs, firewall or snapfirefox. files are deleted
 # with it (the app's update source and key); a ppa: entry is removed with add-apt-repository.
 app_items() {
-  local S=/etc/apt/sources.list.d K=/usr/share/keyrings p pkgs desk tools
-  maker() { # maker <label> <packages> <files>: listed only if one of the packages is installed
-    [[ -n "$(installed_of $2)" ]] && echo "$1|apt|$2|$3"; return 0
-  }
-  maker "Google Chrome" "google-chrome-stable" "$S/google-chrome.sources $S/google-chrome.list $K/google-chrome.gpg"
-  maker "VS Code" "code" "$S/vscode.sources $S/vscode.list $K/microsoft.gpg"
-  maker "Claude Desktop" "claude-desktop" "$S/claude-desktop.list $K/claude-desktop-archive-keyring.asc"
-  maker "Claude Code" "claude-code" "$S/claude-code.list $K/claude-code.asc"
-  maker "ChatGPT" "chatgpt" "$S/chatgpt.sources $K/chatgpt-archive-keyring.gpg"
-  maker "Proton VPN" "proton-vpn-gnome-desktop protonvpn-stable-release protonvpn-beta-release" ""
-  maker "OBS Studio" "obs-studio" "ppa:obsproject/obs-studio"
-  maker "ONLYOFFICE" "onlyoffice-desktopeditors" "$S/onlyoffice.list $K/onlyoffice.gpg"
-  maker "Steam" "steam-installer steam-launcher" ""
+  local entry choice name p pkgs desk tools
+  # Apps from their makers (APPS and APP_PARTS in install-apps.sh), if one of their packages is installed
+  for entry in "${APPS[@]}"; do
+    IFS='|' read -r choice name _ <<< "$entry"
+    [[ -n "${APP_PARTS[$choice]:-}" ]] || continue
+    pkgs="${APP_PARTS[$choice]%%|*}"
+    # shellcheck disable=SC2086  # one word per package
+    [[ -n "$(installed_of $pkgs)" ]] && echo "${name%% (*}|apt|${APP_PARTS[$choice]}"
+  done
   # Ubuntu apps from setup/apt-packages.txt, except ones Ubuntu's own desktop includes
   # (like Backups): those were there before.
   desk="$(apt-cache depends ubuntu-desktop ubuntu-desktop-minimal 2>/dev/null | awk '/(Depends|Recommends):/ {print $2}')"
   pkgs=""
-  for p in $(sed 's/#.*//' "$SETUP/apt-packages.txt" | awk 'NF && $1 !~ /^-/ {print $1}'); do
-    pkg_installed "$p" && ! grep -qxF "$p" <<< "$desk" && pkgs+="$p "
+  for p in $(list_of apt-packages.txt); do
+    installed "$p" && ! grep -qxF "$p" <<< "$desk" && pkgs+="$p "
   done
   [[ -n "$pkgs" ]] && echo "Ubuntu apps: ${pkgs% }|apt|${pkgs% }|"
   # Terminal tools, except the general ones other things use (git, curl, gum, gh, stow, flatpak)
   tools=""
   for p in "${TOOLS[@]}"; do
     case "$p" in git|curl|gum|gh|stow|flatpak) continue ;; esac
-    pkg_installed "$p" && tools+="$p "
+    installed "$p" && tools+="$p "
   done
   [[ -n "$tools" ]] && echo "Terminal tools: ${tools% }|apt|${tools% }|"
   if have flatpak; then
@@ -259,9 +247,7 @@ remove_apt_apps() {
   done < <(chosen_of apt)
   (( ${#pkgs[@]} )) || { skip "none chosen"; return 0; }
   echo "    ${pkgs[*]}"
-  if [[ "$DRY_RUN" == 1 ]]; then run sudo apt-get remove -y "${pkgs[@]}"
-  else quiet "Removing ${#pkgs[@]} packages" sudo env DEBIAN_FRONTEND=noninteractive \
-    apt-get -o DPkg::Lock::Timeout=300 remove -y "${pkgs[@]}"; fi
+  apt_get_as "Removing ${#pkgs[@]} packages" remove -y "${pkgs[@]}"
   # Their update sources and keys, so apt stops checking them
   for f in "${files[@]}"; do
     if [[ "$DRY_RUN" == 1 ]]; then
@@ -273,9 +259,7 @@ remove_apt_apps() {
       sudo rm -f "$f" && echo "    removed $f"
     fi
   done
-  if [[ "$DRY_RUN" == 1 ]]; then run sudo apt-get autoremove -y
-  else quiet "Removing what only they needed" sudo env DEBIAN_FRONTEND=noninteractive \
-    apt-get -o DPkg::Lock::Timeout=300 autoremove -y; fi
+  apt_get_as "Removing what only they needed" autoremove -y
 }
 
 remove_flatpak_apps() {
@@ -319,7 +303,7 @@ header "Undo the dotfiles" \
   "With --apps it also removes the apps, Flatpaks and system jobs you pick."
 yes_flag "$@"
 [[ "$DRY_RUN" == 1 ]] && note "Dry run: shows what it would do, changes nothing."
-ask "Undo the dotfiles for $(id -un)?" || { echo "Nothing changed."; exit 0; }
+ask_or_quit "Undo the dotfiles for $(id -un)?"
 steps=()
 if (( APPS_TOO )); then
   pick_apps

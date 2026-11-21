@@ -15,55 +15,89 @@
 
 set -uo pipefail
 
-DRY_RUN="${DRY_RUN:-0}"
 # shellcheck source=lib.sh
-source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, skip, ask, installed, fill_user, SETUP
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, skip, ask, run, apt_get, installed, fill_user, SETUP
 
+# Where apt keeps update sources and their signing keys
+APT_SOURCES=/etc/apt/sources.list.d APT_KEYS=/usr/share/keyrings
 
-# Packages from setup/apt-packages.txt (comments and blank lines ignored).
-# Only the ones chosen (pkg:<name>), when there's a list of choices.
-ubuntu_apps() {
-  sed 's/#.*//' "$SETUP/apt-packages.txt" | awk 'NF && $1 !~ /^-/ {print $1}' \
-    | while read -r p; do chosen "pkg:$p" && echo "$p"; done
-  return 0
-}
+# --- What it sets up -------------------------------------------------------------------
+# One line per entry, in order:
+#   choice (lib.sh: chosen; "pkg:*" = any Ubuntu app picked)|name|done check (a package,
+#   or a check_ function below)|install function|verb (empty = Install)
+# scripts/build-site.py reads this list for the website: entries whose choice is app:...
+# are offered as single apps.
+APPS=(
+  "app:chrome|Google Chrome|google-chrome-stable|install_chrome"
+  "app:code|VS Code|code|install_vscode"
+  "app:claude|Claude Desktop|claude-desktop|install_claude"
+  "app:claude-code|Claude Code (the claude command)|claude-code|install_claude_code"
+  "app:chatgpt|ChatGPT (with Codex)|chatgpt|install_chatgpt"
+  "app:protonvpn|Proton VPN|proton-vpn-gnome-desktop|install_protonvpn"
+  "app:obs|OBS Studio|obs-studio|install_obs"
+  "app:onlyoffice|ONLYOFFICE|check_onlyoffice|install_onlyoffice"
+  "app:steam|Steam|steam-installer|install_steam"
+  "pkg:*|Ubuntu apps (VLC, qBittorrent, Tweaks, Backups, codecs and more: setup/apt-packages.txt)|check_ubuntu_apps|install_ubuntu_apps"
+  "nvidia|NVIDIA graphics driver|check_nvidia_driver|install_nvidia_driver"
+  "nvidia|Steam on the NVIDIA card (32-bit library, shortcut)|check_steam_nvidia|setup_steam_nvidia|Set up"
+  "updates|weekly automatic updates (/etc/cron.weekly/system-update)|check_weekly_updates|setup_weekly_updates|Set up"
+  "updates|monthly clean-up of unused packages (/etc/cron.monthly/system-cleanup)|check_monthly_cleanup|setup_monthly_cleanup|Set up"
+  "firewall|the firewall (ufw), blocking connections from outside|check_firewall|setup_firewall|Switch on"
+  "nosnapfirefox|Ubuntu's Snap Firefox (you use the Flatpak one)|check_no_snap_firefox|remove_snap_firefox|Remove"
+)
 
-# "Already done?" checks for entries that need more than one package installed.
+# What each app from its maker adds to the system, by its choice: its packages, then
+# the update source and key files it adds (a ppa: is removed with add-apt-repository).
+# uninstall.sh --apps removes these; check.sh counts the packages as saved.
+declare -gA APP_PARTS=(
+  [app:chrome]="google-chrome-stable|$APT_SOURCES/google-chrome.sources $APT_SOURCES/google-chrome.list $APT_KEYS/google-chrome.gpg"
+  [app:code]="code|$APT_SOURCES/vscode.sources $APT_SOURCES/vscode.list $APT_KEYS/microsoft.gpg"
+  [app:claude]="claude-desktop|$APT_SOURCES/claude-desktop.list $APT_KEYS/claude-desktop-archive-keyring.asc"
+  [app:claude-code]="claude-code|$APT_SOURCES/claude-code.list $APT_KEYS/claude-code.asc"
+  [app:chatgpt]="chatgpt|$APT_SOURCES/chatgpt.sources $APT_KEYS/chatgpt-archive-keyring.gpg"
+  [app:protonvpn]="proton-vpn-gnome-desktop protonvpn-stable-release protonvpn-beta-release|"
+  [app:obs]="obs-studio|ppa:obsproject/obs-studio"
+  [app:onlyoffice]="onlyoffice-desktopeditors|$APT_SOURCES/onlyoffice.list $APT_KEYS/onlyoffice.gpg"
+  [app:steam]="steam-installer steam-launcher|"
+)
+# Every package this script installs itself (not from setup/apt-packages.txt)
+APP_PACKAGES=()
+for _c in "${!APP_PARTS[@]}"; do read -ra _p <<< "${APP_PARTS[$_c]%%|*}"; APP_PACKAGES+=("${_p[@]}"); done
+APP_PACKAGES+=('nvidia-driver-*' 'libnvidia-gl-*' 'linux-modules-nvidia-*' ufw)
+
+# entry_chosen <choice>: was this entry picked? (everything when there's no list)
+entry_chosen() { if [[ "$1" == *'*' ]]; then chosen_any "${1%\*}"; else chosen "$1"; fi; }
+
+# --- "Already done?" checks, for entries that need more than one installed package ----
+# Packages from setup/apt-packages.txt; only the ones chosen (pkg:<name>), when there's a list.
+ubuntu_apps() { chosen_from apt-packages.txt pkg:; }
 check_ubuntu_apps() {
   local p; for p in $(ubuntu_apps); do installed "$p" || return 1; done
 }
 check_onlyoffice() {
   installed onlyoffice-desktopeditors || return 1
-  if [[ ! -f /etc/apt/sources.list.d/onlyoffice.list ]]; then
+  if [[ ! -f "$APT_SOURCES/onlyoffice.list" ]]; then
     echo "    installed, but without ONLYOFFICE's update source, so it never updates"
     return 1
   fi
 }
-# The weekly update script from system/, with this computer's username filled in.
-weekly_script() {
-  fill_user "$DOTFILES/system/etc/cron.weekly/system-update"
-}
-check_weekly_updates() {
-  [[ -f /etc/cron.weekly/system-update ]] || return 1
-  if ! cmp -s <(weekly_script) /etc/cron.weekly/system-update; then
+
+# The weekly update and monthly clean-up jobs: scripts in system/etc/, with this
+# computer's username filled in. check_job / install_job <path under /etc>
+check_job() {
+  [[ -f "/etc/$1" ]] || return 1
+  if ! cmp -s <(fill_user "$DOTFILES/system/etc/$1") "/etc/$1"; then
     echo "    set up, but different from the saved version"
     return 1
   fi
 }
-
-# The monthly clean-up script from system/, with this computer's username filled in.
-cleanup_script() {
-  fill_user "$DOTFILES/system/etc/cron.monthly/system-cleanup"
+install_job() {
+  fill_user "$DOTFILES/system/etc/$1" > "$TMP/job"
+  run sudo install -m 755 -o root -g root "$TMP/job" "/etc/$1"
 }
-check_monthly_cleanup() {
-  [[ -f /etc/cron.monthly/system-cleanup ]] || return 1
-  if ! cmp -s <(cleanup_script) /etc/cron.monthly/system-cleanup; then
-    echo "    set up, but different from the saved version"
-    return 1
-  fi
-}
+check_weekly_updates() { check_job cron.weekly/system-update; }
+check_monthly_cleanup() { check_job cron.monthly/system-cleanup; }
 
-has_nvidia() { lspci 2>/dev/null | grep -qiE '(vga|3d|display).*nvidia'; }
 check_nvidia_driver() {
   if ! has_nvidia; then
     if grep -qi legion /sys/class/dmi/id/product_version 2>/dev/null; then
@@ -76,7 +110,7 @@ check_nvidia_driver() {
     NOT_NEEDED=1
     return 0
   fi
-  dpkg-query -W -f='${Status}\n' 'nvidia-driver-*' 2>/dev/null | grep -q "install ok installed"
+  installed 'nvidia-driver-*'
 }
 
 # NVIDIA driver version number (595, ...): from the running driver, or the installed package.
@@ -121,58 +155,10 @@ check_no_snap_firefox() {
 }
 is_done() { if [[ "$1" == check_* ]]; then "$1"; else installed "$1"; fi; }
 
-# Was this entry chosen? (by its install function; everything when there's no list)
-entry_chosen() {
-  case "$1" in
-    install_chrome) chosen app:chrome ;;        install_vscode) chosen app:code ;;
-    install_claude) chosen app:claude ;;        install_protonvpn) chosen app:protonvpn ;;
-    install_claude_code) chosen app:claude-code ;; install_chatgpt) chosen app:chatgpt ;;
-    install_obs) chosen app:obs ;;              install_onlyoffice) chosen app:onlyoffice ;;
-    install_steam) chosen app:steam ;;          install_ubuntu_apps) chosen_any pkg: ;;
-    install_nvidia_driver|setup_steam_nvidia) chosen nvidia ;;
-    setup_weekly_updates|setup_monthly_cleanup) chosen updates ;;
-    setup_firewall) chosen firewall ;;          remove_snap_firefox) chosen nosnapfirefox ;;
-    *) return 0 ;;
-  esac
-}
+# check.sh and uninstall.sh load this file only for APPS, APP_PARTS and the checks above.
+[[ "${BASH_SOURCE[0]}" != "$0" ]] && return 0
 
-# Wait while another program (such as Ubuntu's automatic updates) is using apt.
-# Only one program can install or refresh package lists at a time.
-APT_LOCKS=(/var/lib/apt/lists/lock /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/cache/apt/archives/lock)
-apt_wait() {
-  [[ "$DRY_RUN" == 1 ]] && return 0
-  command -v fuser >/dev/null || return 0
-  local waited=0
-  while sudo fuser "${APT_LOCKS[@]}" >/dev/null 2>&1; do
-    (( waited == 0 )) && echo "    waiting for another software update to finish (often Ubuntu's automatic updates)..."
-    sleep 5; waited=$(( waited + 5 ))
-    if (( waited >= 900 )); then echo "    still busy after 15 minutes; trying anyway"; break; fi
-  done
-}
-
-# apt-get, after waiting for other updates to finish. DPkg::Lock::Timeout also
-# makes apt itself wait (up to 5 minutes) if something starts in between.
-# apt_get <apt-get arguments>: with a spinner and a short label; full output in the log.
-apt_get() {
-  apt_wait
-  if [[ "$DRY_RUN" == 1 ]]; then run sudo apt-get "$@"; return 0; fi
-  local label a pkgs=()
-  for a in "$@"; do [[ "$a" == -* || "$a" == install || "$a" == remove || "$a" == update ]] || pkgs+=("${a##*/}"); done
-  case " $* " in
-    *" update "*)  label="Refreshing package lists" ;;
-    *" remove "*)  label="Removing ${pkgs[*]}" ;;
-    *)             label="Installing ${pkgs[*]}" ;;
-  esac
-  (( ${#label} > 60 )) && label="${label:0:57}..."
-  quiet "$label" sudo env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 \
-    -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold "$@"
-}
-
-# Run a command, or only print it in dry-run mode.
-run() {
-  if [[ "$DRY_RUN" == 1 ]]; then printf '    would run: %s\n' "$*"; else "$@"; fi
-}
-
+# --- Downloads and update sources --------------------------------------------------------
 # Download a file (also done in dry-run mode, to check the link still works).
 fetch() { curl -fsSL --retry 3 -o "$1" "$2"; }
 
@@ -205,7 +191,24 @@ repo_lookup() { # repo_lookup <Packages URL> <package>  -> prints "path sha256"
     END{print f, s}'
 }
 
+# add_source <name> <key URL> <fingerprint> <keyring file> <deb line>: add a maker's update
+# source, signed with that key (checked first), as $APT_SOURCES/<name>.list, then refresh
+# the package lists. A keyring file ending in .gpg gets the key converted to binary.
+add_source() {
+  local name="$1" url="$2" fpr="$3" keyring="$4" line="$5"
+  fetch "$TMP/$name.key" "$url"
+  key_ok "$TMP/$name.key" "$fpr" || return 1
+  if [[ "$keyring" == *.gpg ]]; then gpg --dearmor < "$TMP/$name.key" > "$TMP/$name.keyring"
+  else cp "$TMP/$name.key" "$TMP/$name.keyring"; fi
+  echo "$line" > "$TMP/$name.list"
+  run sudo install -m 644 "$TMP/$name.keyring" "$APT_KEYS/$keyring"
+  run sudo install -m 644 "$TMP/$name.list" "$APT_SOURCES/$name.list"
+  apt_get update
+}
+
 # --- Apps --------------------------------------------------------------------------
+# Anthropic signs Claude Desktop's and Claude Code's update sources with this key.
+ANTHROPIC_KEY=31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
 
 install_chrome() {
   # Google's .deb adds Google's update source itself.
@@ -222,14 +225,9 @@ install_vscode() {
 }
 
 install_claude() {
-  # Anthropic's update source, signed with this key:
-  local expected=31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
-  fetch "$TMP/claude.asc" https://downloads.claude.ai/claude-desktop/key.asc
-  key_ok "$TMP/claude.asc" "$expected" || return 1
-  echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/claude-desktop-archive-keyring.asc] https://downloads.claude.ai/claude-desktop/apt/stable stable main" > "$TMP/claude.list"
-  run sudo install -m 644 "$TMP/claude.asc" /usr/share/keyrings/claude-desktop-archive-keyring.asc
-  run sudo install -m 644 "$TMP/claude.list" /etc/apt/sources.list.d/claude-desktop.list
-  apt_get update
+  add_source claude-desktop https://downloads.claude.ai/claude-desktop/key.asc "$ANTHROPIC_KEY" \
+    claude-desktop-archive-keyring.asc \
+    "deb [arch=amd64,arm64 signed-by=$APT_KEYS/claude-desktop-archive-keyring.asc] https://downloads.claude.ai/claude-desktop/apt/stable stable main"
   apt_get install -y claude-desktop
 }
 
@@ -249,10 +247,10 @@ install_chatgpt() {
     return 1
   fi
   echo "    update source signed with the expected key"
-  printf 'X-Repolib-Name: ChatGPT\nTypes: deb\nURIs: %s\nSuites: stable\nComponents: main\nArchitectures: amd64\nSigned-By: /usr/share/keyrings/chatgpt-archive-keyring.gpg\n' \
-    "$url" > "$TMP/chatgpt.sources"
-  run sudo install -m 644 "$TMP/chatgpt.gpg" /usr/share/keyrings/chatgpt-archive-keyring.gpg
-  run sudo install -m 644 "$TMP/chatgpt.sources" /etc/apt/sources.list.d/chatgpt.sources
+  printf 'X-Repolib-Name: ChatGPT\nTypes: deb\nURIs: %s\nSuites: stable\nComponents: main\nArchitectures: amd64\nSigned-By: %s\n' \
+    "$url" "$APT_KEYS/chatgpt-archive-keyring.gpg" > "$TMP/chatgpt.sources"
+  run sudo install -m 644 "$TMP/chatgpt.gpg" "$APT_KEYS/chatgpt-archive-keyring.gpg"
+  run sudo install -m 644 "$TMP/chatgpt.sources" "$APT_SOURCES/chatgpt.sources"
   apt_get update
   apt_get install -y chatgpt
 }
@@ -260,13 +258,8 @@ install_chatgpt() {
 install_claude_code() {
   # Claude Code (the `claude` command for the terminal), from Anthropic's own update
   # source, signed with the same key as Claude Desktop's. Updates come with apt.
-  local expected=31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
-  fetch "$TMP/claude-code.asc" https://downloads.claude.ai/keys/claude-code.asc
-  key_ok "$TMP/claude-code.asc" "$expected" || return 1
-  echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/claude-code.asc] https://downloads.claude.ai/claude-code/apt/stable stable main" > "$TMP/claude-code.list"
-  run sudo install -m 644 "$TMP/claude-code.asc" /usr/share/keyrings/claude-code.asc
-  run sudo install -m 644 "$TMP/claude-code.list" /etc/apt/sources.list.d/claude-code.list
-  apt_get update
+  add_source claude-code https://downloads.claude.ai/keys/claude-code.asc "$ANTHROPIC_KEY" claude-code.asc \
+    "deb [arch=amd64,arm64 signed-by=$APT_KEYS/claude-code.asc] https://downloads.claude.ai/claude-code/apt/stable stable main"
   apt_get install -y claude-code
 }
 
@@ -291,14 +284,9 @@ install_obs() {
 
 install_onlyoffice() {
   # ONLYOFFICE's update source, signed with this key (same key as on Ubuntu's keyserver):
-  local expected=E09CA29F6E178040EF22B4098320CA65CB2DE8E5
-  fetch "$TMP/onlyoffice.asc" https://download.onlyoffice.com/GPG-KEY-ONLYOFFICE
-  key_ok "$TMP/onlyoffice.asc" "$expected" || return 1
-  gpg --dearmor < "$TMP/onlyoffice.asc" > "$TMP/onlyoffice.gpg"
-  echo "deb [signed-by=/usr/share/keyrings/onlyoffice.gpg] https://download.onlyoffice.com/repo/debian squeeze main" > "$TMP/onlyoffice.list"
-  run sudo install -m 644 "$TMP/onlyoffice.gpg" /usr/share/keyrings/onlyoffice.gpg
-  run sudo install -m 644 "$TMP/onlyoffice.list" /etc/apt/sources.list.d/onlyoffice.list
-  apt_get update
+  add_source onlyoffice https://download.onlyoffice.com/GPG-KEY-ONLYOFFICE \
+    E09CA29F6E178040EF22B4098320CA65CB2DE8E5 onlyoffice.gpg \
+    "deb [signed-by=$APT_KEYS/onlyoffice.gpg] https://download.onlyoffice.com/repo/debian squeeze main"
   apt_get install -y onlyoffice-desktopeditors
 }
 
@@ -324,15 +312,13 @@ install_ubuntu_apps() {
 
 setup_weekly_updates() {
   # Updates everything once a week and shows a notification if it fails or gets stuck.
-  weekly_script > "$TMP/system-update"
-  run sudo install -m 755 -o root -g root "$TMP/system-update" /etc/cron.weekly/system-update
+  install_job cron.weekly/system-update
   echo "    runs once a week; log: /var/log/system-update.log"
 }
 
 setup_monthly_cleanup() {
   # Removes unused packages (apt autoremove) and Flatpak runtimes once a month.
-  cleanup_script > "$TMP/system-cleanup"
-  run sudo install -m 755 -o root -g root "$TMP/system-cleanup" /etc/cron.monthly/system-cleanup
+  install_job cron.monthly/system-cleanup
   echo "    runs once a month; log: /var/log/system-cleanup.log"
 }
 
@@ -392,31 +378,7 @@ install_steam() {
   apt_get install -y steam-installer
 }
 
-# --- Clock check: clock_step is in lib.sh (fresh-install.sh and post-upgrade.sh run it first too)
-
-# --- Main --------------------------------------------------------------------------
-
-APPS=(
-  "Google Chrome|google-chrome-stable|install_chrome"
-  "VS Code|code|install_vscode"
-  "Claude Desktop|claude-desktop|install_claude"
-  "Claude Code (the claude command)|claude-code|install_claude_code"
-  "ChatGPT (with Codex)|chatgpt|install_chatgpt"
-  "Proton VPN|proton-vpn-gnome-desktop|install_protonvpn"
-  "OBS Studio|obs-studio|install_obs"
-  "ONLYOFFICE|check_onlyoffice|install_onlyoffice"
-  "Steam|steam-installer|install_steam"
-  "Ubuntu apps (VLC, qBittorrent, Tweaks, Backups, codecs and more: setup/apt-packages.txt)|check_ubuntu_apps|install_ubuntu_apps"
-  "NVIDIA graphics driver|check_nvidia_driver|install_nvidia_driver"
-  "Steam on the NVIDIA card (32-bit library, shortcut)|check_steam_nvidia|setup_steam_nvidia|Set up"
-  "weekly automatic updates (/etc/cron.weekly/system-update)|check_weekly_updates|setup_weekly_updates|Set up"
-  "monthly clean-up of unused packages (/etc/cron.monthly/system-cleanup)|check_monthly_cleanup|setup_monthly_cleanup|Set up"
-  "the firewall (ufw), blocking connections from outside|check_firewall|setup_firewall|Switch on"
-  "Ubuntu's Snap Firefox (you use the Flatpak one)|check_no_snap_firefox|remove_snap_firefox|Remove"
-)
-
-# check.sh loads this file only for APPS and the check_* functions above.
-[[ "${BASH_SOURCE[0]}" != "$0" ]] && return 0
+# --- Main (the clock check, clock_step, is in lib.sh) ----------------------------------
 
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 chmod 755 "$TMP"   # lets apt's download user read the .deb files
@@ -445,8 +407,8 @@ clock_step
 # What's already done, not needed, or still to do (quietly, before anything runs).
 STATUS=()
 for i in "${!APPS[@]}"; do
-  IFS='|' read -r _ check fn _ <<< "${APPS[$i]}"
-  if ! entry_chosen "$fn"; then STATUS[i]=notchosen; continue; fi
+  IFS='|' read -r choice _ check _ _ <<< "${APPS[$i]}"
+  if ! entry_chosen "$choice"; then STATUS[i]=notchosen; continue; fi
   NOT_NEEDED=0
   if is_done "$check" >/dev/null 2>&1; then
     if (( NOT_NEEDED )); then STATUS[i]=notneeded; else STATUS[i]="done"; fi
@@ -458,7 +420,7 @@ CHECKLIST=0 CHOSEN=" " LICENCE=""
 if [[ "$DRY_RUN" != 1 && "$YES_ALL" == 0 ]] && ui_gum; then
   opts=() done_names=() licence_offered=0
   for i in "${!APPS[@]}"; do
-    IFS='|' read -r name _ _ verb <<< "${APPS[$i]}"
+    IFS='|' read -r _ name _ _ verb <<< "${APPS[$i]}"
     case "${STATUS[i]}" in
       todo) opts+=("$( [[ -z "$verb" ]] || printf '%s ' "$verb")$name|$i") ;;
       done) done_names+=("${name%% (*}") ;;
@@ -480,12 +442,12 @@ fi
 
 titles=()
 for entry in "${APPS[@]}"; do
-  IFS='|' read -r name _ _ verb <<< "$entry"; titles+=("${verb:-Install}: $name")
+  IFS='|' read -r _ name _ _ verb <<< "$entry"; titles+=("${verb:-Install}: $name")
 done
 ui_plan "${titles[@]}"
 
 for i in "${!APPS[@]}"; do
-  IFS='|' read -r name check fn verb <<< "${APPS[$i]}"
+  IFS='|' read -r _ name check fn verb <<< "${APPS[$i]}"
   verb="${verb:-Install}"
   step_begin "$verb: $name"
   if [[ "${STATUS[i]}" == notchosen ]]; then step_end skip "not chosen"; continue; fi

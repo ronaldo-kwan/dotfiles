@@ -13,11 +13,12 @@
 
 set -uo pipefail
 # shellcheck source=lib.sh
-source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # have, installed, TOOLS, PACKAGES, DOTFILES, SETUP
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # have, installed, TOOLS, PACKAGES, VAULT, DOTFILES, SETUP
+# shellcheck source=install-apps.sh
+source "$DOTFILES/install-apps.sh"   # only loads APPS, APP_PACKAGES and the check_* functions
 
 MODE=full
 case "${1:-}" in --notify) MODE=notify ;; --fix) MODE=fix ;; esac
-VAULT="$HOME/Documents/Obsidian Vault"
 PROBLEMS=0
 FIXES=" "          # fix keys collected by bad(), in no particular order
 MISSING_TOOLS=()
@@ -60,6 +61,49 @@ list_missing() { # list_missing <description> <fix> <items...>
 }
 
 # --- Snapshots and unsaved changes (both modes) ------------------------------------
+# Added by Ubuntu itself (language support adds dictionaries for your languages).
+UBUNTU_AUTO_PACKAGES=('language-pack-*' 'hunspell-*' 'hyphen-*' 'mythes-*' wbritish wamerican)
+
+# unsaved_apt_packages: Ubuntu packages you installed yourself (apt, App Center, a .deb)
+# that are still installed but in none of the dotfiles lists, so a new computer
+# wouldn't get them. Read from apt's history; Ubuntu's installer is left out.
+# A line "-name" in setup/apt-packages.txt marks one as "on purpose, not for new computers".
+unsaved_apt_packages() {
+  local known manual
+  known="$( { printf '%s\n' "${TOOLS[@]}" "${APP_PACKAGES[@]}" "${UBUNTU_AUTO_PACKAGES[@]}"
+              sed 's/#.*//' "$SETUP/apt-packages.txt" | awk 'NF{sub(/^-/, "", $1); print $1}'; } )"
+  manual="$(apt-mark showmanual 2>/dev/null)"
+  { cat /var/log/apt/history.log 2>/dev/null; zcat /var/log/apt/history.log.*.gz 2>/dev/null; } | awk '
+    /^Commandline:/ { mine = !/force-unsafe-io|pkgDepCache::AutoInstall|unattended-upgrade/; next }
+    /^Install:/ && mine {
+      sub(/^Install: /, ""); n = split($0, parts, /\), /)
+      for (i = 1; i <= n; i++) if (parts[i] !~ /automatic/) { split(parts[i], w, /[: ]/); print w[1] }
+    }' | sort -u | while read -r p; do
+      grep -qxF "$p" <<< "$manual" || continue                 # removed, or only a dependency
+      local k hit=0
+      # shellcheck disable=SC2053  # $k may be a pattern like nvidia-driver-*
+      while read -r k; do [[ -n "$k" && "$p" == $k ]] && { hit=1; break; }; done <<< "$known"
+      (( hit )) || echo "$p"
+    done
+  return 0
+}
+
+# from_ubuntu <package>: can Ubuntu's own archive install it? Apps that only come from
+# their maker's source, a PPA or a downloaded .deb can't go in setup/apt-packages.txt: a
+# new computer doesn't have that source. (Ubuntu's sources are the ones apt labels
+# o=Ubuntu, so any mirror works.)
+UBUNTU_SOURCES=""
+from_ubuntu() {
+  [[ -n "$UBUNTU_SOURCES" ]] || UBUNTU_SOURCES="$(apt-cache policy 2>/dev/null | awk '
+    $2 ~ /^(https?|ftp|file|cdrom|mirror\+[a-z]+):/ { src = $2 " " $3 }
+    /^ +release .*o=Ubuntu,/ { print src }')"
+  local s
+  while read -r s; do
+    [[ -n "$s" ]] && grep -qxF "$s" <<< "$UBUNTU_SOURCES" && return 0
+  done < <(apt-cache madison "$1" 2>/dev/null | awk -F'|' '{ split($3, a, " "); print a[1] " " a[2] }')
+  return 1
+}
+
 # Apps you installed that aren't saved: unsaved (from Ubuntu, for setup/apt-packages.txt)
 # and unsaved_other (only from a maker's source, a PPA or a .deb: for install-apps.sh).
 find_unsaved() {
@@ -87,7 +131,7 @@ if [[ "$MODE" == notify ]]; then
   [[ "$(backups_state)" == off ]] && msgs+=("Automatic backups are off. Open Backups and turn on Back Up Automatically.")
   for d in "$DOTFILES" "$VAULT"; do
     [[ -d "$d/.git" ]] || continue
-    s="$(repo_state "$d" | paste -sd' ' | sed 's/ / and /')"
+    s="$(repo_state "$d")"
     [[ -n "$s" ]] && msgs+=("${d/#$HOME/\~} has $s changes.")
     n="$(repo_behind "$d")"
     (( n > 0 )) && msgs+=("GitHub has $n new commit$( ((n > 1)) && echo s) for ${d/#$HOME/\~}. Run: dot pull")
@@ -114,13 +158,10 @@ fi
 section "Config links (stow)"
 broken=()
 mapfile -t pkgs < <(chosen_packages)
-for pkg in "${pkgs[@]}"; do
-  while IFS= read -r -d '' src; do
-    rel="${src#"$DOTFILES/$pkg/"}"
-    # shellcheck disable=SC2088  # "~/" is only shown, not used as a path
-    [[ "$(readlink -f "$HOME/$rel")" == "$(readlink -f "$src")" ]] || broken+=("~/$rel")
-  done < <(find "$DOTFILES/$pkg" -type f -print0)
-done
+while IFS= read -r -d '' f; do
+  # shellcheck disable=SC2088  # "~/" is only shown, not used as a path
+  [[ "$(readlink -f "$HOME/${f#*/}")" == "$(readlink -f "$DOTFILES/$f")" ]] || broken+=("~/${f#*/}")
+done < <(config_files "${pkgs[@]}")
 list_missing "all config files linked (${pkgs[*]})" install "${broken[@]}"
 
 section "Terminal tools"
@@ -132,11 +173,9 @@ if ! chosen desktop; then info "Roboto Mono: not chosen"
 elif has_roboto_mono; then ok "Roboto Mono"; else bad "Roboto Mono not installed" install; fi
 
 section "Apps and system jobs (install-apps.sh)"
-# shellcheck source=install-apps.sh
-source "$DOTFILES/install-apps.sh"   # only loads APPS and the check_* functions
 for entry in "${APPS[@]}"; do
-  IFS='|' read -r name check fn _ <<< "$entry"
-  if ! entry_chosen "$fn"; then info "$name: not chosen"; continue; fi
+  IFS='|' read -r choice name check _ <<< "$entry"
+  if ! entry_chosen "$choice"; then info "$name: not chosen"; continue; fi
   out="$(is_done "$check" 2>&1; echo "rc=$?")"; rc="${out##*rc=}"
   out="$(printf '%s' "${out%rc=*}" | tr -s ' \n' ' ' | sed 's/^ //; s/ $//')"
   if (( rc != 0 )); then bad "$name${out:+: $out}" apps
@@ -153,20 +192,19 @@ section "Flatpaks and extensions"
 if have flatpak; then
   missing=() n=0
   while read -r a; do
-    [[ -z "$a" ]] || ! chosen "flatpak:$a" && continue
     n=$((n + 1)); flatpak info "$a" >/dev/null 2>&1 || missing+=("$a")
-  done < "$SETUP/flatpaks.txt"
+  done < <(chosen_from flatpaks.txt flatpak:)
   (( n )) && list_missing "$n Flatpak apps" install "${missing[@]}"
 elif chosen_any flatpak:; then MISSING_TOOLS+=(flatpak); bad "flatpak isn't installed" tools
 else info "Flatpak apps: not chosen"; fi
 if have gnome-extensions && chosen desktop; then
   enabled="$(gnome-extensions list --enabled 2>/dev/null)"
-  missing=(); while read -r u; do [[ -z "$u" || "$u" == \#* ]] || grep -qxF "$u" <<< "$enabled" || missing+=("$u"); done < "$SETUP/gnome-extensions.txt"
+  missing=(); while read -r u; do grep -qxF "$u" <<< "$enabled" || missing+=("$u"); done < <(list_of gnome-extensions.txt)
   list_missing "GNOME extensions enabled" install "${missing[@]}"
 fi
 if have code && chosen app:code; then
   have_ext="$(code --list-extensions 2>/dev/null)"
-  missing=(); while read -r e; do [[ -z "$e" ]] || grep -qixF "$e" <<< "$have_ext" || missing+=("$e"); done < "$SETUP/vscode-extensions.txt"
+  missing=(); while read -r e; do grep -qixF "$e" <<< "$have_ext" || missing+=("$e"); done < <(list_of vscode-extensions.txt)
   list_missing "VS Code extensions" install "${missing[@]}"
 fi
 
@@ -215,7 +253,7 @@ if (( ${#stale[@]} )); then
 else ok "snapshots match this computer"; fi
 for d in "$DOTFILES" "$VAULT"; do
   [[ -d "$d/.git" ]] || continue
-  s="$(repo_state "$d" | paste -sd' ' | sed 's/ / and /')"
+  s="$(repo_state "$d")"
   [[ -z "$s" ]] && ok "${d/#$HOME/\~}: everything committed and pushed" \
     || bad "${d/#$HOME/\~}: $s changes" "$([[ "$d" == "$DOTFILES" ]] && echo push || echo notes)"
   n="$(repo_behind "$d")"
@@ -257,7 +295,7 @@ export UI_DEPTH="$UI_NESTED"   # the scripts below get their full look
 # Pull first, so everything below works on the latest version.
 has_fix pull    && fix_step "Changes from GitHub" "Run dot pull?" "$DOTFILES/dot" pull
 has_fix tools   && fix_step "Terminal tools" "Install ${MISSING_TOOLS[*]}?" \
-                     sudo apt-get install -y "${MISSING_TOOLS[@]}"
+                     apt_get install -y "${MISSING_TOOLS[@]}"
 has_fix apps    && fix_step "Apps, firewall, scheduled jobs" "Run dot apps?" "$DOTFILES/install-apps.sh"
 has_fix install && fix_step "Links, extensions, settings, safety checks" "Run dot install?" "$DOTFILES/install.sh" --yes
 has_fix ssh     && fix_step "SSH key and signed commits" "Run dot ssh?" "$DOTFILES/scripts/ssh-setup.sh"

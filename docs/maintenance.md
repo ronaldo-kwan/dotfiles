@@ -76,7 +76,7 @@ DOT_PLAIN=1 dot apps
 -cowsay   # just trying it
 ```
 
-Apps that only come from their maker's own update source, a PPA or a downloaded `.deb` are listed separately: `setup/apt-packages.txt` can't install them, because a new computer doesn't have that source. To keep one, add it to `install-apps.sh` with its source (see how ChatGPT is done); otherwise write it as `-name`. `dot check --fix` never adds these to the list.
+Apps that only come from their maker's own update source, a PPA or a downloaded `.deb` are listed separately: `setup/apt-packages.txt` can't install them, because a new computer doesn't have that source. To keep one, add it to `install-apps.sh` with its source (see how ChatGPT is done: an `APPS` entry, its `APP_PARTS` line and its install function); otherwise write it as `-name`. `dot check --fix` never adds these to the list.
 
 **Automatic backups** count as part of the setup: `dot check` shows ✘ while Backups' "Back Up Automatically" is off. Turn it on (and connect Google Drive), then run `dot save`, so new computers get it switched on too.
 
@@ -206,4 +206,4 @@ The website ([ronaldo-kwan.github.io/dotfiles](https://ronaldo-kwan.github.io/do
 The site's app lists come from the repo: `scripts/build-site.py` reads `install-apps.sh` and `setup/`, and the `website` workflow ([`.github/workflows/pages.yml`](../.github/workflows/pages.yml)) rebuilds and publishes it on every push that touches them.
 
 > [!NOTE]
-> A new entry in `install-apps.sh` needs a line in `APP_TOKENS` in `scripts/build-site.py`. The build stops with a message if it's missing.
+> A new app in `install-apps.sh` (an `APPS` entry whose choice starts with `app:`) needs a description in `APP_DESCRIPTIONS` in `scripts/build-site.py`. The build stops with a message if it's missing.
