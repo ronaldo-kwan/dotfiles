@@ -267,7 +267,7 @@ restore_app_settings() {
 
 # 9. Obsidian -----------------------------------------------------------------------
 # Notes come from your private GitHub repo "obsidian-vault" (not from this repo);
-# vault settings (theme, plugins) come from setup/apps/obsidian/ if the vault has none.
+# vault settings (theme, which plugins are on) come from setup/apps/obsidian/ if the vault has none.
 OBSIDIAN_VAULT="$HOME/Documents/Obsidian Vault"
 restore_obsidian() {
   need notes || return 0

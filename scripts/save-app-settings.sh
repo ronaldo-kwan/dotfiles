@@ -3,7 +3,7 @@
 #   - apps that start at login        (~/.config/autostart/)
 #   - default apps (browser, video...) (~/.config/mimeapps.list)
 #   - qBittorrent settings and theme   (~/.config/qBittorrent/)
-#   - Obsidian vault settings and theme (<vault>/.obsidian/, not the notes)
+#   - Obsidian vault settings and theme (<vault>/.obsidian/, not the notes or plugin files)
 #
 # Paths inside your home folder are stored as @HOME@ so they work for any username.
 # install.sh puts them back (restore_app_settings).
@@ -61,8 +61,13 @@ PY
   fi
 fi
 
-# 4. Obsidian: settings of the open vault (theme, plugins, appearance), not the notes.
-#    workspace*.json only remembers open tabs and window layout, so it's left out.
+# 4. Obsidian: settings of the open vault (theme, appearance, which plugins are on), not
+#    the notes. Left out:
+#    - workspace*.json: only remembers open tabs and window layout.
+#    - plugins/: community plugins' program files (often megabytes) and their data.json,
+#      where plugins keep their own settings and sometimes API keys or sign-ins. This
+#      repo is public. community-plugins.json still lists them, so a new computer knows
+#      which to install from Settings → Community plugins.
 #    No vault on this computer (Obsidian never opened, or no notes repo yet): the saved
 #    settings stay as they are, so a new computer doesn't wipe them with dot save.
 OBS_CFG="$HOME/.var/app/md.obsidian.Obsidian/config/obsidian/obsidian.json"
@@ -75,7 +80,7 @@ print(open_[0] if open_ else "")' "$OBS_CFG")"
   if [[ -n "$vault" && -d "$vault/.obsidian" ]]; then
     rm -rf "$OUT/obsidian"
     mkdir -p "$OUT/obsidian"
-    (cd "$vault/.obsidian" && find . -type f ! -name 'workspace*.json' -print0) \
+    (cd "$vault/.obsidian" && find . -type f ! -name 'workspace*.json' ! -path './plugins/*' -print0) \
       | while IFS= read -r -d '' f; do
           mkdir -p "$OUT/obsidian/$(dirname "$f")"
           cp "$vault/.obsidian/$f" "$OUT/obsidian/$f"

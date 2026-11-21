@@ -84,8 +84,11 @@ dot notes "Describe the change"
 What `install.sh` does for Obsidian:
 
 - Clones the `obsidian-vault` repo to `~/Documents/Obsidian Vault` if it isn't there. This needs `gh auth login` first.
-- Adds your Obsidian settings (Catppuccin theme, hidden ribbon, core plugins) from `setup/apps/obsidian/` if the vault has none yet.
+- Adds your Obsidian settings (Catppuccin theme, hidden ribbon, core plugins, which community plugins are on) from `setup/apps/obsidian/` if the vault has none yet.
 - Adds the vault to Obsidian's list, so Obsidian opens straight into it. Obsidian must be installed and closed for that; otherwise choose **Open folder as vault** once.
+
+> [!NOTE]
+> Community plugins themselves aren't saved here, only the list of them (`community-plugins.json`). Their program files can be megabytes, and their own settings (`data.json`) can hold API keys or sign-ins, while this repo is public. On a new computer, install them again from **Settings → Community plugins**. Your private notes repo can keep the whole `.obsidian` folder, plugins included: `dot notes` saves it there.
 
 The [secret check](maintenance.md#secret-check-before-commits) also guards commits in the notes repo.
 
