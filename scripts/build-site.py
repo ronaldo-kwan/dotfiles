@@ -43,7 +43,6 @@ NOT_SINGLE_APPS = {"install_ubuntu_apps", "install_nvidia_driver", "setup_steam_
                    "setup_weekly_updates", "setup_monthly_cleanup", "setup_firewall", "remove_snap_firefox"}
 
 FLATPAK_NAMES = {
-    "com.bitwarden.desktop": ("Bitwarden", "Password manager"),
     "com.discordapp.Discord": ("Discord", "Chat and voice"),
     "com.github.tchx84.Flatseal": ("Flatseal", "Manage Flatpak app permissions"),
     "md.obsidian.Obsidian": ("Obsidian", "Notes in Markdown"),

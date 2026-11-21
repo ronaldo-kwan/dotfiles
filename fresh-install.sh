@@ -101,7 +101,7 @@ summary
 printf '\n%sAfter the restart%s\n' "$C_B" "$C_N"
 note "Blue \"MOK management\" screen (NVIDIA with Secure Boot): Enroll MOK, Continue, Yes, your password, Reboot"
 note "Check the NVIDIA card works: nvidia-smi"
-note "Sign in to your apps (Steam, browsers, Discord, Bitwarden)"
+note "Sign in to your apps (Steam, browsers, Discord)"
 note "Open Backups, connect Google Drive, and turn on \"Back Up Automatically\""
 note "Sign in to GitHub (for your notes, pushing and signed commits): gh auth login, then dot install and dot ssh"
 note "Then run dot check in a new terminal"

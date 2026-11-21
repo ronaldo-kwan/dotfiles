@@ -90,14 +90,14 @@ Written by `dot save` and restored by `install.sh`, except `apt-packages.txt`, w
 | `git-identity` | Name and email suggested for git commits; saved per computer in `~/.config/git/user.gitconfig` |
 | `vscode-extensions.txt` | VS Code extensions (the Catppuccin theme) |
 | `apt-packages.txt` | Ubuntu packages I installed myself: VLC, qBittorrent, Tweaks, Extension Manager, Backups and rclone (for Google Drive), Software with Flathub, GNOME wallpapers and sounds, codecs, vainfo, the Roboto font. `-name` lines are installed here on purpose but not wanted on new computers |
-| `flatpaks.txt` | Flatpak apps: Bitwarden, Discord, Obsidian, Firefox and others |
+| `flatpaks.txt` | Flatpak apps: Discord, Obsidian, Firefox and others |
 | `gnome-desktop.dconf` | Desktop look: Adwaita theme and icons, Roboto fonts, dark mode, blue accent, close-only window buttons, 4 fixed workspaces, and which extensions are on or off (Ubuntu Dock, desktop icons and web search are off) |
 | `desktop-settings.dconf` | Window shortcuts (<kbd>Super</kbd> + <kbd>W</kbd>, <kbd>Super</kbd> + <kbd>1</kbd>–<kbd>4</kbd> for workspaces), the screenshot shortcut, power (never sleep on AC), sound theme, Files list view, file dialogs, search order, the Backups schedule, Text Editor and Ptyxis settings |
 | `gnome-shortcuts.dconf` | Custom keyboard shortcuts: <kbd>Super</kbd> + <kbd>C</kbd> / <kbd>X</kbd> / <kbd>T</kbd> / <kbd>E</kbd> / <kbd>F</kbd> / <kbd>O</kbd> |
 | `gnome-extension-settings.dconf` | Settings for Caffeine, Clipboard Indicator, Ubuntu Dock, Tiling Assistant |
 | `dock-favorites.txt` | Apps pinned to the dock, in order |
 | `gnome-extensions.txt` | GNOME extensions that `install.sh` installs from extensions.gnome.org |
-| `apps/` | Apps that start at login (Bitwarden), default apps (Chrome as browser, Showtime for video, Calendar), qBittorrent settings and theme, Obsidian vault settings, theme and the list of community plugins (not the notes or the plugins themselves). Cookies and window sizes are left out, and home-folder paths are stored as `@HOME@` |
+| `apps/` | Apps that start at login, default apps (Chrome as browser, Showtime for video, Calendar), qBittorrent settings and theme, Obsidian vault settings, theme and the list of community plugins (not the notes or the plugins themselves). Cookies and window sizes are left out, and home-folder paths are stored as `@HOME@` |
 | `keys/chatgpt.asc` | OpenAI's public signing key for the ChatGPT app's update source (OpenAI doesn't publish it at an address of its own); `install-apps.sh` checks its fingerprint |
 | `autoinstall.yaml` | Answers for the Ubuntu installer's [automated install](new-computer.md#option-2-automated-install) (no passwords in it) |
 

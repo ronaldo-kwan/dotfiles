@@ -406,6 +406,6 @@ if [[ "$UI_NESTED" == 0 ]]; then
   printf '\n%sStill to do yourself%s\n' "$C_B" "$C_N"
   note "Run ~/dotfiles/install-apps.sh (apps, NVIDIA driver, weekly updates), then this again for VS Code's extensions and Obsidian"
   note "Log out and back in (starts the GNOME extensions), then open a new terminal"
-  note "Sign in to your apps (Steam, browsers, Discord, Bitwarden, Backups/Google Drive)"
+  note "Sign in to your apps (Steam, browsers, Discord, Backups/Google Drive)"
 fi
 exit "$ok"

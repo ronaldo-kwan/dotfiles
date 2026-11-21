@@ -28,7 +28,7 @@ These steps are for my Lenovo Legion 5 with an RTX 5060; most apply to any lapto
    - The passphrase is asked once per start-up, before Ubuntu loads; not at login, unlock or wake. To type only one password at start-up, see [One password at start-up](#one-password-at-start-up).
 
 > [!IMPORTANT]
-> Save the disk passphrase and the installer's recovery key in Bitwarden. Without them the disk can't be read, and only Backups can bring your files back.
+> Save the disk passphrase and the installer's recovery key in your password manager. Without them the disk can't be read, and only Backups can bring your files back.
 
 ## Option 1: one command
 
@@ -111,7 +111,7 @@ Instead of installing Ubuntu and then running the command, the Ubuntu installer 
 Then:
 
 - [ ] Sign in to GitHub with `gh auth login` (for your private notes, `dot push` and signed commits), then run `dot install` again to fetch your notes.
-- [ ] Sign in to your apps: Steam, browsers, Discord, Bitwarden.
+- [ ] Sign in to your apps: Steam, browsers, Discord.
 - [ ] Open **Backups**, connect Google Drive, and turn on **Back Up Automatically**. Keep the backup encryption password somewhere safe; without it the backups can't be restored.
 - [ ] Run `dot ssh` for signed commits (one approval in the browser).
 - [ ] Run `dot check` to see that everything is in place. `dot check --fix` offers to fix anything that isn't.
@@ -184,7 +184,7 @@ Apps stay unless you ask, because the uninstall can't tell which ones you had be
 | Weekly updates and monthly clean-up, the firewall | Deletes the jobs; switches the firewall off |
 | Ubuntu's Snap Firefox | Puts it back |
 
-Apps' own settings and data (your Steam games, browser profiles, Bitwarden vault) stay in your home folder, so reinstalling one brings it back as it was. The NVIDIA driver always stays: removing it can leave you without a screen. To see the list without changing anything: `DRY_RUN=1 dot uninstall --apps --yes`. `~/dotfiles` itself stays; delete it with `rm -rf ~/dotfiles`.
+Apps' own settings and data (your Steam games, browser profiles) stay in your home folder, so reinstalling one brings it back as it was. The NVIDIA driver always stays: removing it can leave you without a screen. To see the list without changing anything: `DRY_RUN=1 dot uninstall --apps --yes`. `~/dotfiles` itself stays; delete it with `rm -rf ~/dotfiles`.
 
 ## Manual setup
 
