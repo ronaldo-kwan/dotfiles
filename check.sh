@@ -36,6 +36,7 @@ fix_hint() {
     install) echo "dot install" ;;
     ssh)     echo "dot ssh" ;;
     addapt)  echo "add them to setup/apt-packages.txt (or as -name to keep them off new computers)" ;;
+    addother) echo "add each to install-apps.sh with its source, like ChatGPT (docs/apps.md); or write -name in setup/apt-packages.txt to keep it off new computers" ;;
     backups) echo "open Backups, turn on Back Up Automatically, then dot save" ;;
     save)    echo "dot save" ;;
     push)    echo "dot push" ;;
@@ -59,6 +60,15 @@ list_missing() { # list_missing <description> <fix> <items...>
 }
 
 # --- Snapshots and unsaved changes (both modes) ------------------------------------
+# Apps you installed that aren't saved: unsaved (from Ubuntu, for setup/apt-packages.txt)
+# and unsaved_other (only from a maker's source, a PPA or a .deb: for install-apps.sh).
+find_unsaved() {
+  local p; unsaved=(); unsaved_other=()
+  while read -r p; do
+    [[ -n "$p" ]] || continue
+    if from_ubuntu "$p"; then unsaved+=("$p"); else unsaved_other+=("$p"); fi
+  done < <(unsaved_apt_packages)
+}
 # Writes fresh snapshots into a temporary copy of setup/ and compares.
 stale_snapshots() {
   local tmp; tmp="$(mktemp -d)"
@@ -71,8 +81,9 @@ if [[ "$MODE" == notify ]]; then
   msgs=()
   mapfile -t stale < <(stale_snapshots)
   (( ${#stale[@]} )) && msgs+=("Settings changed since your last save (${#stale[@]} files). Run: dot save")
-  mapfile -t unsaved < <(unsaved_apt_packages)
+  find_unsaved
   (( ${#unsaved[@]} )) && msgs+=("Ubuntu apps not in apt-packages.txt: ${unsaved[*]}")
+  (( ${#unsaved_other[@]} )) && msgs+=("Apps from other sources not saved: ${unsaved_other[*]} (add to install-apps.sh, or -name)")
   [[ "$(backups_state)" == off ]] && msgs+=("Automatic backups are off. Open Backups and turn on Back Up Automatically.")
   for d in "$DOTFILES" "$VAULT"; do
     [[ -d "$d/.git" ]] || continue
@@ -191,7 +202,10 @@ if have systemctl && chosen safety; then
 fi
 
 section "Saved settings"
-mapfile -t unsaved < <(unsaved_apt_packages)
+find_unsaved
+if (( ${#unsaved_other[@]} )); then
+  bad "Apps from their makers' own sources that a new computer wouldn't get: ${unsaved_other[*]}" addother
+fi
 if (( ${#unsaved[@]} )); then
   bad "Ubuntu apps you installed that a new computer wouldn't get: ${unsaved[*]}" addapt
 else ok "every Ubuntu app you installed is in setup/apt-packages.txt"; fi
@@ -248,6 +262,8 @@ has_fix apps    && fix_step "Apps, firewall, scheduled jobs" "Run dot apps?" "$D
 has_fix install && fix_step "Links, extensions, settings, safety checks" "Run dot install?" "$DOTFILES/install.sh" --yes
 has_fix ssh     && fix_step "SSH key and signed commits" "Run dot ssh?" "$DOTFILES/scripts/ssh-setup.sh"
 has_fix addapt  && fix_step "Ubuntu apps not saved" "Add ${unsaved[*]} to setup/apt-packages.txt?" add_unsaved
+# Apps from other sources can't go in apt-packages.txt (a new computer lacks their source).
+has_fix addother && warn "Not added: ${unsaved_other[*]} only come from their makers' own sources. Add each to install-apps.sh with its source (docs/apps.md), or write -name in setup/apt-packages.txt."
 has_fix backups && fix_step "Automatic backups" "Open Backups to turn them on?" open_backups
 has_fix ghkeys  && fix_step "GitHub CLI permissions" "Remove its permission to add SSH keys (approve in the browser)?" \
                      gh auth refresh -h github.com --remove-scopes "$GH_KEY_SCOPES"

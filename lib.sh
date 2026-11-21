@@ -592,6 +592,22 @@ UBUNTU_AUTO_PACKAGES=('language-pack-*' 'hunspell-*' 'hyphen-*' 'mythes-*' wbrit
 # that are still installed but in none of the dotfiles lists, so a new computer
 # wouldn't get them. Read from apt's history; Ubuntu's installer is left out.
 # A line "-name" in setup/apt-packages.txt marks one as "on purpose, not for new computers".
+# from_ubuntu <package>: can Ubuntu's own archive install it? Apps that only come from
+# their maker's source, a PPA or a downloaded .deb can't go in setup/apt-packages.txt: a
+# new computer doesn't have that source. (Ubuntu's sources are the ones apt labels
+# o=Ubuntu, so any mirror works.)
+UBUNTU_SOURCES=""
+from_ubuntu() {
+  [[ -n "$UBUNTU_SOURCES" ]] || UBUNTU_SOURCES="$(apt-cache policy 2>/dev/null | awk '
+    $2 ~ /^(https?|ftp|file|cdrom|mirror\+[a-z]+):/ { src = $2 " " $3 }
+    /^ +release .*o=Ubuntu,/ { print src }')"
+  local s
+  while read -r s; do
+    [[ -n "$s" ]] && grep -qxF "$s" <<< "$UBUNTU_SOURCES" && return 0
+  done < <(apt-cache madison "$1" 2>/dev/null | awk -F'|' '{ split($3, a, " "); print a[1] " " a[2] }')
+  return 1
+}
+
 unsaved_apt_packages() {
   local known manual
   known="$( { printf '%s\n' "${TOOLS[@]}" "${APP_PACKAGES[@]}" "${UBUNTU_AUTO_PACKAGES[@]}"

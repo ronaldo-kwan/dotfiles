@@ -70,11 +70,13 @@ DOT_PLAIN=1 dot apps
 
 </details>
 
-**Ubuntu apps you installed yourself** (with apt, App Center or a `.deb`) are read from apt's history; Ubuntu's own installs are left out. Add each one it lists to `setup/apt-packages.txt` so a new computer gets it, or write it as `-name` to keep it off new computers and stop the reminder:
+**Apps you installed yourself** (with apt, App Center or a `.deb`) are read from apt's history; Ubuntu's own installs are left out. Add each Ubuntu app it lists to `setup/apt-packages.txt` so a new computer gets it, or write it as `-name` to keep it off new computers and stop the reminder:
 
 ```text
 -cowsay   # just trying it
 ```
+
+Apps that only come from their maker's own update source, a PPA or a downloaded `.deb` are listed separately: `setup/apt-packages.txt` can't install them, because a new computer doesn't have that source. To keep one, add it to `install-apps.sh` with its source (see how ChatGPT is done); otherwise write it as `-name`. `dot check --fix` never adds these to the list.
 
 **Automatic backups** count as part of the setup: `dot check` shows ✘ while Backups' "Back Up Automatically" is off. Turn it on (and connect Google Drive), then run `dot save`, so new computers get it switched on too.
 
