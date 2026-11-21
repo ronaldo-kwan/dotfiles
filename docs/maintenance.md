@@ -23,6 +23,7 @@ dot push "Describe the change"     # = cd ~/dotfiles && git add -A && git commit
 
 - `setup/apt-packages.txt` is the exception: edit it by hand when you install or remove an Ubuntu app you want on every computer.
 - Things GNOME remembers by itself (window sizes, last-used folders, timestamps) are left out of the snapshots on purpose.
+- On a computer set up with only some parts chosen on the website, `dot save` refreshes only those parts; the rest stays as saved, so a partial setup never overwrites the full one.
 
 ## More than one computer
 
@@ -175,7 +176,7 @@ Then restart. If an extension is still off, switch it on in the Extensions app.
 [`.github/workflows/check.yml`](../.github/workflows/check.yml) runs on every push, and every Monday, so a maker changing a download link or signing key shows up as a failed run (GitHub emails you) rather than on the day you set up a new computer. In a clean Ubuntu 26.04 container it runs:
 
 - `shellcheck` on all scripts
-- `install.sh` (twice), a dry run of `install-apps.sh`, and `post-upgrade.sh` on test files
+- `install.sh` (twice), a dry run of `install-apps.sh`, `post-upgrade.sh` on test files, and `uninstall.sh` (no links may be left)
 - the secret check, the website build and a schema check of `setup/autoinstall.yaml`
 - the website's choices: `install.sh` with only some parts chosen must link only those, and `dot check` must show the rest as "not chosen"
 

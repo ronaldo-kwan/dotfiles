@@ -82,6 +82,13 @@ jobs:
           cd "$(mktemp -d)" && git init -q
           printf 'TOKEN=%s\n' "ghp_$(printf 'a%.0s' $(seq 36))" > leak.sh && git add leak.sh
           if "$GITHUB_WORKSPACE/.githooks/pre-commit"; then echo "should have been stopped"; exit 1; fi
+      - name: uninstall.sh removes every link and leaves a working ~/.bashrc
+        run: |
+          ./uninstall.sh --yes
+          left="$(find "$HOME" -type l | while read -r l; do [[ "$(readlink -f "$l")" == "$PWD"/* ]] && echo "$l"; done)"
+          test -z "$left" || { echo "still linked: $left"; exit 1; }
+          test -f "$HOME/.bashrc" && ! test -L "$HOME/.bashrc"
+          test -z "$(git config core.hooksPath || true)"
 
   choices:
     name: install.sh follows the website's choices

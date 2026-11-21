@@ -12,25 +12,28 @@ set -euo pipefail
 
 DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="${1:-$DOTFILES/setup}/apps"   # optional argument: a different setup folder
+# Only the parts this computer chose on the website (see snapshot.sh); everything otherwise.
+# shellcheck source=../lib.sh
+source "$DOTFILES/lib.sh"
 CFG="$HOME/.config"
 
 mkdir -p "$OUT"
 
 # 1. Apps that start at login: one small .desktop file per app
-rm -rf "$OUT/autostart"
-if compgen -G "$CFG/autostart/*.desktop" >/dev/null; then
+if chosen desktop; then rm -rf "$OUT/autostart"; fi
+if chosen desktop && compgen -G "$CFG/autostart/*.desktop" >/dev/null; then
   mkdir -p "$OUT/autostart"
   cp "$CFG"/autostart/*.desktop "$OUT/autostart/"
 fi
 
 # 2. Default apps
-if [[ -f "$CFG/mimeapps.list" ]]; then
+if chosen desktop && [[ -f "$CFG/mimeapps.list" ]]; then
   sed "s|$HOME|@HOME@|g" "$CFG/mimeapps.list" > "$OUT/mimeapps.list"
 fi
 
 # 3. qBittorrent: settings without cookies, window sizes or layout; plus custom themes
-rm -rf "$OUT/qBittorrent"
-if [[ -f "$CFG/qBittorrent/qBittorrent.conf" ]]; then
+if chosen pkg:qbittorrent; then rm -rf "$OUT/qBittorrent"; fi
+if chosen pkg:qbittorrent && [[ -f "$CFG/qBittorrent/qBittorrent.conf" ]]; then
   mkdir -p "$OUT/qBittorrent"
   python3 -I - "$CFG/qBittorrent/qBittorrent.conf" "$HOME" > "$OUT/qBittorrent/qBittorrent.conf" <<'PY'
 import re, sys
@@ -71,7 +74,7 @@ fi
 #    No vault on this computer (Obsidian never opened, or no notes repo yet): the saved
 #    settings stay as they are, so a new computer doesn't wipe them with dot save.
 OBS_CFG="$HOME/.var/app/md.obsidian.Obsidian/config/obsidian/obsidian.json"
-if [[ -f "$OBS_CFG" ]]; then
+if chosen notes && [[ -f "$OBS_CFG" ]]; then
   vault="$(python3 -I -c '
 import json, sys
 vaults = json.load(open(sys.argv[1])).get("vaults", {}).values()

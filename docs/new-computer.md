@@ -13,6 +13,7 @@ From a blank laptop to the full setup: prepare the laptop, install Ubuntu, run o
 - [One password at start-up](#one-password-at-start-up)
 - [Using the RTX 5060](#using-the-rtx-5060)
 - [Running the parts separately](#running-the-parts-separately)
+- [Undoing it](#undoing-it)
 - [Manual setup](#manual-setup)
 
 ## Before installing Ubuntu
@@ -148,6 +149,24 @@ Each script can also run on its own, for example on a computer that's already se
 | `~/dotfiles/install-apps.sh` (`dot apps`) | Yes | Apps and system parts; see [Apps](apps.md) |
 | `~/dotfiles/fresh-install.sh` (`dot fresh`) | Yes | All of the above, plus the system and firmware update |
 | `~/dotfiles/check.sh` (`dot check`) | No | Shows what's missing. Changes nothing |
+| `~/dotfiles/uninstall.sh` (`dot uninstall`) | No | Undoes `install.sh`; see [Undoing it](#undoing-it) |
+
+## Undoing it
+
+To go back to Ubuntu's own setup, for example after trying these dotfiles:
+
+```bash
+dot uninstall        # same as ~/dotfiles/uninstall.sh; asks first (--yes doesn't)
+```
+
+It changes only your user's files and settings, no sudo:
+
+- **Config links are removed.** Files you had before (kept as `<name>.orig`) come back; without one, `~/.bashrc` becomes Ubuntu's default. Your git name and email move into a plain `~/.gitconfig`, so commits keep working.
+- **The desktop goes back to Ubuntu's defaults:** theme, fonts, shortcuts, dock, wallpaper, Files and other settings `install.sh` loaded. Backups' settings stay, so automatic backups keep running.
+- **What it added is removed:** the GNOME extensions it downloaded, the Roboto Mono fonts, the wallpaper, and its copies of font settings in Flatpak apps and of login apps.
+- **The weekly reminder and the secret check are switched off,** and the website's saved choices are deleted.
+
+Then log out and back in. Apps, Flatpaks, the weekly update and monthly clean-up jobs, the firewall and `~/dotfiles` itself stay, because they need sudo or you may want them; it prints the command for each.
 
 ## Manual setup
 

@@ -62,6 +62,7 @@ These folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). E
 | `install.sh` | Configs, fonts, Flatpak apps, extensions, settings, the secret check and the reminder (no sudo) |
 | `install-apps.sh` | Apps from their makers' sources, the NVIDIA driver, Steam on the NVIDIA card, weekly updates, monthly clean-up, Snap Firefox removal (sudo) |
 | `post-upgrade.sh` | After upgrading Ubuntu to a new release: switches app update sources back on and puts everything back |
+| `uninstall.sh` | `dot uninstall`: undoes `install.sh` for your user (links, desktop settings, extensions, fonts, reminder, secret check) |
 
 ### Everyday
 

@@ -75,6 +75,7 @@ Everything goes through one command, `dot`. On its own, **`dot` opens a menu**: 
 | `dot check --fix` | The same, then offers to fix each problem in order (asks first) |
 | `dot status` · `dot cd` · `dot edit` | What changed · go to `~/dotfiles` · open it in VS Code |
 | `dot install` · `dot apps` · `dot fresh` | Run the setup scripts again (each is safe to rerun) |
+| `dot uninstall` | Undo it: your own config files back, Ubuntu's desktop look, extensions and fonts removed ([details](docs/new-computer.md#undoing-it)) |
 | `update` | Update Ubuntu packages now (it also happens weekly by itself) |
 
 > [!NOTE]
@@ -114,6 +115,8 @@ You're welcome to use or adapt this. The scripts install *my* apps and settings,
 3. On your current computer, run `dot save` to save your own desktop settings into `setup/`.
 
 Notes aren't part of it: `install.sh` looks for a private repo of yours called `obsidian-vault` and skips it if there's none.
+
+Changed your mind? `dot uninstall` puts your own config files back and returns the desktop to Ubuntu's look. See [Undoing it](docs/new-computer.md#undoing-it).
 
 ## Documentation
 

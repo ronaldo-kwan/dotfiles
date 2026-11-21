@@ -33,6 +33,7 @@ dot apps|Apps, NVIDIA driver, weekly updates, firewall (install-apps.sh)
 dot fresh|Set up a freshly installed Ubuntu (fresh-install.sh)
 dot upgrade|After upgrading Ubuntu to a new release (post-upgrade.sh)
 dot ssh|SSH key for this computer, and signed (Verified) commits
+dot uninstall|Undo the dotfiles: links, desktop look, extensions (asks first)
 |
 dot cd|Go to ~/dotfiles
 dot edit|Open ~/dotfiles in VS Code
@@ -175,6 +176,7 @@ case "$cmd" in
   fresh)   exec "$DOTFILES/fresh-install.sh" "$@" ;;
   upgrade) exec "$DOTFILES/post-upgrade.sh" "$@" ;;
   ssh)     exec "$DOTFILES/scripts/ssh-setup.sh" "$@" ;;
+  uninstall) exec "$DOTFILES/uninstall.sh" "$@" ;;
   edit)    exec code "$DOTFILES" ;;
   cd)      echo "dot cd works from the dot() function in ~/.bashrc; open a new terminal" ;;
   help|-h|--help) usage ;;

@@ -4,18 +4,26 @@
 # temporary copy, to see whether the saved snapshots are out of date).
 #   scripts/snapshot.sh [setup-folder]     default: ~/dotfiles/setup
 # setup/apt-packages.txt is written by hand, so it's not touched here.
+# With website choices (~/.config/dotfiles/choices), only the chosen parts are refreshed:
+# a computer with just the terminal mustn't overwrite the saved desktop settings or apps.
 
 set -uo pipefail
 
-DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../lib.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib.sh"   # DOTFILES, have, chosen
 d="${1:-$DOTFILES/setup}"
 [[ -d "$d" ]] || { echo "snapshot.sh: $d not found" >&2; exit 1; }
-have() { command -v "$1" >/dev/null 2>&1; }
 
-have code    && code --list-extensions > "$d/vscode-extensions.txt"
-have flatpak && flatpak list --app --columns=application > "$d/flatpaks.txt"
+have code && chosen app:code && code --list-extensions > "$d/vscode-extensions.txt"
+# Flatpaks: what's installed, plus the saved ones this computer didn't choose.
+if have flatpak; then
+  {
+    flatpak list --app --columns=application
+    grep -v '^\s*$' "$d/flatpaks.txt" 2>/dev/null | while read -r a; do chosen "flatpak:$a" || echo "$a"; done
+  } | sort -u > "$d/flatpaks.txt.new" && mv "$d/flatpaks.txt.new" "$d/flatpaks.txt"
+fi
 
-if have dconf; then
+if have dconf && chosen desktop; then
   {
     echo "# Desktop look: theme, icons, fonts, accent, dark mode, window buttons, workspaces,"
     echo "# and which GNOME extensions are switched on or off (including Ubuntu's built-in ones)"
@@ -44,5 +52,5 @@ fi
 # Apps that start at login, default apps, qBittorrent, Obsidian settings
 bash "$DOTFILES/scripts/save-app-settings.sh" "$d"
 
-have gsettings && gsettings get org.gnome.shell favorite-apps > "$d/dock-favorites.txt"
+have gsettings && chosen desktop && gsettings get org.gnome.shell favorite-apps > "$d/dock-favorites.txt"
 exit 0
