@@ -159,17 +159,32 @@ Each script can also run on its own, for example on a computer that's already se
 To go back to Ubuntu's own setup, for example after trying these dotfiles:
 
 ```bash
-dot uninstall        # same as ~/dotfiles/uninstall.sh; asks first (--yes doesn't)
+dot uninstall          # your settings only; asks first (--yes doesn't)
+dot uninstall --apps   # the apps and system parts too (a checklist; needs your password)
 ```
 
-It changes only your user's files and settings, no sudo:
+On its own, it changes only your user's files and settings, no sudo:
 
 - **Config links are removed.** Files you had before (kept as `<name>.orig`) come back; without one, `~/.bashrc` becomes Ubuntu's default. Your git name and email move into a plain `~/.gitconfig`, so commits keep working.
 - **The desktop goes back to Ubuntu's defaults:** theme, fonts, shortcuts, dock, wallpaper, Files and other settings `install.sh` loaded. Backups' settings stay, so automatic backups keep running.
 - **What it added is removed:** the GNOME extensions it downloaded, the Roboto Mono fonts, the wallpaper, and its copies of font settings in Flatpak apps and of login apps.
 - **The weekly reminder and the secret check are switched off,** and the website's saved choices are deleted.
 
-Then log out and back in. Apps, Flatpaks, the weekly update and monthly clean-up jobs, the firewall and `~/dotfiles` itself stay, because they need sudo or you may want them; it prints the command for each.
+Then log out and back in.
+
+### Removing the apps too (`--apps`)
+
+Apps stay unless you ask, because the uninstall can't tell which ones you had before the dotfiles (the install skips apps that are already there), and removing them needs sudo. With `--apps` it shows a checklist of what it found, all ticked: <kbd>Space</kbd> unticks what you want to keep, <kbd>Enter</kbd> removes the rest after one password.
+
+| On the list | What removing it does |
+|---|---|
+| Apps from their makers (Chrome, VS Code, Claude, ChatGPT, Proton VPN, OBS, ONLYOFFICE, Steam) | Removes the app and its update source and key |
+| Ubuntu apps from `setup/apt-packages.txt`, terminal tools | Removes them, except ones Ubuntu's own desktop includes (like Backups) and general tools (git, curl, gum, gh) |
+| Flatpak apps from `setup/flatpaks.txt` | Removes each, then runtimes nothing uses |
+| Weekly updates and monthly clean-up, the firewall | Deletes the jobs; switches the firewall off |
+| Ubuntu's Snap Firefox | Puts it back |
+
+Apps' own settings and data (your Steam games, browser profiles, Bitwarden vault) stay in your home folder, so reinstalling one brings it back as it was. The NVIDIA driver always stays: removing it can leave you without a screen. To see the list without changing anything: `DRY_RUN=1 dot uninstall --apps --yes`. `~/dotfiles` itself stays; delete it with `rm -rf ~/dotfiles`.
 
 ## Manual setup
 

@@ -107,9 +107,16 @@ jobs:
           cd "$(mktemp -d)" && git init -q
           printf 'TOKEN=%s\n' "ghp_$(printf 'a%.0s' $(seq 36))" > leak.sh && git add leak.sh
           if "$GITHUB_WORKSPACE/.githooks/pre-commit"; then echo "should have been stopped"; exit 1; fi
-      - name: uninstall.sh removes every link and leaves a working ~/.bashrc
+      - name: uninstall.sh --apps removes every link, the apps and the jobs
         run: |
-          ./uninstall.sh --yes
+          # Two terminal tools and a weekly job to remove (sudo: the scripts use it)
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sudo bat fzf >/dev/null
+          printf '#!/bin/sh\n' > /etc/cron.weekly/system-update
+          ./uninstall.sh --apps --yes
+          for p in bat fzf; do
+            if dpkg -s "$p" >/dev/null 2>&1; then echo "still installed: $p"; exit 1; fi
+          done
+          test ! -e /etc/cron.weekly/system-update
           left="$(find "$HOME" -type l | while read -r l; do [[ "$(readlink -f "$l")" == "$PWD"/* ]] && echo "$l"; done)"
           test -z "$left" || { echo "still linked: $left"; exit 1; }
           test -f "$HOME/.bashrc" && ! test -L "$HOME/.bashrc"

@@ -17,7 +17,7 @@ usage() {
   printf '\n%sdot%s: your dotfiles in one command\n\n' "$C_ACC$C_B" "$C_N"
   while IFS='|' read -r cmd what; do
     if [[ -z "$cmd" ]]; then printf '\n'; continue; fi
-    printf '  %s%-20s%s %s\n' "$C_B" "$cmd" "$C_N" "$what"
+    printf '  %s%-23s%s %s\n' "$C_B" "$cmd" "$C_N" "$what"
   done <<'EOF'
 dot save|Refresh the snapshots in setup/ and show what changed
 dot|Menu: pick any of these with the arrow keys (needs gum)
@@ -33,7 +33,7 @@ dot apps|Apps, NVIDIA driver, weekly updates, firewall (install-apps.sh)
 dot fresh|Set up a freshly installed Ubuntu (fresh-install.sh)
 dot upgrade|After upgrading Ubuntu to a new release (post-upgrade.sh)
 dot ssh|SSH key for this computer, and signed (Verified) commits
-dot uninstall|Undo the dotfiles: links, desktop look, extensions (asks first)
+dot uninstall [--apps]|Undo the dotfiles: links, desktop look (--apps: the apps too)
 |
 dot cd|Go to ~/dotfiles
 dot edit|Open ~/dotfiles in VS Code

@@ -7,11 +7,15 @@
 #   - the GNOME extensions it installed removed; the fonts and wallpaper it added deleted
 #   - weekly reminder off, secret check off, saved website choices deleted
 #
-# It doesn't remove apps, Flatpaks or the system jobs (they need sudo and you may want
-# them): it prints the commands for those at the end. ~/dotfiles itself stays too.
+# Apps, Flatpaks and the system jobs stay unless you add --apps (they need sudo, and you
+# may have had some before): then it lists them, you untick any to keep, and it removes
+# the rest after one password. Apps' own settings and data stay, so reinstalling one
+# brings it back as it was. The NVIDIA driver and Backups always stay. ~/dotfiles stays.
 #
-#   ~/dotfiles/uninstall.sh          asks first
-#   ~/dotfiles/uninstall.sh --yes    doesn't ask
+#   ~/dotfiles/uninstall.sh                 asks first
+#   ~/dotfiles/uninstall.sh --apps          also the apps (a checklist)
+#   ~/dotfiles/uninstall.sh --apps --yes    everything, without asking
+#   DRY_RUN=1 ~/dotfiles/uninstall.sh --apps --yes   only shows what it would do
 
 set -uo pipefail
 # shellcheck source=lib.sh
@@ -166,13 +170,169 @@ safety_off() {
   return 0
 }
 
+# --- --apps: the apps and system parts too --------------------------------------------
+DRY_RUN="${DRY_RUN:-0}"
+run() { if [[ "$DRY_RUN" == 1 ]]; then printf '    would run: %s\n' "$*"; else "$@"; fi; }
+pkg_installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q 'ok installed'; }
+installed_of() { local p; for p in "$@"; do pkg_installed "$p" && echo "$p"; done; return 0; }
+
+# app_items: one line per thing that can be removed, "label|kind|what|files". kind is apt
+# (what = packages), flatpak (an app ID), jobs, firewall or snapfirefox. files are deleted
+# with it (the app's update source and key); a ppa: entry is removed with add-apt-repository.
+app_items() {
+  local S=/etc/apt/sources.list.d K=/usr/share/keyrings p pkgs desk tools
+  maker() { # maker <label> <packages> <files>: listed only if one of the packages is installed
+    [[ -n "$(installed_of $2)" ]] && echo "$1|apt|$2|$3"; return 0
+  }
+  maker "Google Chrome" "google-chrome-stable" "$S/google-chrome.sources $S/google-chrome.list $K/google-chrome.gpg"
+  maker "VS Code" "code" "$S/vscode.sources $S/vscode.list $K/microsoft.gpg"
+  maker "Claude Desktop" "claude-desktop" "$S/claude-desktop.list $K/claude-desktop-archive-keyring.asc"
+  maker "Claude Code" "claude-code" "$S/claude-code.list $K/claude-code.asc"
+  maker "ChatGPT" "chatgpt" "$S/chatgpt.sources $K/chatgpt-archive-keyring.gpg"
+  maker "Proton VPN" "proton-vpn-gnome-desktop protonvpn-stable-release protonvpn-beta-release" ""
+  maker "OBS Studio" "obs-studio" "ppa:obsproject/obs-studio"
+  maker "ONLYOFFICE" "onlyoffice-desktopeditors" "$S/onlyoffice.list $K/onlyoffice.gpg"
+  maker "Steam" "steam-installer steam-launcher" ""
+  # Ubuntu apps from setup/apt-packages.txt, except ones Ubuntu's own desktop includes
+  # (like Backups): those were there before.
+  desk="$(apt-cache depends ubuntu-desktop ubuntu-desktop-minimal 2>/dev/null | awk '/(Depends|Recommends):/ {print $2}')"
+  pkgs=""
+  for p in $(sed 's/#.*//' "$SETUP/apt-packages.txt" | awk 'NF && $1 !~ /^-/ {print $1}'); do
+    pkg_installed "$p" && ! grep -qxF "$p" <<< "$desk" && pkgs+="$p "
+  done
+  [[ -n "$pkgs" ]] && echo "Ubuntu apps: ${pkgs% }|apt|${pkgs% }|"
+  # Terminal tools, except the general ones other things use (git, curl, gum, gh, stow, flatpak)
+  tools=""
+  for p in "${TOOLS[@]}"; do
+    case "$p" in git|curl|gum|gh|stow|flatpak) continue ;; esac
+    pkg_installed "$p" && tools+="$p "
+  done
+  [[ -n "$tools" ]] && echo "Terminal tools: ${tools% }|apt|${tools% }|"
+  if have flatpak; then
+    local id name
+    while IFS=$'\t' read -r id name; do
+      grep -qxF "$id" "$SETUP/flatpaks.txt" && echo "$name (Flatpak)|flatpak|$id|"
+    done < <(flatpak list --app --columns=application,name 2>/dev/null)
+  fi
+  [[ -f /etc/cron.weekly/system-update || -f /etc/cron.monthly/system-cleanup ]] \
+    && echo "Weekly updates and monthly clean-up|jobs||/etc/cron.weekly/system-update /etc/cron.monthly/system-cleanup"
+  grep -qx 'ENABLED=yes' /etc/ufw/ufw.conf 2>/dev/null && echo "Firewall (switch it off)|firewall||"
+  if have snap && ! snap list firefox >/dev/null 2>&1; then echo "Ubuntu's Snap Firefox (put it back)|snapfirefox||"; fi
+  return 0
+}
+
+# pick_apps: fills REMOVE with the chosen app_items lines (all of them with --yes).
+REMOVE=()
+pick_apps() {
+  local items=() line i picked
+  mapfile -t items < <(app_items)
+  (( ${#items[@]} )) || { note "no apps or system parts from the dotfiles found"; return 0; }
+  if [[ "$YES_ALL" == 1 ]]; then REMOVE=("${items[@]}"); return 0; fi
+  if ui_gum; then
+    local opts=()
+    for i in "${!items[@]}"; do opts+=("${items[i]%%|*}|$i"); done
+    echo
+    picked="$(gum choose --no-limit --selected='*' --label-delimiter='|' --height $(( ${#opts[@]} + 4 )) \
+      --header $'Remove these too? Space unticks what you want to keep, Enter removes the rest.\n(Their settings and data stay. The NVIDIA driver and Backups stay.)' \
+      "${opts[@]}")" || { echo "Nothing changed."; exit 0; }
+    for i in $picked; do REMOVE+=("${items[i]}"); done
+  else
+    printf '\n  %sRemove these too?%s %s(their settings and data stay)%s\n' "$C_B" "$C_N" "$C_DIM" "$C_N"
+    for line in "${items[@]}"; do ask "Remove ${line%%|*}?" && REMOVE+=("$line"); done
+  fi
+  return 0
+}
+chosen_of() { # chosen_of <kind>: the "what" and "files" fields of the chosen items of that kind
+  local line kind what files
+  for line in "${REMOVE[@]}"; do
+    IFS='|' read -r _ kind what files <<< "$line"
+    [[ "$kind" == "$1" ]] && echo "$what|$files"
+  done
+  return 0
+}
+
+remove_apt_apps() {
+  local pkgs=() files=() what f line
+  while IFS='|' read -r what f; do
+    mapfile -t -O "${#pkgs[@]}" pkgs < <(installed_of $what)
+    for line in $f; do files+=("$line"); done
+  done < <(chosen_of apt)
+  (( ${#pkgs[@]} )) || { skip "none chosen"; return 0; }
+  echo "    ${pkgs[*]}"
+  if [[ "$DRY_RUN" == 1 ]]; then run sudo apt-get remove -y "${pkgs[@]}"
+  else quiet "Removing ${#pkgs[@]} packages" sudo env DEBIAN_FRONTEND=noninteractive \
+    apt-get -o DPkg::Lock::Timeout=300 remove -y "${pkgs[@]}"; fi
+  # Their update sources and keys, so apt stops checking them
+  for f in "${files[@]}"; do
+    if [[ "$DRY_RUN" == 1 ]]; then
+      [[ "$f" == ppa:* ]] && run sudo add-apt-repository -y --remove "$f"
+      [[ -e "$f" ]] && run sudo rm -f "$f"
+    elif [[ "$f" == ppa:* ]]; then
+      sudo add-apt-repository -y --remove "$f" >/dev/null 2>&1 && echo "    removed $f" || true
+    elif [[ -e "$f" ]]; then
+      sudo rm -f "$f" && echo "    removed $f"
+    fi
+  done
+  if [[ "$DRY_RUN" == 1 ]]; then run sudo apt-get autoremove -y
+  else quiet "Removing what only they needed" sudo env DEBIAN_FRONTEND=noninteractive \
+    apt-get -o DPkg::Lock::Timeout=300 autoremove -y; fi
+}
+
+remove_flatpak_apps() {
+  local ids=() what
+  while IFS='|' read -r what _; do ids+=("$what"); done < <(chosen_of flatpak)
+  (( ${#ids[@]} )) || { skip "none chosen"; return 0; }
+  echo "    ${ids[*]}"
+  if [[ "$DRY_RUN" == 1 ]]; then run flatpak uninstall -y --noninteractive "${ids[@]}"
+  else quiet "Removing ${#ids[@]} Flatpak apps" flatpak uninstall -y --noninteractive "${ids[@]}"
+       quiet "Removing runtimes nothing uses" flatpak uninstall -y --noninteractive --unused; fi
+}
+
+remove_system_parts() {
+  local any=0 what f
+  while IFS='|' read -r what f; do
+    for what in $f; do
+      [[ -e "$what" ]] || continue
+      if [[ "$DRY_RUN" == 1 ]]; then run sudo rm -f "$what"; else sudo rm -f "$what" && echo "    removed $what"; fi
+    done; any=1
+  done < <(chosen_of jobs)
+  if [[ -n "$(chosen_of firewall)" ]]; then
+    if [[ "$DRY_RUN" == 1 ]]; then run sudo ufw disable; else sudo ufw disable >/dev/null && echo "    firewall off"; fi
+    any=1
+  fi
+  if [[ -n "$(chosen_of snapfirefox)" ]]; then
+    if [[ "$DRY_RUN" == 1 ]]; then run sudo snap install firefox
+    else quiet "Installing Ubuntu's Snap Firefox" sudo snap install firefox; fi
+    any=1
+  fi
+  (( any )) || skip "none chosen"
+  return 0
+}
+
+APPS_TOO=0
+for a in "$@"; do [[ "$a" == --apps ]] && APPS_TOO=1; done
+
 header "Undo the dotfiles" \
   "Removes the config links (your own files from before come back), resets the" \
   "desktop look, shortcuts and settings to Ubuntu's, removes the extensions, fonts and" \
   "wallpaper it added, and switches off the reminder and the secret check." \
-  "Apps, Flatpaks, system jobs and ~/dotfiles stay; it shows how to remove them."
+  "With --apps it also removes the apps, Flatpaks and system jobs you pick."
 yes_flag "$@"
+[[ "$DRY_RUN" == 1 ]] && note "Dry run: shows what it would do, changes nothing."
 ask "Undo the dotfiles for $(id -un)?" || { echo "Nothing changed."; exit 0; }
+steps=()
+if (( APPS_TOO )); then
+  pick_apps
+  if (( ${#REMOVE[@]} )); then
+    [[ "$DRY_RUN" == 1 ]] || keep_sudo || exit 1
+    steps=("Apps removed|remove_apt_apps" "Flatpak apps removed|remove_flatpak_apps"
+           "System jobs, firewall, Snap Firefox|remove_system_parts")
+  fi
+fi
+if [[ "$DRY_RUN" == 1 ]]; then   # the user-level part has no dry run; show only the apps part
+  (( ${#steps[@]} )) && run_steps "${steps[@]}"
+  exit 0
+fi
 
 run_steps \
   "Weekly reminder off|reminder_off" \
@@ -182,15 +342,17 @@ run_steps \
   "GNOME extensions it installed|remove_extensions" \
   "Fonts and wallpaper it downloaded|remove_fonts_wallpaper" \
   "Copies in Flatpak apps and login apps|remove_copies" \
-  "Secret check off, saved choices deleted|safety_off"
+  "Secret check off, saved choices deleted|safety_off" \
+  ${steps[@]+"${steps[@]}"}
 
 summary; ok=$?
-printf '\n%sStill there, if you want them gone too%s\n' "$C_B" "$C_N"
+printf '\n%sStill to do%s\n' "$C_B" "$C_N"
 note "Log out and back in, so GNOME drops the removed extensions and fonts"
-note "Flatpak apps:  flatpak uninstall \$(cat ~/dotfiles/setup/flatpaks.txt)"
-note "VS Code theme: code --uninstall-extension \$(cat ~/dotfiles/setup/vscode-extensions.txt)"
-note "Apps from install-apps.sh: see ~/dotfiles/docs/apps.md for each package; sudo apt remove <package>"
-note "Weekly updates and monthly clean-up: sudo rm /etc/cron.weekly/system-update /etc/cron.monthly/system-cleanup"
-note "Firewall: sudo ufw disable"
+if (( ! APPS_TOO )); then
+  note "Apps, Flatpaks and system jobs are still installed. To remove them too: dot uninstall --apps"
+else
+  note "Kept on purpose: the NVIDIA driver (removing it can leave you without a screen) and Backups"
+fi
+note "VS Code theme, if VS Code stays: code --uninstall-extension \$(cat ~/dotfiles/setup/vscode-extensions.txt)"
 note "The dotfiles folder: rm -rf ~/dotfiles"
 exit "$ok"
