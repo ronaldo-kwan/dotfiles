@@ -83,6 +83,8 @@ refused() {
 }
 t "fetch_checked keeps a matching file" kept
 t "fetch_checked refuses a changed file" refused
+dry_kept() { DRY_RUN=1 fetch_checked "file://$T/src.txt" "$sum" "$T/dry.txt" >/dev/null && [[ -f "$T/dry.txt" ]]; }
+t "fetch_checked still downloads and checks in a dry run" dry_kept
 
 echo "Other helpers"
 printf 'path=@HOME@/x\n' > "$T/saved"

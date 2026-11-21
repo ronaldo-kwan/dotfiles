@@ -373,12 +373,14 @@ copy_into() {
   mkdir -p "$d" && cp "$@" "$d/"
 }
 
-# fetch_checked <URL> <sha256> <file>: download it and keep it only if its checksum
-# matches, so a file that changed (or was changed) is never used. Pinned downloads.
+# fetch_checked <URL> <sha256> <file> [label]: download it and keep it only if its checksum
+# matches, so a file that changed (or was changed) is never used. Pinned downloads. Shows
+# a spinner with the time while it downloads (a slow connection can take minutes), and
+# downloads in dry runs too, since checking the file is the point.
 fetch_checked() {
-  local url="$1" sum="$2" file="$3" tmp
+  local url="$1" sum="$2" file="$3" label="${4:-Downloading ${1##*/}}" tmp
   tmp="$(mktemp "$file.XXXXXX")" || return 1
-  if ! curl -fsSL --retry 3 -o "$tmp" "$url"; then rm -f "$tmp"; return 1; fi
+  if ! DRY_RUN=0 quiet "$label" curl -fsSL --retry 3 -o "$tmp" "$url"; then rm -f "$tmp"; return 1; fi
   if [[ "$(sha256sum "$tmp" | cut -d' ' -f1)" != "$sum" ]]; then
     rm -f "$tmp"
     echo "    ${url##*/}: not the expected file (its checksum differs), so it isn't used" >&2

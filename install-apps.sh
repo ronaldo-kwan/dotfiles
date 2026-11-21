@@ -287,10 +287,10 @@ install_protonvpn() {
   local base=https://repo.protonvpn.com/debian index=main/binary-all/Packages sum path sha
   signed_source protonvpn "$base/public_key.asc" 84B0D3492C76C9C6F5873C18EDA3E22630349F1C "$base" stable || return 1
   sum="$(awk -v f="$index" '/^SHA256:/ {s = 1; next} /^[^ ]/ {s = 0} s && $3 == f {print $1}' "$TMP/protonvpn.Release")"
-  fetch_checked "$base/dists/stable/$index" "$sum" "$TMP/protonvpn.Packages"
+  fetch_checked "$base/dists/stable/$index" "$sum" "$TMP/protonvpn.Packages" "Downloading Proton's package index"
   read -r path sha < <(package_in "$TMP/protonvpn.Packages" protonvpn-stable-release)
   [[ -n "$path" && -n "$sha" ]] || { echo "    couldn't find Proton's setup package" >&2; return 1; }
-  fetch_checked "$base/$path" "$sha" "$TMP/protonvpn-release.deb"
+  fetch_checked "$base/$path" "$sha" "$TMP/protonvpn-release.deb" "Downloading Proton's setup package"
   echo "    setup package matches Proton's signed package list"
   apt_get install -y "$TMP/protonvpn-release.deb"
   apt_get update

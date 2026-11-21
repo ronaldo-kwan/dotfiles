@@ -60,7 +60,8 @@ install_fonts() {
   fi
   tmp="$(mktemp -d)"
   if (( want_nerd )); then
-    fetch_checked "$NERD_FONT_URL" "$NERD_FONT_SHA256" "$tmp/RobotoMono.tar.xz"
+    fetch_checked "$NERD_FONT_URL" "$NERD_FONT_SHA256" "$tmp/RobotoMono.tar.xz" \
+      "Downloading RobotoMono Nerd Font $NERD_FONT_VERSION"
     mkdir -p "$tmp/extract"
     tar -xJf "$tmp/RobotoMono.tar.xz" -C "$tmp/extract"
     copy_into "$NERD_FONT_DIR" "$tmp"/extract/RobotoMonoNerdFont*.ttf
@@ -72,7 +73,7 @@ install_fonts() {
     mkdir -p "$tmp/mono"
     for f in "${ROBOTO_MONO_FILES[@]}"; do
       name="${f%%|*}"; url="${name//\[/%5B}"; url="${url//\]/%5D}"
-      fetch_checked "$ROBOTO_MONO_URL/$url" "${f#*|}" "$tmp/mono/$name"
+      fetch_checked "$ROBOTO_MONO_URL/$url" "${f#*|}" "$tmp/mono/$name" "Downloading Roboto Mono ($name)"
     done
     copy_into "$MONO_FONT_DIR" "$tmp"/mono/*.ttf
     did "Roboto Mono"
