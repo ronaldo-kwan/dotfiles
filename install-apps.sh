@@ -126,7 +126,7 @@ entry_chosen() {
   case "$1" in
     install_chrome) chosen app:chrome ;;        install_vscode) chosen app:code ;;
     install_claude) chosen app:claude ;;        install_protonvpn) chosen app:protonvpn ;;
-    install_claude_code) chosen app:claude-code ;;
+    install_claude_code) chosen app:claude-code ;; install_chatgpt) chosen app:chatgpt ;;
     install_obs) chosen app:obs ;;              install_onlyoffice) chosen app:onlyoffice ;;
     install_steam) chosen app:steam ;;          install_ubuntu_apps) chosen_any pkg: ;;
     install_nvidia_driver|setup_steam_nvidia) chosen nvidia ;;
@@ -231,6 +231,30 @@ install_claude() {
   run sudo install -m 644 "$TMP/claude.list" /etc/apt/sources.list.d/claude-desktop.list
   apt_get update
   apt_get install -y claude-desktop
+}
+
+install_chatgpt() {
+  # OpenAI's ChatGPT desktop app (with Codex), from OpenAI's own update source. OpenAI
+  # ships its signing key inside the app's package, not at a download address, so a copy
+  # is kept in setup/keys/chatgpt.asc (it's public), pinned to this fingerprint. The
+  # source's signature is checked with it first (in dry runs too), so if OpenAI changes
+  # the key, GitHub's weekly checks fail instead of a new computer.
+  local expected=3BFA0E4AE8B8CC16A2D9BA684A3B4A566C4660E4
+  local url=https://persistent.oaistatic.com/codex-app-prod/linux/deb
+  key_ok "$SETUP/keys/chatgpt.asc" "$expected" || return 1
+  gpg --dearmor < "$SETUP/keys/chatgpt.asc" > "$TMP/chatgpt.gpg"
+  fetch "$TMP/chatgpt-InRelease" "$url/dists/stable/InRelease"
+  if ! gpgv --keyring "$TMP/chatgpt.gpg" "$TMP/chatgpt-InRelease" >/dev/null 2>&1; then
+    echo "    OpenAI's update source isn't signed with the expected key. Not installing." >&2
+    return 1
+  fi
+  echo "    update source signed with the expected key"
+  printf 'X-Repolib-Name: ChatGPT\nTypes: deb\nURIs: %s\nSuites: stable\nComponents: main\nArchitectures: amd64\nSigned-By: /usr/share/keyrings/chatgpt-archive-keyring.gpg\n' \
+    "$url" > "$TMP/chatgpt.sources"
+  run sudo install -m 644 "$TMP/chatgpt.gpg" /usr/share/keyrings/chatgpt-archive-keyring.gpg
+  run sudo install -m 644 "$TMP/chatgpt.sources" /etc/apt/sources.list.d/chatgpt.sources
+  apt_get update
+  apt_get install -y chatgpt
 }
 
 install_claude_code() {
@@ -377,6 +401,7 @@ APPS=(
   "VS Code|code|install_vscode"
   "Claude Desktop|claude-desktop|install_claude"
   "Claude Code (the claude command)|claude-code|install_claude_code"
+  "ChatGPT (with Codex)|chatgpt|install_chatgpt"
   "Proton VPN|proton-vpn-gnome-desktop|install_protonvpn"
   "OBS Studio|obs-studio|install_obs"
   "ONLYOFFICE|check_onlyoffice|install_onlyoffice"

@@ -30,7 +30,7 @@ It first asks whether to answer Yes to everything. Choose **Let me choose** to g
 
 ## Where each app comes from
 
-Each app comes from its maker's official source, so `sudo apt upgrade` keeps it updated. The Claude Desktop, Claude Code and ONLYOFFICE signing keys' fingerprints and Proton's setup-package checksum are checked before installing. If ONLYOFFICE is installed without its update source (for example from a downloaded `.deb`), the script offers to add the source.
+Each app comes from its maker's official source, so `sudo apt upgrade` keeps it updated. The Claude Desktop, Claude Code, ChatGPT and ONLYOFFICE signing keys' fingerprints and Proton's setup-package checksum are checked before installing. If ONLYOFFICE is installed without its update source (for example from a downloaded `.deb`), the script offers to add the source.
 
 If a maker changes its download link, update the script; the table shows the manual way.
 
@@ -40,6 +40,7 @@ If a maker changes its download link, update the script; the table shows the man
 | VS Code | code.visualstudio.com (`.deb`) | `code` |
 | Claude Desktop | claude.ai/download | `claude-desktop` |
 | Claude Code | Anthropic's apt source, `downloads.claude.ai/claude-code/apt/stable` (key from `downloads.claude.ai/keys/claude-code.asc`) | `claude-code` |
+| ChatGPT (with Codex) | OpenAI's apt source, `persistent.oaistatic.com/codex-app-prod/linux/deb` (OpenAI ships the key inside its `.deb`; a copy is in [`setup/keys/chatgpt.asc`](../setup/keys/chatgpt.asc)) | `chatgpt` |
 | Proton VPN | protonvpn.com/download (Linux, Ubuntu) | `proton-vpn-gnome-desktop` |
 | OBS Studio | `sudo add-apt-repository ppa:obsproject/obs-studio` | `obs-studio` |
 | ONLYOFFICE | ONLYOFFICE's update source (key from download.onlyoffice.com/GPG-KEY-ONLYOFFICE) | `onlyoffice-desktopeditors` |

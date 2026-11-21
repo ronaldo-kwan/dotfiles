@@ -17,7 +17,8 @@ have() { command -v "$1" >/dev/null 2>&1; }
 # --- Choices: what to set up (picked on the website, or everything) ----------------------
 # DOTFILES_CHOICES lists what to set up, separated by spaces. Groups: terminal desktop
 # notes safety updates firewall nvidia firmware claude-md nosnapfirefox; single apps:
-# app:chrome app:code app:claude app:protonvpn app:obs app:onlyoffice app:steam,
+# app:chrome app:code app:claude app:claude-code app:chatgpt app:protonvpn app:obs
+# app:onlyoffice app:steam,
 # pkg:<Ubuntu package> and flatpak:<Flatpak ID>. Empty or unset means everything.
 # DOTFILES_SKIP is the opposite: everything except these (shorter when you untick little).
 # bootstrap.sh saves it in ~/.config/dotfiles/choices, so later runs (dot install,
@@ -581,7 +582,7 @@ has_nerd_font() { has_font "RobotoMono Nerd Font"; }
 has_roboto_mono() { has_font "Roboto Mono"; }   # (the Nerd Font is "RobotoMono", no space)
 
 # Packages that install-apps.sh installs itself (not from setup/apt-packages.txt).
-APP_PACKAGES=(google-chrome-stable code claude-desktop claude-code protonvpn-stable-release proton-vpn-gnome-desktop
+APP_PACKAGES=(google-chrome-stable code claude-desktop claude-code chatgpt protonvpn-stable-release proton-vpn-gnome-desktop
   obs-studio onlyoffice-desktopeditors steam-installer 'nvidia-driver-*' 'libnvidia-gl-*'
   'linux-modules-nvidia-*' ufw)
 # Added by Ubuntu itself (language support adds dictionaries for your languages).

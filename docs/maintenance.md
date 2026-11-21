@@ -157,7 +157,7 @@ rm ~/.config/git/signing.gitconfig          # stop signing
 ## After upgrading Ubuntu
 
 > [!IMPORTANT]
-> A new Ubuntu release (for example 26.04 → 28.04) switches off every app's own update source, so Chrome, VS Code, Claude, Proton VPN, ONLYOFFICE and OBS would quietly stop updating. After the upgrade and its restart, run `dot upgrade`.
+> A new Ubuntu release (for example 26.04 → 28.04) switches off every app's own update source, so Chrome, VS Code, Claude, ChatGPT, Proton VPN, ONLYOFFICE and OBS would quietly stop updating. After the upgrade and its restart, run `dot upgrade`.
 
 ```bash
 dot upgrade        # same as ~/dotfiles/post-upgrade.sh
