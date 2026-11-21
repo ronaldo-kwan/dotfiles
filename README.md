@@ -26,7 +26,7 @@ Terminal, desktop look, apps and upkeep, all in Catppuccin Mocha with Roboto fon
 | Area | What you get |
 |---|---|
 | **Terminal** | bash with [ble.sh](https://github.com/akinomyoga/ble.sh), the [Starship](https://starship.rs) prompt, [Ghostty](https://ghostty.org), fzf, zoxide, eza, bat, btop, lazygit and fastfetch, all in Catppuccin Mocha, with the RobotoMono Nerd Font |
-| **Desktop** | Adwaita dark with a blue accent, Roboto fonts, close-only window buttons, 4 workspaces, GNOME extensions, keyboard shortcuts, dock and wallpaper; frosted glass (Blur my Shell) on the top bar, overview and terminal |
+| **Desktop** | Adwaita dark with a blue accent, Roboto fonts, close-only window buttons, 4 workspaces, GNOME extensions, keyboard shortcuts, dock and wallpaper; frosted glass (Blur my Shell) on the top bar, overview and terminal; the login and lock screens in the same blurred, dark look |
 | **Apps** | Chrome, VS Code, Claude Desktop, Claude Code, ChatGPT, Proton VPN, OBS, ONLYOFFICE and Steam from their makers; Ubuntu apps; Flatpaks such as Firefox, Discord and Obsidian |
 | **System** | NVIDIA driver, firmware updates, firewall, weekly updates and a monthly clean-up |
 | **Safety** | A secret check before every commit, signed commits, a weekly reminder to save settings, and a health check |

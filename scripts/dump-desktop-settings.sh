@@ -51,6 +51,9 @@ keys /org/gnome/shell/ last-selected-power-profile remember-mount-password
 dump /org/gnome/settings-daemon/plugins/power/
 dump /org/gnome/desktop/sound/
 
+# Lock screen: notifications hidden on it (they're all there after unlocking)
+keys /org/gnome/desktop/notifications/ show-in-lock-screen
+
 # Files app view (list view and its columns), not its window size
 dump /org/gnome/nautilus/preferences/
 dump /org/gnome/nautilus/list-view/

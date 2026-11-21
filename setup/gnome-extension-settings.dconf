@@ -12,6 +12,9 @@ pipeline-dark='pipeline_default'
 pipeline-light='pipeline_default_light'
 whitelist=['com.mitchellh.ghostty']
 
+[blur-my-shell/lockscreen]
+pipeline='pipeline_overview'
+
 [blur-my-shell/overview]
 pipeline='pipeline_overview'
 

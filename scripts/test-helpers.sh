@@ -147,6 +147,15 @@ chmod +x "$T/bin/nvidia-smi"
 major="$(PATH="$T/bin:$PATH" nvidia_major)"
 t "nvidia_major ignores nvidia-smi's error text (got: ${major:-empty})" bash -c '[[ -z "$1" || "$1" =~ ^[0-9]+$ ]]' _ "$major"
 
+echo "Login screen"
+# Its theme, accent and font come from setup/gnome-desktop.dconf; if a name there changed,
+# they'd silently go missing.
+login_keys() { [[ "$(login_settings | grep -cE '^(color-scheme|accent-color|font-name)=')" == 3 ]]; }
+t "the login screen gets the desktop's theme, accent and font" login_keys
+profile_ok() { [[ ! -f /usr/share/dconf/profile/gdm || "$(login_profile | grep -cx "system-db:gdm")" == 1 ]]; }
+t "its profile is Ubuntu's plus system-db:gdm (where Ubuntu's exists)" profile_ok
+t "its background is in the repo" test -f "$SETUP/wallpaper/login-blurred.jpg"
+
 echo "App table (install-apps.sh)"
 t "every app: entry has its APP_PARTS" bash -c '
   for e in "${@:2}"; do c="${e%%|*}"; [[ "$c" != app:* ]] || [[ " $1 " == *" $c "* ]] || { echo "      missing APP_PARTS for $c"; exit 1; }; done' \

@@ -180,7 +180,7 @@ safety_off() {
 installed_of() { local p; for p in "$@"; do installed "$p" && echo "$p"; done; return 0; }
 
 # app_items: one line per thing that can be removed, "label|kind|what|files". kind is apt
-# (what = packages), flatpak (an app ID), jobs, firewall or snapfirefox. files are deleted
+# (what = packages), flatpak (an app ID), jobs, loginscreen, firewall or snapfirefox. files are deleted
 # with it (the app's update source and key); a ppa: entry is removed with add-apt-repository.
 app_items() {
   local entry choice name p pkgs desk tools
@@ -215,6 +215,12 @@ app_items() {
   fi
   [[ -f /etc/cron.weekly/system-update || -f /etc/cron.monthly/system-cleanup ]] \
     && echo "Weekly updates and monthly clean-up|jobs||/etc/cron.weekly/system-update /etc/cron.monthly/system-cleanup"
+  # The login screen's look (install-apps.sh): its settings, background, and our profile only
+  if [[ -f "$GDM_SETTINGS" ]]; then
+    local files="$GDM_SETTINGS $LOGIN_BG"
+    head -1 "$GDM_PROFILE" 2>/dev/null | grep -q '^# Written by ~/dotfiles' && files+=" $GDM_PROFILE"
+    echo "The login screen's look (back to Ubuntu's)|loginscreen||$files"
+  fi
   grep -qx 'ENABLED=yes' /etc/ufw/ufw.conf 2>/dev/null && echo "Firewall (switch it off)|firewall||"
   if have snap && ! snap list firefox >/dev/null 2>&1; then echo "Ubuntu's Snap Firefox (put it back)|snapfirefox||"; fi
   return 0
@@ -287,6 +293,13 @@ remove_system_parts() {
       run sudo rm -f "$what" && did "removed $what"
     done; any=1
   done < <(chosen_of jobs)
+  while IFS='|' read -r what f; do
+    for what in $f; do
+      [[ -e "$what" ]] || continue
+      run sudo rm -f "$what" && did "removed $what"
+    done
+    run sudo dconf update && did "login screen back to Ubuntu's look (from the next login screen)"; any=1
+  done < <(chosen_of loginscreen)
   if [[ -n "$(chosen_of firewall)" ]]; then
     run_quiet sudo ufw disable && did "firewall off"
     any=1
@@ -316,7 +329,7 @@ if (( APPS_TOO )); then
   if (( ${#REMOVE[@]} )); then
     [[ "$DRY_RUN" == 1 ]] || keep_sudo || exit 1
     steps=("Apps removed|remove_apt_apps" "Flatpak apps removed|remove_flatpak_apps"
-           "System jobs, firewall, Snap Firefox|remove_system_parts")
+           "System jobs, login screen, firewall, Snap Firefox|remove_system_parts")
   fi
 fi
 run_steps \

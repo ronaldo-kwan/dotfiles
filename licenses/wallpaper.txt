@@ -1,6 +1,7 @@
 The wallpaper in setup/wallpaper/, catppuccin-tropic-island-night.jpg, is tropic_island_night.jpg
 from the Catppuccin wallpaper collection, https://github.com/zhichaoh/catppuccin-wallpapers
-(landscapes/, commit 08659a2ed650b36d4565445eb9007398be7c9f80), used under its MIT licence:
+(landscapes/, commit 08659a2ed650b36d4565445eb9007398be7c9f80), used under its MIT licence. setup/wallpaper/login-blurred.jpg is a blurred, darkened copy of it
+(made with Python's PIL: blur, brightness 0.6, 60% Catppuccin base #1e1e2e) for the login screen:
 
 MIT License
 

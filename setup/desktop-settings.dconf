@@ -32,6 +32,9 @@ sleep-inactive-ac-type='nothing'
 [org/gnome/desktop/sound]
 theme-name='freedesktop'
 
+[org/gnome/desktop/notifications]
+show-in-lock-screen=false
+
 [org/gnome/nautilus/preferences]
 default-folder-viewer='list-view'
 migrated-gtk-settings=true

@@ -4,7 +4,7 @@
 # setup/apt-packages.txt. Each one comes from its maker's official download
 # source (or Ubuntu's own), which then keeps it updated through `sudo apt upgrade`.
 # It can also remove Ubuntu's Snap Firefox (this setup uses the Flatpak one),
-# set up weekly automatic updates and a monthly clean-up, and install the NVIDIA driver on computers
+# set up weekly automatic updates and a monthly clean-up, style the login screen, and install the NVIDIA driver on computers
 # with an NVIDIA graphics card.
 #
 # Uses sudo. Asks before each app, and skips apps that are already installed.
@@ -42,6 +42,7 @@ APPS=(
   "nvidia|Steam on the NVIDIA card (32-bit library, shortcut)|check_steam_nvidia|setup_steam_nvidia|Set up"
   "updates|weekly automatic updates (/etc/cron.weekly/system-update)|check_weekly_updates|setup_weekly_updates|Set up"
   "updates|monthly clean-up of unused packages (/etc/cron.monthly/system-cleanup)|check_monthly_cleanup|setup_monthly_cleanup|Set up"
+  "desktop|the login screen: blurred wallpaper, dark theme, blue accent, Roboto|check_login_screen|setup_login_screen|Set up"
   "firewall|the firewall (ufw), blocking connections from outside|check_firewall|setup_firewall|Switch on"
   "nosnapfirefox|Ubuntu's Snap Firefox (you use the Flatpak one)|check_no_snap_firefox|remove_snap_firefox|Remove"
 )
@@ -97,6 +98,46 @@ install_job() {
 }
 check_weekly_updates() { check_job cron.weekly/system-update; }
 check_monthly_cleanup() { check_job cron.monthly/system-cleanup; }
+
+# The login screen (GDM) runs as its own system user, so its look is system-wide: GNOME's
+# usual way is a settings file in /etc/dconf/db/gdm.d/, which `dconf update` compiles, read
+# through a dconf profile that includes it (Ubuntu's own, /usr/share/dconf/profile/gdm, plus
+# `system-db:gdm`). It can't read your home folder, so the background is copied too.
+LOGIN_BG=/usr/share/backgrounds/dotfiles/login-blurred.jpg
+GDM_PROFILE=/etc/dconf/profile/gdm
+GDM_SETTINGS=/etc/dconf/db/gdm.d/90-dotfiles
+# The settings: the blurred, darkened wallpaper (setup/wallpaper/login-blurred.jpg), and
+# the desktop's own dark theme, accent colour and font (from setup/gnome-desktop.dconf).
+login_settings() {
+  local k
+  echo "# Written by ~/dotfiles (install-apps.sh): how the login screen looks."
+  echo "# To undo: dot uninstall --apps (or delete this file and run: sudo dconf update)"
+  echo "[com/ubuntu/login-screen]"
+  echo "background-picture-uri='file://$LOGIN_BG'"
+  echo "background-size='cover'"
+  echo
+  echo "[org/gnome/desktop/interface]"
+  for k in color-scheme accent-color font-name; do
+    sed -n '/^\[desktop\/interface\]/,/^$/p' "$SETUP/gnome-desktop.dconf" | grep "^$k="
+  done
+}
+# Ubuntu's profile for the login screen, plus the system settings above (its first line
+# marks it as ours, so uninstall.sh only ever removes this one).
+login_profile() {
+  echo "# Written by ~/dotfiles (install-apps.sh): Ubuntu's login screen profile, plus system-db:gdm"
+  sed '/^user-db:/a system-db:gdm' /usr/share/dconf/profile/gdm
+}
+check_login_screen() {
+  if [[ ! -f /usr/share/dconf/profile/gdm ]]; then   # another login manager, or none (a container)
+    echo "    not needed: the login screen isn't GNOME's (GDM)"; NOT_NEEDED=1; return 0
+  fi
+  [[ -f "$GDM_SETTINGS" ]] || return 1
+  if ! cmp -s <(login_settings) "$GDM_SETTINGS" || ! cmp -s <(login_profile) "$GDM_PROFILE" \
+     || ! cmp -s "$SETUP/wallpaper/login-blurred.jpg" "$LOGIN_BG"; then
+    echo "    set up, but different from the saved version"
+    return 1
+  fi
+}
 
 check_nvidia_driver() {
   if ! has_nvidia; then
@@ -339,6 +380,21 @@ setup_weekly_updates() {
   echo "    runs once a week; log: /var/log/system-update.log"
 }
 
+setup_login_screen() {
+  # Someone else's profile for the login screen stays as it is (only ours is replaced).
+  if [[ -f "$GDM_PROFILE" ]] && ! head -1 "$GDM_PROFILE" | grep -q '^# Written by ~/dotfiles'; then
+    echo "    $GDM_PROFILE exists and isn't from the dotfiles; leaving the login screen alone" >&2
+    return 1
+  fi
+  login_settings > "$TMP/90-dotfiles"
+  login_profile > "$TMP/gdm-profile"
+  run sudo install -D -m 644 "$SETUP/wallpaper/login-blurred.jpg" "$LOGIN_BG"
+  run sudo install -D -m 644 "$TMP/gdm-profile" "$GDM_PROFILE"
+  run sudo install -D -m 644 "$TMP/90-dotfiles" "$GDM_SETTINGS"
+  run sudo dconf update
+  echo "    shows from the next login screen (log out, or restart)"
+}
+
 setup_monthly_cleanup() {
   # Removes unused packages (apt autoremove) and Flatpak runtimes once a month.
   install_job cron.monthly/system-cleanup
@@ -415,7 +471,8 @@ header "$title" \
   "Apps from their makers' official sources, kept updated by apt:" \
   "Chrome, VS Code, Claude Desktop, Claude Code, ChatGPT, Proton VPN," \
   "OBS, ONLYOFFICE, Steam and Ubuntu apps; the NVIDIA driver, weekly" \
-  "updates, monthly clean-up, the firewall and no Snap Firefox." \
+  "updates, monthly clean-up, the login screen's look, the firewall" \
+  "and no Snap Firefox." \
   "Uses sudo. Yes to everything also accepts the Microsoft fonts licence."
 # shellcheck disable=SC2034  # read by step_begin in lib.sh
 STEP_TOTAL=${#APPS[@]}
