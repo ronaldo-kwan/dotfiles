@@ -2,6 +2,7 @@
 # Copy app settings worth keeping into setup/apps/ (used by scripts/snapshot.sh):
 #   - apps that start at login        (~/.config/autostart/)
 #   - default apps (browser, video...) (~/.config/mimeapps.list)
+#   - display settings (scale, resolution) (~/.config/monitors.xml, without serial numbers)
 #   - qBittorrent settings and theme   (~/.config/qBittorrent/)
 #   - Obsidian vault settings and theme (<vault>/.obsidian/, not the notes or plugin files)
 #
@@ -35,6 +36,14 @@ fi
 # 2. Default apps
 if chosen desktop && [[ -f "$CFG/mimeapps.list" ]]; then
   sed "s|$HOME|@HOME@|g" "$CFG/mimeapps.list" > "$OUT/mimeapps.list"
+fi
+
+# 2b. Display settings (scale, resolution, refresh rate): GNOME's monitors.xml. It names
+#     each screen by maker, model and serial number; the serial is left out (this repo is
+#     public), and install.sh fills it in again from a connected screen of the same maker
+#     and model, so they're only ever used with this screen.
+if chosen desktop && [[ -f "$CFG/monitors.xml" ]]; then
+  sed -E 's|<serial>[^<]*</serial>|<serial>@SERIAL@</serial>|g' "$CFG/monitors.xml" > "$OUT/monitors.xml"
 fi
 
 # 3. qBittorrent: settings without cookies, window sizes or layout; plus custom themes

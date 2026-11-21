@@ -259,6 +259,30 @@ put_file() { # put_file <saved file> <destination>: copy, turning @HOME@ into th
   echo "    ${dst/#$HOME/\~}"
 }
 
+# monitors_for_here <saved monitors.xml>: print it with each screen's serial number filled
+# in from the screens connected now, matched by maker and model (dot save leaves the
+# serials out). Fails if a screen it names isn't connected, so the display settings
+# saved on one computer are never used with another screen.
+monitors_for_here() {
+  local live
+  have gdbus || return 1
+  live="$(gdbus call --session --dest org.gnome.Mutter.DisplayConfig --object-path /org/gnome/Mutter/DisplayConfig \
+    --method org.gnome.Mutter.DisplayConfig.GetCurrentState 2>/dev/null)" || return 1
+  python3 -I - "$1" "$live" <<'PY'
+import re, sys
+saved, live = open(sys.argv[1]).read(), sys.argv[2]
+# Connected screens, from GNOME: (('eDP-1', 'maker', 'model', 'serial'), [modes...
+screens = {(v, p): s for _c, v, p, s in re.findall(r"\(\('([^']*)', '([^']*)', '([^']*)', '([^']*)'\), \[", live)}
+def fill(m):
+    spec = m.group(0)
+    key = (re.search(r"<vendor>([^<]*)</vendor>", spec).group(1), re.search(r"<product>([^<]*)</product>", spec).group(1))
+    if key not in screens:
+        sys.exit(1)
+    return spec.replace("<serial>@SERIAL@</serial>", "<serial>%s</serial>" % screens[key])
+print(re.sub(r"<monitorspec>.*?</monitorspec>", fill, saved, flags=re.S), end="")
+PY
+}
+
 restore_app_settings() {
   local saved="$SETUP/apps" f
   [[ -d "$saved" ]] || { skip "no saved app settings"; return 0; }
@@ -266,6 +290,16 @@ restore_app_settings() {
     [[ -f "$f" ]] && chosen "flatpak:$(basename "$f" .desktop)" && put_file "$f" "$HOME/.config/autostart/$(basename "$f")"
   done
   if [[ -f "$saved/mimeapps.list" ]] && chosen desktop; then put_file "$saved/mimeapps.list" "$HOME/.config/mimeapps.list"; fi
+  # Display settings (scale, resolution): only when the same screen is connected
+  if [[ -f "$saved/monitors.xml" ]] && chosen desktop; then
+    f="$(mktemp)"
+    if monitors_for_here "$saved/monitors.xml" > "$f"; then
+      put_file "$f" "$HOME/.config/monitors.xml"
+    else
+      note "saved display settings are for another screen (or no desktop is running); left alone"
+    fi
+    rm -f "$f"
+  fi
   if [[ -f "$saved/qBittorrent/qBittorrent.conf" ]] && chosen pkg:qbittorrent; then
     if pgrep -x qbittorrent >/dev/null; then
       skip "qBittorrent is open; close it and run install.sh again (it saves its settings on exit)"
@@ -276,7 +310,7 @@ restore_app_settings() {
       done
     fi
   fi
-  note "apps that start at login apply from your next login"
+  note "apps that start at login, and display settings, apply from your next login"
 }
 
 # 9. Obsidian -----------------------------------------------------------------------

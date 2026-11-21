@@ -115,7 +115,7 @@ Then:
 - [ ] Open **Backups**, connect Google Drive, and turn on **Back Up Automatically**. Keep the backup encryption password somewhere safe; without it the backups can't be restored.
 - [ ] Run `dot ssh` for signed commits (one approval in the browser).
 - [ ] Run `dot check` to see that everything is in place. `dot check --fix` offers to fix anything that isn't.
-- [ ] Set the display scaling in **Settings → Displays → Scale** if text looks too small or large. It isn't saved, because it depends on the screen.
+- [ ] Check the display scaling (**Settings → Displays → Scale**). On a computer with the same screen as when you last ran `dot save`, it's already set (from `setup/apps/monitors.xml`); on another screen, set it yourself if text looks too small or large. Whole-number scales (100%, 200%) avoid a thin seam under the top bar that fractional ones can leave.
 
 ## One password at start-up
 

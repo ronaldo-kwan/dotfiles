@@ -154,7 +154,7 @@ remove_copies() {
     run rm -f "$f"; n=$((n + 1))
     if [[ -f "$f.orig" ]]; then run mv "$f.orig" "$f"; fi
   done
-  for f in "$HOME/.config/mimeapps.list" "$HOME/.config/qBittorrent/qBittorrent.conf"; do
+  for f in "$HOME/.config/mimeapps.list" "$HOME/.config/qBittorrent/qBittorrent.conf" "$HOME/.config/monitors.xml"; do
     [[ -f "$f.orig" ]] || continue
     run mv "$f.orig" "$f" && did "put back your ${f/#$HOME/\~}"
   done
