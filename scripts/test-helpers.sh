@@ -111,6 +111,17 @@ EOF
   panel="$(script -qc "stty rows 40 cols 100; env -u NO_COLOR -u DOT_PLAIN -u UI_LOG -u UI_DEPTH TERM=xterm-256color bash '$T/panel.sh'" /dev/null 2>&1 | tr -d '\r')"
   t "the panel shows (its · marks a step still to come)" grep -q '· Step with a spinner' <<< "$panel"
   t "a spinner step after a quick step finishes" grep -q 'SPINNER-STEP-FINISHED' <<< "$panel"
+  # In a narrow window the spinner line must still fit on one line (a longer one wraps,
+  # leaving a copy at every redraw): its label is cut to the width.
+  printf 'source "%s/lib.sh"\nquiet "Installing 9 Flatpak apps (already installed ones are skipped)" sleep 0.3\n' "$ROOT" > "$T/narrow.sh"
+  script -qc "stty rows 30 cols 40; env -u NO_COLOR -u DOT_PLAIN -u UI_LOG -u UI_DEPTH TERM=xterm-256color bash '$T/narrow.sh'" "$T/narrow.out" >/dev/null 2>&1
+  widest="$(python3 -I -c '
+import re, sys
+raw = open(sys.argv[1], "rb").read().decode("utf-8", "replace").split("\n", 1)[1]
+plain = re.sub(r"\x1b\[[0-9;?]*[A-Za-z]", "", raw)
+frames = [f for f in plain.split("\r") if re.search("[\u280b-\u283f]", f)]
+print(max((len(f.rstrip()) for f in frames), default=0))' "$T/narrow.out")"
+  t "the spinner line fits a 40-column window (widest: $widest)" bash -c '(( $1 > 0 && $1 < 40 ))' _ "$widest"
 else
   echo "  (skipped: no script command)"
 fi

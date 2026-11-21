@@ -226,9 +226,18 @@ quiet() {
     local prev_int; prev_int="$(trap -p INT)"
     trap 'printf "\e[?25h"; kill "$pid" 2>/dev/null' INT TERM
     printf '\e[?25l'
+    # The spinner line is redrawn in place, so it must fit on one line: a longer one wraps,
+    # and each redraw leaves a copy behind. Cut to the window's width (measured again each
+    # second, in case it's resized); the ✔/✘ line at the end has the whole label.
+    local cols='' shown="$label" max
     while kill -0 "$pid" 2>/dev/null; do
-      (( i == 0 )) && ui_panel_draw     # once a second: the panel's timer
-      printf '\r    %s%s%s %s %s%s%s\e[K' "$C_ACC" "${frames:i:1}" "$C_N" "$label" "$C_DIM" "$(fmt_time $((SECONDS - t0)))" "$C_N"
+      if (( i == 0 )); then
+        ui_panel_draw     # once a second: the panel's timer
+        read -r _ cols < <(term_size) || true; [[ "$cols" =~ ^[0-9]+$ ]] || cols="${COLUMNS:-80}"
+        max=$(( cols - 17 )); (( max < 10 )) && max=10   # room for indent, spinner and time
+        shown="$label"; (( ${#shown} > max )) && shown="${shown:0:max-1}…"
+      fi
+      printf '\r    %s%s%s %s %s%s%s\e[K' "$C_ACC" "${frames:i:1}" "$C_N" "$shown" "$C_DIM" "$(fmt_time $((SECONDS - t0)))" "$C_N"
       i=$(( (i + 1) % 10 ))
       sleep 0.1
     done
