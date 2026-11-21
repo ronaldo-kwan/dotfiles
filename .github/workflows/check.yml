@@ -20,7 +20,7 @@ jobs:
     name: shellcheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Syntax check (bash -n)
         run: |
           for f in *.sh dot scripts/*.sh .githooks/pre-commit bash/.bashrc; do bash -n "$f"; done
@@ -84,7 +84,7 @@ jobs:
             git stow curl ca-certificates python3 fontconfig xz-utils gpg >/dev/null
           # System-wide, because install.sh replaces ~/.gitconfig with the one in this repo
           git config --system --add safe.directory '*'
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: install.sh dry run (checks the pinned downloads, changes nothing)
         run: |
           DRY_RUN=1 ./install.sh --yes | tee dry.txt
@@ -174,7 +174,7 @@ jobs:
             dbus-daemon dconf-cli dconf-gsettings-backend libglib2.0-bin \
             gsettings-desktop-schemas gnome-shell-common >/dev/null
           git config --system --add safe.directory '*'
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: install.sh loads every saved setting, uninstall.sh resets them (scripts/test-desktop.sh)
         env:
           CI: true
@@ -194,7 +194,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
             git stow curl ca-certificates python3 fontconfig xz-utils gpg >/dev/null
           git config --system --add safe.directory '*'
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: How the choices are read (DOTFILES_CHOICES, DOTFILES_SKIP, the choices file)
         run: |
           DOTFILES_SKIP='claude-md app:steam' bash -c 'source lib.sh
