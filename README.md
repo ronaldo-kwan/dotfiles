@@ -129,7 +129,7 @@ Changed your mind? `dot uninstall` puts your own config files back and returns t
 
 ## Credits
 
-Built with [GNU Stow](https://www.gnu.org/software/stow/) and [gum](https://github.com/charmbracelet/gum). Colours by [Catppuccin](https://catppuccin.com); the wallpaper is from [catppuccin-wallpapers](https://github.com/zhichaoh/catppuccin-wallpapers).
+Built with [GNU Stow](https://www.gnu.org/software/stow/) and [gum](https://github.com/charmbracelet/gum). Colours by [Catppuccin](https://catppuccin.com); the wallpaper is from [catppuccin-wallpapers](https://github.com/zhichaoh/catppuccin-wallpapers) (MIT; see [`setup/wallpaper/LICENSE`](setup/wallpaper/LICENSE)).
 
 ## Licence
 

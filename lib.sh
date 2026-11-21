@@ -357,7 +357,7 @@ installed() { dpkg-query -W -f='${Status}\n' "$1" 2>/dev/null | grep -q "install
 # --- Dry runs and changes ----------------------------------------------------------------
 # DRY_RUN=1 (install.sh, install-apps.sh, uninstall.sh): show what would change, change
 # nothing. Downloads are still made into a temporary folder and checked.
-DRY_RUN="${DRY_RUN:-0}"
+DRY_RUN="${DRY_RUN:-0}"; export DRY_RUN   # scripts started from this one do the same
 # run <command>...: run it, or only print it in a dry run.
 run() { if [[ "$DRY_RUN" == 1 ]]; then printf '    would run: %s\n' "$*"; else "$@"; fi; }
 # run_quiet <command>...: the same, without the command's own output.

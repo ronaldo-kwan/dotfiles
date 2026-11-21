@@ -1,5 +1,7 @@
 # Keeps the GitHub Actions in .github/workflows/ up to date: once a month, Dependabot
 # opens one pull request with any new versions (actions/checkout and the Pages actions).
+# The workflows name each action by its commit ID (with the version as a comment), since a
+# tag like v5 can be moved to other code; Dependabot updates both.
 # The checks run on it; merge it on GitHub if they pass.
 version: 2
 updates:

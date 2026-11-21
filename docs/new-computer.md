@@ -150,7 +150,7 @@ Each script can also run on its own, for example on a computer that's already se
 |---|---|---|
 | `~/dotfiles/install.sh` (`dot install`) | No | Links the config files (keeping existing ones as `.orig`), installs the Roboto Mono fonts, VS Code extensions, Flatpak apps and GNOME extensions for this GNOME version, and restores the desktop look, shortcuts, settings, dock, wallpaper, app settings and the Obsidian vault. Switches on the secret check and the weekly reminder. Extensions start after you log out and back in. `DRY_RUN=1 dot install --yes` only shows what it would change |
 | `~/dotfiles/install-apps.sh` (`dot apps`) | Yes | Apps and system parts; see [Apps](apps.md) |
-| `~/dotfiles/fresh-install.sh` (`dot fresh`) | Yes | All of the above, plus the system and firmware update |
+| `~/dotfiles/fresh-install.sh` (`dot fresh`) | Yes | All of the above, plus the system and firmware update. `DRY_RUN=1 dot fresh --yes` only shows what it would do |
 | `~/dotfiles/check.sh` (`dot check`) | No | Shows what's missing. Changes nothing |
 | `~/dotfiles/uninstall.sh` (`dot uninstall`) | No | Undoes `install.sh`; see [Undoing it](#undoing-it) |
 
@@ -251,8 +251,7 @@ gsettings set org.gnome.shell favorite-apps "$(cat ~/dotfiles/setup/dock-favorit
 
 ```bash
 mkdir -p ~/Pictures/Wallpapers/current
-curl -fLo ~/Pictures/Wallpapers/current/catppuccin-tropic-island-night.jpg \
-  https://raw.githubusercontent.com/zhichaoh/catppuccin-wallpapers/main/landscapes/tropic_island_night.jpg
+cp ~/dotfiles/setup/wallpaper/catppuccin-tropic-island-night.jpg ~/Pictures/Wallpapers/current/
 W="file://$HOME/Pictures/Wallpapers/current/catppuccin-tropic-island-night.jpg"
 gsettings set org.gnome.desktop.background picture-uri "$W"
 gsettings set org.gnome.desktop.background picture-uri-dark "$W"

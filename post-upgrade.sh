@@ -14,6 +14,7 @@
 #   ~/dotfiles/post-upgrade.sh                  one question: Yes to everything, or ask each
 #   ~/dotfiles/post-upgrade.sh --yes            Yes to everything without asking
 #   ~/dotfiles/post-upgrade.sh --sources-only   only step 1
+#   DRY_RUN=1 ~/dotfiles/post-upgrade.sh --yes  only shows what every step would do
 # For testing: SOURCES_DIR=<folder> SUDO= ./post-upgrade.sh --sources-only
 # (SUDO is only for step 1; the updates in step 2 always use sudo)
 
@@ -33,32 +34,32 @@ reenable_sources() {
     [[ -f "$f" ]] || continue
     case "${f##*/}" in ubuntu.sources|ubuntu-esm-*|*ppa*|obsproject-*) continue ;; esac
     if grep -qiE '^Enabled:[[:space:]]*no' "$f"; then
-      $SUDO sed -i -E 's/^Enabled:[[:space:]]*no[[:space:]]*$/Enabled: yes/I' "$f"
-      echo "    switched back on: ${f##*/}"; changed=1
+      run $SUDO sed -i -E 's/^Enabled:[[:space:]]*no[[:space:]]*$/Enabled: yes/I' "$f"
+      did "switched back on: ${f##*/}"; changed=1
     fi
   done
   # Old-style .list files: the upgrade comments the line out and adds "# disabled on upgrade to ...".
   for f in "$SOURCES_DIR"/*.list; do
     [[ -f "$f" ]] || continue
     if grep -qE '^#[[:space:]]*deb .*# disabled on upgrade to' "$f"; then
-      $SUDO sed -i -E 's/^#[[:space:]]*(deb .*[^[:space:]])[[:space:]]*# disabled on upgrade to.*$/\1/' "$f"
-      echo "    switched back on: ${f##*/}"; changed=1
+      run $SUDO sed -i -E 's/^#[[:space:]]*(deb .*[^[:space:]])[[:space:]]*# disabled on upgrade to.*$/\1/' "$f"
+      did "switched back on: ${f##*/}"; changed=1
     fi
   done
   # OBS comes from a PPA, which is made for each Ubuntu release: add it again for this one.
   if compgen -G "$SOURCES_DIR/obsproject-*" >/dev/null \
      && ! compgen -G "$SOURCES_DIR/obsproject-*-$CODENAME.sources" >/dev/null; then
-    $SUDO rm -f "$SOURCES_DIR"/obsproject-*
+    run $SUDO rm -f "$SOURCES_DIR"/obsproject-*
     if have add-apt-repository && [[ "$SOURCES_DIR" == /etc/apt/sources.list.d ]]; then
-      if $SUDO add-apt-repository -y ppa:obsproject/obs-studio >/dev/null 2>&1; then
-        echo "    OBS's PPA added again for $CODENAME"
+      if run_quiet $SUDO add-apt-repository -y ppa:obsproject/obs-studio; then
+        did "OBS's PPA added again for $CODENAME"
       else
-        $SUDO rm -f "$SOURCES_DIR"/obsproject-*
+        run $SUDO rm -f "$SOURCES_DIR"/obsproject-*
         echo "    OBS's PPA doesn't support $CODENAME yet; OBS stays at Ubuntu's version."
         echo "    Run this again in a few weeks (or ./post-upgrade.sh --sources-only)."
       fi
     else
-      echo "    old OBS PPA removed (add-apt-repository not run here)"
+      did "old OBS PPA removed (add-apt-repository not run here)"
     fi
     changed=1
   fi
@@ -95,14 +96,15 @@ if [[ "${1:-}" == "--sources-only" ]]; then
   exit 0
 fi
 
-header "After an Ubuntu upgrade" \
+title="After an Ubuntu upgrade"; [[ "$DRY_RUN" == 1 ]] && title+=" (dry run: changes nothing)"
+header "$title" \
   "Switches app update sources back on, updates everything, puts back apps" \
   "and settings, reinstalls GNOME extensions for the new GNOME, and checks" \
   "the NVIDIA driver. Uses sudo."
 yes_flag "$@"
 choose_answer_mode
 ask_or_quit "Continue?"
-[[ -z "$SUDO" ]] || keep_sudo || exit 1
+[[ -z "$SUDO" || "$DRY_RUN" == 1 ]] || keep_sudo || exit 1
 [[ -z "$SUDO" ]] || clock_step   # apt rejects updates while the clock is wrong
 
 run_install_apps() { "$DOTFILES/install-apps.sh"; }
@@ -116,6 +118,7 @@ run_steps \
   "NVIDIA driver|check_nvidia"
 
 summary; ok=$?
+[[ "$DRY_RUN" == 1 ]] && exit "$ok"
 "$DOTFILES/check.sh" || true
 printf '\n%sNext%s\n' "$C_B" "$C_N"
 note "Restart. If a GNOME extension is still off afterwards, switch it on in the Extensions app."

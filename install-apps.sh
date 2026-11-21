@@ -175,34 +175,42 @@ key_ok() {
   return 1
 }
 
-# Look up a package's file path and SHA-256 in an apt repository's package index.
-repo_lookup() { # repo_lookup <Packages URL> <package>  -> prints "path sha256"
-  curl -fsSL "$1" | awk -v p="$2" '
+# package_in <Packages file> <package>: its file path and SHA-256 in an apt package index
+package_in() {
+  awk -v p="$2" '
     $1=="Package:"{x=($2==p)} x&&$1=="Filename:"{f=$2} x&&$1=="SHA256:"{s=$2}
-    END{print f, s}'
+    END{print f, s}' "$1"
+}
+
+# signed_source <name> <key> <fingerprint> <repo URL> <suite>: fetch a maker's key (a URL,
+# or a key file kept in setup/keys/), check it's exactly the one with that fingerprint, and
+# check the source's package list (InRelease) is signed with it. Leaves the key as
+# $TMP/<name>.key (as given) and $TMP/<name>.gpg (binary), and only the signed part of the
+# list in $TMP/<name>.Release. Done in dry runs too, so a maker changing its key or its
+# source fails GitHub's weekly check instead of a new computer.
+signed_source() {
+  local name="$1" key="$2" fpr="$3" repo="${4%/}" suite="$5"
+  if [[ "$key" == http* ]]; then fetch "$TMP/$name.key" "$key"; else cp "$key" "$TMP/$name.key"; fi
+  key_ok "$TMP/$name.key" "$fpr" || return 1
+  gpg --dearmor < "$TMP/$name.key" > "$TMP/$name.gpg"
+  fetch "$TMP/$name.InRelease" "$repo/dists/$suite/InRelease"
+  if ! gpgv --keyring "$TMP/$name.gpg" --output "$TMP/$name.Release" "$TMP/$name.InRelease" >/dev/null 2>&1; then
+    echo "    $repo isn't signed with the expected key. Not installing." >&2
+    return 1
+  fi
+  echo "    update source signed with the expected key"
 }
 
 # add_source <source file> <keyring file> <key> <fingerprint> <source>: add a maker's update
 # source (<source> is the file's text: a deb line, or deb822 fields) as $APT_SOURCES/<source
-# file>, trusting only <key> (a URL, or a key file kept in setup/keys/). The key must be
-# exactly the one with that fingerprint, and the source's package list (InRelease) must be
-# signed with it; both are checked first, in dry runs too, so a maker changing its key or
-# its source fails GitHub's weekly check instead of a new computer. A keyring file ending
-# in .gpg gets the key in binary form. Then the package lists are refreshed.
+# file>, trusting only <key> (see signed_source, which checks it first). A keyring file
+# ending in .gpg gets the key in binary form. Then the package lists are refreshed.
 add_source() {
   local file="$1" keyring="$2" key="$3" fpr="$4" src="$5" repo suite
-  if [[ "$key" == http* ]]; then fetch "$TMP/$file.key" "$key"; else cp "$key" "$TMP/$file.key"; fi
-  key_ok "$TMP/$file.key" "$fpr" || return 1
-  gpg --dearmor < "$TMP/$file.key" > "$TMP/$file.gpg"
   read -r repo suite < <(awk '/^URIs:/ {r = $2} /^Suites:/ {s = $2}
     /^deb / {for (i = 2; i <= NF; i++) if ($i ~ /^https?:/) {r = $i; s = $(i + 1); break}}
     END {print r, s}' <<< "$src")
-  fetch "$TMP/$file.InRelease" "${repo%/}/dists/$suite/InRelease"
-  if ! gpgv --keyring "$TMP/$file.gpg" "$TMP/$file.InRelease" >/dev/null 2>&1; then
-    echo "    ${repo%/} isn't signed with the expected key. Not installing." >&2
-    return 1
-  fi
-  echo "    update source signed with the expected key"
+  signed_source "$file" "$key" "$fpr" "$repo" "$suite" || return 1
   if [[ "$keyring" == *.gpg ]]; then cp "$TMP/$file.gpg" "$TMP/$file.keyring"; else cp "$TMP/$file.key" "$TMP/$file.keyring"; fi
   printf '%s\n' "$src" > "$TMP/$file"
   run sudo install -m 644 "$TMP/$file.keyring" "$APT_KEYS/$keyring"
@@ -273,13 +281,17 @@ install_claude_code() {
 }
 
 install_protonvpn() {
-  # Proton's setup package adds Proton's update source. Its checksum is checked
-  # against Proton's own package index before installing.
-  local base=https://repo.protonvpn.com/debian path sha
-  read -r path sha < <(repo_lookup "$base/dists/stable/main/binary-all/Packages" protonvpn-stable-release)
+  # Proton's setup package adds Proton's update source. Checked link by link: Proton's
+  # package list is signed with its key (this fingerprint), it gives the checksum of the
+  # package index, and the index gives the setup package's checksum.
+  local base=https://repo.protonvpn.com/debian index=main/binary-all/Packages sum path sha
+  signed_source protonvpn "$base/public_key.asc" 84B0D3492C76C9C6F5873C18EDA3E22630349F1C "$base" stable || return 1
+  sum="$(awk -v f="$index" '/^SHA256:/ {s = 1; next} /^[^ ]/ {s = 0} s && $3 == f {print $1}' "$TMP/protonvpn.Release")"
+  fetch_checked "$base/dists/stable/$index" "$sum" "$TMP/protonvpn.Packages"
+  read -r path sha < <(package_in "$TMP/protonvpn.Packages" protonvpn-stable-release)
   [[ -n "$path" && -n "$sha" ]] || { echo "    couldn't find Proton's setup package" >&2; return 1; }
-  fetch "$TMP/protonvpn-release.deb" "$base/$path"
-  echo "$sha  $TMP/protonvpn-release.deb" | sha256sum -c --quiet - || { echo "    checksum didn't match. Not installing." >&2; return 1; }
+  fetch_checked "$base/$path" "$sha" "$TMP/protonvpn-release.deb"
+  echo "    setup package matches Proton's signed package list"
   apt_get install -y "$TMP/protonvpn-release.deb"
   apt_get update
   apt_get install -y proton-vpn-gnome-desktop

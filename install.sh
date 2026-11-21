@@ -213,11 +213,10 @@ restore_gnome_settings() {
 }
 
 # 7. Wallpaper -----------------------------------------------------------------------
-# The wallpaper isn't stored in this repo: it's downloaded from the Catppuccin wallpaper
-# collection (github.com/zhichaoh/catppuccin-wallpapers, MIT) and checked against this
-# fingerprint, so a changed file is never used.
-WALLPAPER_URL="https://raw.githubusercontent.com/zhichaoh/catppuccin-wallpapers/main/landscapes/tropic_island_night.jpg"
-WALLPAPER_SHA256="166f34d21ec26c41ea70f0cbee829205222918184458b152ea2a15e6a334495c"
+# From setup/wallpaper/: tropic_island_night.jpg from the Catppuccin wallpaper collection
+# (github.com/zhichaoh/catppuccin-wallpapers, MIT; its licence is next to it). Copied to
+# ~/Pictures/Wallpapers/current, so the desktop keeps it even if ~/dotfiles moves.
+WALLPAPER_SAVED="$SETUP/wallpaper/${WALLPAPER##*/}"
 set_wallpaper() {
   need desktop || return 0
   if ! have gsettings; then
@@ -225,14 +224,8 @@ set_wallpaper() {
     return 0
   fi
   [[ "${DEFER_DESKTOP:-0}" == 1 ]] && { held_back; return 0; }
-  local wall="$WALLPAPER" uri tmp
-  if [[ ! -f "$wall" ]]; then
-    have curl || { skip "curl isn't installed, so the wallpaper wasn't downloaded"; return 0; }
-    tmp="$(mktemp -d)"
-    fetch_checked "$WALLPAPER_URL" "$WALLPAPER_SHA256" "$tmp/${wall##*/}"
-    copy_into "$(dirname "$wall")" "$tmp/${wall##*/}"
-    rm -rf "$tmp"
-  fi
+  local wall="$WALLPAPER" uri
+  cmp -s "$WALLPAPER_SAVED" "$wall" || copy_into "$(dirname "$wall")" "$WALLPAPER_SAVED"
   uri="file://$wall"
   run gsettings set org.gnome.desktop.background picture-uri "$uri"
   run gsettings set org.gnome.desktop.background picture-uri-dark "$uri"

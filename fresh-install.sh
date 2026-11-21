@@ -15,6 +15,9 @@
 #
 # One question at the start: Yes to everything (runs by itself), or choose as it goes.
 # With gum installed, questions are arrow-key menus and the steps stay pinned on screen.
+#
+# DRY_RUN=1 ~/dotfiles/fresh-install.sh --yes   only shows what every step would do
+# (install.sh and install-apps.sh too); downloads are checked, nothing changes.
 
 set -uo pipefail
 
@@ -26,7 +29,8 @@ on_charger() {
   cat /sys/class/power_supply/*/online 2>/dev/null | grep -qx 1
 }
 
-header "Fresh install" \
+title="Fresh install"; [[ "$DRY_RUN" == 1 ]] && title+=" (dry run: changes nothing)"
+header "$title" \
   "Sets up this computer from ~/dotfiles, in six steps:" \
   "  1 update the system        2 firmware (on charger only)" \
   "  3 terminal tools           4 configs and desktop (install.sh)" \
@@ -34,19 +38,20 @@ header "Fresh install" \
   "Uses sudo and takes a while. Yes to everything also accepts the" \
   "Microsoft fonts licence (codecs) and restarts at the end."
 yes_flag "$@"
+[[ "$DRY_RUN" == 1 ]] && note "Dry run: shows what every step would do; downloads are checked, nothing changes."
 check_system
 # gum draws the menus. If the first command didn't install it, get it now (needs the
 # password and a correct clock first), so the questions below are menus too.
-if ! have gum && [[ -z "$YES_ALL" && -t 0 ]]; then
+if ! have gum && [[ -z "$YES_ALL" && -t 0 && "$DRY_RUN" != 1 ]]; then
   note "Getting the menus ready: installing gum (asks for your password once)"
   keep_sudo || exit 1
   clock_step
   { apt_get update && apt_get install -y gum; } || true
 fi
-git_identity
+[[ "$DRY_RUN" == 1 ]] || git_identity
 choose_answer_mode
 ask_or_quit "Start?"
-keep_sudo || exit 1
+[[ "$DRY_RUN" == 1 ]] || keep_sudo || exit 1
 clock_step   # before the first update: apt rejects updates while the clock is wrong
 
 # 1. Update the system --------------------------------------------------------------
@@ -67,16 +72,16 @@ update_firmware() {
   ask "Check for and install firmware updates (BIOS, SSD, devices)? Keep the charger in." \
     || { skip "you chose not to"; return 0; }
   note "checking for firmware updates (shown in full: don't turn the computer off while it installs)"
-  sudo fwupdmgr refresh --force >/dev/null 2>&1 || true
+  run_quiet sudo fwupdmgr refresh --force || true
   local rc=0
-  sudo fwupdmgr update --assume-yes --no-reboot-check || rc=$?
+  run sudo fwupdmgr update --assume-yes --no-reboot-check || rc=$?
   (( rc == 0 || rc == 2 )) || return "$rc"   # 2 means "nothing to update"
 }
 
 # 3. Terminal tools and Flathub ---------------------------------------------------------
 install_tools() {
   apt_get_as "Installing ${#TOOLS[@]} terminal tools" install -y "${TOOLS[@]}"
-  sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+  run sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 }
 
 # 4-6. The dotfiles scripts -------------------------------------------------------------
@@ -94,7 +99,11 @@ run_steps \
   "VS Code extensions and Obsidian (install.sh again)|run_install"
 
 # Done -------------------------------------------------------------------------------
-summary
+summary; ok=$?
+if [[ "$DRY_RUN" == 1 ]]; then
+  note "Then it would apply your desktop look (install.sh --desktop-only) and offer to restart."
+  exit "$ok"
+fi
 printf '\n%sAfter the restart%s\n' "$C_B" "$C_N"
 note "Blue \"MOK management\" screen (NVIDIA with Secure Boot): Enroll MOK, Continue, Yes, your password, Reboot"
 note "Check the NVIDIA card works: nvidia-smi"

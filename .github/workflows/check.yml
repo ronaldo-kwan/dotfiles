@@ -20,7 +20,7 @@ jobs:
     name: shellcheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: Syntax check (bash -n)
         run: |
           for f in *.sh dot scripts/*.sh .githooks/pre-commit bash/.bashrc; do bash -n "$f"; done
@@ -84,7 +84,7 @@ jobs:
             git stow curl ca-certificates python3 fontconfig xz-utils gpg >/dev/null
           # System-wide, because install.sh replaces ~/.gitconfig with the one in this repo
           git config --system --add safe.directory '*'
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: install.sh dry run (checks the pinned downloads, changes nothing)
         run: |
           DRY_RUN=1 ./install.sh --yes | tee dry.txt
@@ -92,6 +92,23 @@ jobs:
           if [[ -e "$HOME/.bashrc" && -L "$HOME/.bashrc" ]] || [[ -d "$HOME/.local/share/fonts/RobotoMonoNerdFont" ]]; then
             echo "the dry run changed something"; exit 1
           fi
+      - name: fresh-install.sh dry run (every step of a new computer's setup, changes nothing)
+        run: |
+          # A container has no GNOME, which fresh-install.sh would otherwise ask about first.
+          DRY_RUN=1 DOTFILES_ANY_SYSTEM=1 ./fresh-install.sh --yes | tee dry.txt
+          grep -q 'would run: sudo apt-get -y full-upgrade' dry.txt          # 1. system update
+          grep -q 'would run: sudo flatpak remote-add' dry.txt              # 3. Flathub
+          grep -q 'would run: stow' dry.txt                                 # 4. install.sh
+          grep -q 'update source signed with the expected key' dry.txt     # 5. install-apps.sh
+          grep -q 'would apply your desktop look' dry.txt                   # the end
+          if [[ -L "$HOME/.bashrc" ]] || command -v starship >/dev/null; then echo "the dry run changed something"; exit 1; fi
+      - name: post-upgrade.sh dry run, on apt sources made to look upgraded
+        run: |
+          mkdir -p /tmp/src-dry
+          printf 'Types: deb\nURIs: https://example.com\nSuites: stable\nComponents: main\nEnabled: no\n' > /tmp/src-dry/app.sources
+          DRY_RUN=1 SOURCES_DIR=/tmp/src-dry ./post-upgrade.sh --yes | tee dry.txt
+          grep -q 'would run: sudo sed' dry.txt
+          grep -qx 'Enabled: no' /tmp/src-dry/app.sources                  # not changed
       - name: install.sh
         run: ./install.sh --yes
       - name: install.sh again (must be safe to run twice)
@@ -155,7 +172,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
             git stow curl ca-certificates python3 fontconfig xz-utils gpg >/dev/null
           git config --system --add safe.directory '*'
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: How the choices are read (DOTFILES_CHOICES, DOTFILES_SKIP, the choices file)
         run: |
           DOTFILES_SKIP='claude-md app:steam' bash -c 'source lib.sh
