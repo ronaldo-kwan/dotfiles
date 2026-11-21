@@ -82,3 +82,45 @@ jobs:
           cd "$(mktemp -d)" && git init -q
           printf 'TOKEN=%s\n' "ghp_$(printf 'a%.0s' $(seq 36))" > leak.sh && git add leak.sh
           if "$GITHUB_WORKSPACE/.githooks/pre-commit"; then echo "should have been stopped"; exit 1; fi
+
+  choices:
+    name: install.sh follows the website's choices
+    runs-on: ubuntu-latest
+    container: ubuntu:26.04
+    steps:
+      - name: Tools
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+            git stow curl ca-certificates python3 fontconfig xz-utils gpg >/dev/null
+          git config --system --add safe.directory '*'
+      - uses: actions/checkout@v5
+      - name: How the choices are read (DOTFILES_CHOICES, DOTFILES_SKIP, the choices file)
+        run: |
+          DOTFILES_SKIP='claude-md app:steam' bash -c 'source lib.sh
+            chosen terminal && chosen app:chrome && ! chosen claude-md && ! chosen app:steam'
+          DOTFILES_CHOICES='terminal pkg:vlc' bash -c 'source lib.sh
+            chosen terminal && chosen pkg:vlc && ! chosen desktop && chosen_any pkg: && ! chosen_any app:'
+          mkdir -p /tmp/h/.config/dotfiles && printf 'terminal\n-app:steam\n' > /tmp/h/.config/dotfiles/choices
+          HOME=/tmp/h bash -c 'source lib.sh
+            [[ "$DOTFILES_CHOICES" == terminal && "$DOTFILES_SKIP" == app:steam ]]'
+      - name: install.sh with only the terminal and safety checks chosen (as bootstrap.sh saves them)
+        run: |
+          mkdir -p "$HOME/.config/dotfiles"
+          printf 'terminal\nsafety\n' > "$HOME/.config/dotfiles/choices"
+          ./install.sh --yes
+      - name: Only the chosen config files are linked
+        run: |
+          for f in .bashrc .config/ghostty/config .config/starship.toml .config/systemd/user/dotfiles-reminder.timer; do
+            test -L "$HOME/$f" || { echo "should be linked: ~/$f"; exit 1; }
+          done
+          for f in .config/Code/User/settings.json .claude/CLAUDE.md .config/fontconfig/fonts.conf; do
+            test ! -e "$HOME/$f" || { echo "not chosen, but there: ~/$f"; exit 1; }
+          done
+      - name: dot check shows the rest as not chosen
+        run: |
+          ./check.sh | tee check.txt || true
+          grep -q '✔ all config files linked' check.txt
+          grep -q 'Roboto Mono: not chosen' check.txt
+          grep -q 'Google Chrome.*not chosen' check.txt
+          grep -q 'Obsidian vault: not chosen' check.txt

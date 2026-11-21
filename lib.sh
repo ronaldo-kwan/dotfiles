@@ -318,6 +318,13 @@ repo_state() {
   return 0
 }
 
+# repo_behind <dir>: how many commits GitHub has that this computer doesn't. Fetches first
+# (quietly, 10 seconds at most); prints 0 when offline or without an upstream.
+repo_behind() {
+  GIT_TERMINAL_PROMPT=0 timeout 10 git -C "$1" fetch --quiet 2>/dev/null || true
+  git -C "$1" rev-list --count 'HEAD..@{u}' 2>/dev/null || echo 0
+}
+
 # gh_key_admin: can the GitHub CLI's sign-in add or remove SSH keys on your account?
 # dot ssh needs that briefly; left in place, a leaked gh token could add someone else's key.
 GH_KEY_SCOPES="admin:public_key,admin:ssh_signing_key"

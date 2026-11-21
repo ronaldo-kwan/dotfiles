@@ -25,7 +25,7 @@ dotfiles/
 ├── scripts/                          snapshot, SSH and website helpers
 ├── system/                           weekly and monthly jobs, the first-login step
 ├── site/                             the installer website
-├── docs/                             these pages
+├── docs/                             these pages (images/: the README screenshot)
 ├── .githooks/                        the secret check
 └── .github/workflows/                GitHub checks and the website
 ```
@@ -67,7 +67,7 @@ These folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). E
 
 | File | What it is |
 |---|---|
-| `dot` | The `dot` command: a menu on its own, or `dot help`. `.bashrc` adds `dot cd` and <kbd>Tab</kbd> completion |
+| `dot` | The `dot` command (`save`, `push`, `pull`, `check`, ...): a menu on its own, or `dot help`. `.bashrc` adds `dot cd` and <kbd>Tab</kbd> completion |
 | `check.sh` | The health check (`dot check`); `--notify` is the weekly reminder |
 | `scripts/ssh-setup.sh` | `dot ssh`: SSH key, signed commits, adding the key to GitHub |
 | `scripts/snapshot.sh` | Writes the snapshots in `setup/` (used by `dot save`, and by `check.sh` into a temporary copy) |
@@ -108,5 +108,6 @@ Written by `dot save` and restored by `install.sh`, except `apt-packages.txt`, w
 | `.githooks/pre-commit` | The [secret check](maintenance.md#secret-check-before-commits) |
 | `.github/workflows/check.yml` | The [GitHub checks](maintenance.md#github-checks) |
 | `.github/workflows/pages.yml` | Builds and publishes the website |
+| `.github/dependabot.yml` | Monthly pull requests when the workflows' actions have new versions |
 | `site/` | The [website](https://ronaldo-kwan.github.io/dotfiles/): pick options, get a command or `autoinstall.yaml`. `options.json` is generated |
 | `scripts/build-site.py` | Writes `site/options.json` from `install-apps.sh` and the lists in `setup/`, so the site matches the scripts |

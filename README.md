@@ -13,6 +13,12 @@ Terminal, desktop look, apps and upkeep, all in Catppuccin Mocha with Roboto fon
 
 [**Pick your setup on the website**](https://ronaldo-kwan.github.io/dotfiles/) · [Quick start](#quick-start) · [Everyday use](#everyday-use) · [Docs](#documentation)
 
+<br>
+
+<img src="docs/images/desktop.webp" alt="The finished desktop: Ghostty showing fastfetch and the dotfiles folder in Catppuccin colours, over a Catppuccin island wallpaper" width="900">
+
+<sub>A fresh Ubuntu 26.04 right after the automated install.</sub>
+
 </div>
 
 ## What's inside
@@ -63,6 +69,7 @@ Everything goes through one command, `dot`. On its own, **`dot` opens a menu**: 
 |---|---|
 | `dot save` | Refreshes the snapshots in `setup/` (apps, extensions, dock, desktop settings) and shows what changed |
 | `dot push "message"` | Commits everything and pushes to GitHub (the secret check runs first) |
+| `dot pull` | Gets changes you saved on another computer, then offers to apply them |
 | `dot notes` | The same for your Obsidian notes |
 | `dot check` | Health check: links, tools, apps, extensions, firewall, signing, backups, unsaved changes. Changes nothing |
 | `dot check --fix` | The same, then offers to fix each problem in order (asks first) |
@@ -78,6 +85,7 @@ Everything goes through one command, `dot`. On its own, **`dot` opens a menu**: 
 | When | Run |
 |---|---|
 | You changed settings, apps, extensions or the dock | `dot save`, then `dot push "Describe the change"` |
+| You saved changes on another computer | `dot pull` |
 | Something seems off or missing | `dot check --fix` |
 | First time on a computer, for **Verified** commits | `dot ssh` (one approval in the browser) |
 | After upgrading Ubuntu to a new release | `dot upgrade` ([why](docs/maintenance.md#after-upgrading-ubuntu)) |
@@ -85,7 +93,7 @@ Everything goes through one command, `dot`. On its own, **`dot` opens a menu**: 
 ### What runs by itself
 
 - **Weekly updates** for Ubuntu and Flatpak apps, and a **monthly clean-up** of unused packages.
-- **A weekly reminder** (Sunday evening, or your next login) if settings changed since the last `dot save`, Ubuntu apps aren't saved, backups are off, or changes aren't pushed. It never commits anything.
+- **A weekly reminder** (Sunday evening, or your next login) if settings changed since the last `dot save`, Ubuntu apps aren't saved, backups are off, changes aren't pushed, or GitHub has changes from another computer. It never commits anything.
 - **A secret check** before every commit here and in your notes repo. It stops the commit if something looks like a password, token or key.
 
 ## Use it yourself
@@ -113,7 +121,7 @@ Notes aren't part of it: `install.sh` looks for a private repo of yours called `
 |---|---|
 | [Setting up a new computer](docs/new-computer.md) | Before installing, both install options, what the setup does, after the restart, disk encryption, the RTX 5060, manual setup |
 | [Apps](docs/apps.md) | `install-apps.sh`, where each app comes from, Steam, Obsidian, GNOME extensions |
-| [Keeping things up to date](docs/maintenance.md) | `dot save`, `dot check`, `dot ssh`, the reminder, the secret check, updates, upgrading Ubuntu, GitHub checks, the website |
+| [Keeping things up to date](docs/maintenance.md) | `dot save`, `dot pull`, `dot check`, `dot ssh`, the reminder, the secret check, updates, upgrading Ubuntu, GitHub checks, the website |
 | [What's in this repo](docs/files.md) | Every file and folder |
 
 ## Credits

@@ -39,6 +39,7 @@ fix_hint() {
     backups) echo "open Backups, turn on Back Up Automatically, then dot save" ;;
     save)    echo "dot save" ;;
     push)    echo "dot push" ;;
+    pull)    echo "dot pull" ;;
     notes)   echo "dot notes" ;;
     restart) echo "restart; with Secure Boot, enrol the key on the blue MOK screen" ;;
     ghkeys)  echo "gh auth refresh -h github.com --remove-scopes $GH_KEY_SCOPES" ;;
@@ -77,6 +78,8 @@ if [[ "$MODE" == notify ]]; then
     [[ -d "$d/.git" ]] || continue
     s="$(repo_state "$d" | paste -sd' ' | sed 's/ / and /')"
     [[ -n "$s" ]] && msgs+=("${d/#$HOME/\~} has $s changes.")
+    n="$(repo_behind "$d")"
+    (( n > 0 )) && msgs+=("GitHub has $n new commit$( ((n > 1)) && echo s) for ${d/#$HOME/\~}. Run: dot pull")
   done
   if (( ${#msgs[@]} )); then
     body="$(printf '%s\n' "${msgs[@]}")
@@ -143,7 +146,8 @@ if have flatpak; then
     n=$((n + 1)); flatpak info "$a" >/dev/null 2>&1 || missing+=("$a")
   done < "$SETUP/flatpaks.txt"
   (( n )) && list_missing "$n Flatpak apps" install "${missing[@]}"
-else MISSING_TOOLS+=(flatpak); bad "flatpak isn't installed" tools; fi
+elif chosen_any flatpak:; then MISSING_TOOLS+=(flatpak); bad "flatpak isn't installed" tools
+else info "Flatpak apps: not chosen"; fi
 if have gnome-extensions && chosen desktop; then
   enabled="$(gnome-extensions list --enabled 2>/dev/null)"
   missing=(); while read -r u; do [[ -z "$u" || "$u" == \#* ]] || grep -qxF "$u" <<< "$enabled" || missing+=("$u"); done < "$SETUP/gnome-extensions.txt"
@@ -200,6 +204,9 @@ for d in "$DOTFILES" "$VAULT"; do
   s="$(repo_state "$d" | paste -sd' ' | sed 's/ / and /')"
   [[ -z "$s" ]] && ok "${d/#$HOME/\~}: everything committed and pushed" \
     || bad "${d/#$HOME/\~}: $s changes" "$([[ "$d" == "$DOTFILES" ]] && echo push || echo notes)"
+  n="$(repo_behind "$d")"
+  if (( n > 0 )); then bad "${d/#$HOME/\~}: GitHub has $n new commit$( ((n > 1)) && echo s) from another computer" pull
+  else ok "${d/#$HOME/\~}: nothing new on GitHub"; fi
 done
 
 echo
@@ -233,6 +240,8 @@ open_backups() {
 }
 export UI_DEPTH="$UI_NESTED"   # the scripts below get their full look
 
+# Pull first, so everything below works on the latest version.
+has_fix pull    && fix_step "Changes from GitHub" "Run dot pull?" "$DOTFILES/dot" pull
 has_fix tools   && fix_step "Terminal tools" "Install ${MISSING_TOOLS[*]}?" \
                      sudo apt-get install -y "${MISSING_TOOLS[@]}"
 has_fix apps    && fix_step "Apps, firewall, scheduled jobs" "Run dot apps?" "$DOTFILES/install-apps.sh"

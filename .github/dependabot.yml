@@ -1,0 +1,14 @@
+# Keeps the GitHub Actions in .github/workflows/ up to date: once a month, Dependabot
+# opens one pull request with any new versions (actions/checkout and the Pages actions).
+# The checks run on it; merge it on GitHub if they pass.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "Workflows"

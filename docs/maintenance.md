@@ -6,7 +6,7 @@ Day-to-day use after the setup: saving changes, checking the computer, and what 
 
 **Contents**
 
-- Everyday: [Saving changes](#saving-changes) · [The `dot` menu](#the-dot-menu) · [Health check](#health-check)
+- Everyday: [Saving changes](#saving-changes) · [More than one computer](#more-than-one-computer) · [The `dot` menu](#the-dot-menu) · [Health check](#health-check)
 - Runs by itself: [Weekly reminder](#weekly-reminder) · [Weekly updates and monthly clean-up](#weekly-updates-and-monthly-clean-up) · [Secret check before commits](#secret-check-before-commits)
 - Once in a while: [Signed commits](#signed-commits) · [After upgrading Ubuntu](#after-upgrading-ubuntu)
 - The repo: [GitHub checks](#github-checks) · [The website and choices](#the-website-and-choices)
@@ -23,6 +23,23 @@ dot push "Describe the change"     # = cd ~/dotfiles && git add -A && git commit
 
 - `setup/apt-packages.txt` is the exception: edit it by hand when you install or remove an Ubuntu app you want on every computer.
 - Things GNOME remembers by itself (window sizes, last-used folders, timestamps) are left out of the snapshots on purpose.
+
+## More than one computer
+
+Changes you push from one computer don't reach the others by themselves. On the other computer, run:
+
+```bash
+dot pull
+```
+
+1. **Gets the new commits** for `~/dotfiles` and your notes, and lists them. It only fast-forwards, so it never merges or overwrites anything.
+2. **Offers to apply them** with `dot install`: new config links, extensions, desktop and app settings. Config files that were already linked are up to date straight away.
+3. **Offers `dot apps`** if the app lists changed (`install-apps.sh` or `setup/apt-packages.txt`).
+
+> [!TIP]
+> If you also changed settings on this computer, run `dot save` and `dot push` first. Applying the pulled settings replaces this computer's desktop settings with the ones in the repo.
+
+If both computers have new commits, `dot pull` stops and tells you what to run (`git -C ~/dotfiles pull --rebase`, then `dot push`). `dot check` and the [weekly reminder](#weekly-reminder) tell you when GitHub has commits this computer doesn't.
 
 ## The `dot` menu
 
@@ -48,7 +65,7 @@ DOT_PLAIN=1 dot apps
 - Automatic backups
 - Whether the snapshots are out of date
 - Ubuntu apps you installed that aren't in `setup/apt-packages.txt`
-- Whether anything isn't committed or pushed
+- Whether anything isn't committed or pushed, and whether GitHub has commits from another computer
 
 </details>
 
@@ -64,12 +81,13 @@ DOT_PLAIN=1 dot apps
 
 `dot check --fix` runs the same check, then offers each fix in a sensible order, asking first (<kbd>Enter</kbd> = yes, <kbd>n</kbd> = skip):
 
-1. Missing tools
-2. `dot apps`, `dot install`, `dot ssh`
-3. Adding unsaved Ubuntu apps to `setup/apt-packages.txt`
-4. Opening Backups
-5. `dot save`
-6. `dot push` and `dot notes` for anything those changed
+1. `dot pull`, if GitHub has new commits
+2. Missing tools
+3. `dot apps`, `dot install`, `dot ssh`
+4. Adding unsaved Ubuntu apps to `setup/apt-packages.txt`
+5. Opening Backups
+6. `dot save`
+7. `dot push` and `dot notes` for anything those changed
 
 A summary shows what was fixed. Run `dot check` again to confirm.
 
@@ -79,8 +97,9 @@ A systemd user timer runs `check.sh --notify` on Sunday at 19:00, or at your nex
 
 - settings changed since your last `dot save`,
 - you installed Ubuntu apps that aren't in `setup/apt-packages.txt`,
-- automatic backups are off, or
-- `~/dotfiles` or your notes have changes that aren't committed or pushed.
+- automatic backups are off,
+- `~/dotfiles` or your notes have changes that aren't committed or pushed, or
+- GitHub has commits from another computer (run `dot pull`).
 
 It never commits anything.
 
@@ -158,6 +177,9 @@ Then restart. If an extension is still off, switch it on in the Extensions app.
 - `shellcheck` on all scripts
 - `install.sh` (twice), a dry run of `install-apps.sh`, and `post-upgrade.sh` on test files
 - the secret check, the website build and a schema check of `setup/autoinstall.yaml`
+- the website's choices: `install.sh` with only some parts chosen must link only those, and `dot check` must show the rest as "not chosen"
+
+[Dependabot](../.github/dependabot.yml) opens a pull request once a month when the actions the workflows use have new versions. The checks run on it; merge it on GitHub if they pass.
 
 The result shows on the repo's [Actions](https://github.com/ronaldo-kwan/dotfiles/actions) tab. To run shellcheck locally:
 

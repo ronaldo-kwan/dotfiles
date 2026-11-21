@@ -63,8 +63,9 @@ fi
 
 # 4. Obsidian: settings of the open vault (theme, plugins, appearance), not the notes.
 #    workspace*.json only remembers open tabs and window layout, so it's left out.
+#    No vault on this computer (Obsidian never opened, or no notes repo yet): the saved
+#    settings stay as they are, so a new computer doesn't wipe them with dot save.
 OBS_CFG="$HOME/.var/app/md.obsidian.Obsidian/config/obsidian/obsidian.json"
-rm -rf "$OUT/obsidian"
 if [[ -f "$OBS_CFG" ]]; then
   vault="$(python3 -I -c '
 import json, sys
@@ -72,6 +73,7 @@ vaults = json.load(open(sys.argv[1])).get("vaults", {}).values()
 open_ = [v["path"] for v in vaults if v.get("open")] or [v["path"] for v in vaults]
 print(open_[0] if open_ else "")' "$OBS_CFG")"
   if [[ -n "$vault" && -d "$vault/.obsidian" ]]; then
+    rm -rf "$OUT/obsidian"
     mkdir -p "$OUT/obsidian"
     (cd "$vault/.obsidian" && find . -type f ! -name 'workspace*.json' -print0) \
       | while IFS= read -r -d '' f; do
