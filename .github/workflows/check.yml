@@ -37,6 +37,29 @@ jobs:
           sudo apt-get install -y -qq python3-jsonschema python3-yaml
           wget -qO /tmp/schema.json https://raw.githubusercontent.com/canonical/subiquity/main/autoinstall-schema.json
           python3 -c 'import json,yaml,jsonschema; d=yaml.safe_load(open("setup/autoinstall.yaml")); jsonschema.validate(d["autoinstall"], json.load(open("/tmp/schema.json"))); print("valid")'
+      - name: The system check (bootstrap.sh's copy and lib.sh's agree)
+        run: |
+          d=$(mktemp -d)
+          printf 'ID=ubuntu\nVERSION_ID="26.04"\nPRETTY_NAME="Ubuntu 26.04 LTS"\n' > $d/ok
+          printf 'ID=ubuntu\nVERSION_ID="24.04"\nPRETTY_NAME="Ubuntu 24.04 LTS"\n' > $d/old
+          printf 'ID=linuxmint\nID_LIKE="ubuntu debian"\nPRETTY_NAME="Linux Mint 22"\n' > $d/mint
+          printf 'ID=fedora\nPRETTY_NAME="Fedora Linux 43"\n' > $d/fedora
+          sed -n '/^check_system() {/,/^}/p' bootstrap.sh > $d/boot.sh
+          run() {  # run <lib|boot> <os> <desktop> [--yes]: prints "<exit code> <continues|stops>"
+            local load="source ./lib.sh >/dev/null"; [[ $1 == boot ]] && load="set -euo pipefail; source $d/boot.sh"
+            OS_RELEASE_FILE=$d/$2 XDG_CURRENT_DESKTOP=$3 DOTFILES_SYSTEM_CHECKED= \
+              bash -c "$load; check_system ${4:-} && echo continues" </dev/null >$d/out 2>&1
+            echo "$? $(grep -q continues $d/out && echo continues || echo stops)"
+          }
+          for impl in lib boot; do
+            test "$(run $impl ok GNOME)" = "0 continues"
+            test "$(run $impl old GNOME)" = "0 stops"            # asks; no answer = no
+            test "$(run $impl old GNOME --yes)" = "0 continues"
+            test "$(run $impl mint X-Cinnamon)" = "0 stops"
+            test "$(run $impl ok KDE)" = "0 stops"
+            test "$(run $impl fedora GNOME)" = "1 stops"
+            echo "$impl: ok"
+          done
       - name: The first-login entry is a valid desktop file
         run: |
           sudo apt-get install -y -qq desktop-file-utils

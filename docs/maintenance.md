@@ -175,7 +175,7 @@ Then restart. If an extension is still off, switch it on in the Extensions app.
 
 [`.github/workflows/check.yml`](../.github/workflows/check.yml) runs on every push, and every Monday, so a maker changing a download link or signing key shows up as a failed run (GitHub emails you) rather than on the day you set up a new computer. In a clean Ubuntu 26.04 container it runs:
 
-- `shellcheck` on all scripts
+- `shellcheck` on all scripts, and the system check (both copies must agree)
 - `install.sh` (twice), a dry run of `install-apps.sh`, `post-upgrade.sh` on test files, and `uninstall.sh` (no links may be left)
 - the secret check, the website build and a schema check of `setup/autoinstall.yaml`
 - the website's choices: `install.sh` with only some parts chosen must link only those, and `dot check` must show the rest as "not chosen"

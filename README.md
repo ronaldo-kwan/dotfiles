@@ -47,7 +47,7 @@ Terminal, desktop look, apps and upkeep, all in Catppuccin Mocha with Roboto fon
 
 3. Type your name and email for git, press <kbd>Enter</kbd> for **Yes to everything**, and type your password once. It runs by itself and restarts at the end.
 
-No GitHub account or sign-in is needed. Afterwards, `gh auth login` signs you in to GitHub for your notes, pushing and signed commits.
+It checks first that this is Ubuntu 26.04 with GNOME, and asks before going on if not. No GitHub account or sign-in is needed. Afterwards, `gh auth login` signs you in to GitHub for your notes, pushing and signed commits.
 
 ### Option 2: automated install from the Ubuntu installer
 

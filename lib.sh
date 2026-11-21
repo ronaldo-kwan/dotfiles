@@ -318,6 +318,36 @@ repo_state() {
   return 0
 }
 
+# Is this a system these dotfiles are made for? Ubuntu 26.04 with GNOME carries on without
+# a word. Another Ubuntu version, an Ubuntu-based system (Mint, Pop!_OS) or another desktop
+# says why and asks first (Enter = no; --yes carries on). Anything else stops before
+# changing anything. OS_RELEASE_FILE is for tests. bootstrap.sh has its own copy, since it
+# runs before the repo is downloaded; .github/workflows/check.yml tests that both agree.
+check_system() {
+  [[ -n "${DOTFILES_SYSTEM_CHECKED:-}" ]] && return 0   # bootstrap.sh already checked
+  local id like ver name problems=() a
+  # shellcheck source=/dev/null
+  IFS='|' read -r id like ver name < <(. "${OS_RELEASE_FILE:-/etc/os-release}" 2>/dev/null
+    echo "${ID:-}|${ID_LIKE:-}|${VERSION_ID:-}|${PRETTY_NAME:-this system}")
+  if [[ "$id" != ubuntu && " $like " != *" ubuntu "* ]]; then
+    printf '\n✘ These dotfiles are for Ubuntu 26.04 with GNOME; this is %s.\n  Nothing was changed.\n' "$name"
+    exit 1
+  fi
+  [[ "$id" != ubuntu ]] && problems+=("$name is based on Ubuntu, but these dotfiles are made for Ubuntu 26.04 itself.")
+  [[ "$id" == ubuntu && "$ver" != 26.04 ]] && problems+=("This is Ubuntu $ver; these dotfiles are made and tested for 26.04. App sources and GNOME extensions may not work.")
+  if [[ -n "${XDG_CURRENT_DESKTOP:-}" && "${XDG_CURRENT_DESKTOP^^}" != *GNOME* ]]; then
+    problems+=("The desktop is $XDG_CURRENT_DESKTOP, not GNOME: the desktop look, extensions and dock won't apply.")
+  elif [[ -z "${XDG_CURRENT_DESKTOP:-}" ]] && ! command -v gnome-shell >/dev/null 2>&1; then
+    problems+=("GNOME isn't installed: the desktop look, extensions and dock won't apply.")
+  fi
+  (( ${#problems[@]} )) || return 0
+  echo
+  for a in "${problems[@]}"; do printf '! %s\n' "$a"; done
+  for a in "$@"; do [[ "$a" == -y || "$a" == --yes || "$a" == --all ]] && { echo "  Carrying on (--yes)."; return 0; }; done
+  a=""; if [[ -t 0 ]]; then read -rp "Carry on anyway? [y/N] " a || true; fi
+  [[ "$a" =~ ^[Yy] ]] || { echo "Nothing was changed."; exit 0; }
+}
+
 # repo_behind <dir>: how many commits GitHub has that this computer doesn't. Fetches first
 # (quietly, 10 seconds at most); prints 0 when offline or without an upstream.
 repo_behind() {

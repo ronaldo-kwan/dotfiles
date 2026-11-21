@@ -38,7 +38,8 @@ After Ubuntu is installed, open a terminal (<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <
 bash <(wget -qO- https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/bootstrap.sh)
 ```
 
-1. `bootstrap.sh` installs git, gum and gh, downloads the dotfiles to `~/dotfiles` and starts `fresh-install.sh`. The repo is public, so no GitHub sign-in is needed.
+1. `bootstrap.sh` first checks the system, then installs git, gum and gh, downloads the dotfiles to `~/dotfiles` and starts `fresh-install.sh`. The repo is public, so no GitHub sign-in is needed.
+   - On another Ubuntu version, an Ubuntu-based system (Mint, Pop!_OS) or a desktop other than GNOME, it says why and asks before changing anything (<kbd>Enter</kbd> = no; `--yes` carries on). On anything else it stops.
 2. The first time, it asks your **name and email for git commits**. <kbd>Enter</kbd> keeps the suggestion from `setup/git-identity`. They're saved in `~/.config/git/user.gitconfig`, on this computer only.
 3. It asks **how questions should be answered**. Press <kbd>Enter</kbd> on **Yes to everything**, type your password once, and walk away.
 
