@@ -25,7 +25,7 @@ Terminal, desktop look, apps and upkeep, all in Catppuccin Mocha with Roboto fon
 
 | Area | What you get |
 |---|---|
-| **Terminal** | bash with [ble.sh](https://github.com/akinomyoga/ble.sh), the [Starship](https://starship.rs) prompt, [Ghostty](https://ghostty.org), fzf, zoxide, eza, bat, btop and lazygit, with the RobotoMono Nerd Font |
+| **Terminal** | bash with [ble.sh](https://github.com/akinomyoga/ble.sh), the [Starship](https://starship.rs) prompt, [Ghostty](https://ghostty.org), fzf, zoxide, eza, bat, btop, lazygit and fastfetch, all in Catppuccin Mocha, with the RobotoMono Nerd Font |
 | **Desktop** | Adwaita dark with a blue accent, Roboto fonts, close-only window buttons, 4 workspaces, GNOME extensions, keyboard shortcuts, dock and wallpaper |
 | **Apps** | Chrome, VS Code, Claude Desktop, Claude Code, ChatGPT, Proton VPN, OBS, ONLYOFFICE and Steam from their makers; Ubuntu apps; Flatpaks such as Firefox, Discord and Obsidian |
 | **System** | NVIDIA driver, firmware updates, firewall, weekly updates and a monthly clean-up |
@@ -129,7 +129,7 @@ Changed your mind? `dot uninstall` puts your own config files back and returns t
 
 ## Credits
 
-Built with [GNU Stow](https://www.gnu.org/software/stow/) and [gum](https://github.com/charmbracelet/gum). Colours by [Catppuccin](https://catppuccin.com); the wallpaper is from [catppuccin-wallpapers](https://github.com/zhichaoh/catppuccin-wallpapers) (MIT; see [`setup/wallpaper/LICENSE`](setup/wallpaper/LICENSE)).
+Built with [GNU Stow](https://www.gnu.org/software/stow/) and [gum](https://github.com/charmbracelet/gum). Colours by [Catppuccin](https://catppuccin.com); the wallpaper is from [catppuccin-wallpapers](https://github.com/zhichaoh/catppuccin-wallpapers) (MIT; see [`licenses/wallpaper.txt`](licenses/wallpaper.txt)). The bat, eza and fzf colours are Catppuccin's own themes ([`licenses/catppuccin.txt`](licenses/catppuccin.txt)).
 
 ## Licence
 

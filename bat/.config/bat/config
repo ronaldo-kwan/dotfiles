@@ -1,0 +1,5 @@
+# bat (batcat on Ubuntu): Catppuccin Mocha, from themes/ next to this file.
+# install.sh runs `batcat cache --build` so bat finds it.
+--theme="Catppuccin Mocha"
+# Line numbers and git changes on the left, no box around the file
+--style="numbers,changes,header"

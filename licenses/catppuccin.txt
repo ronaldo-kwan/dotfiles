@@ -1,6 +1,10 @@
-The wallpaper in this folder, catppuccin-tropic-island-night.jpg, is tropic_island_night.jpg
-from the Catppuccin wallpaper collection, https://github.com/zhichaoh/catppuccin-wallpapers
-(landscapes/, commit 08659a2ed650b36d4565445eb9007398be7c9f80), used under its MIT licence:
+The Catppuccin themes in this repo come from github.com/catppuccin (bat, eza and fzf; see
+the comment at the top of each file for the exact file and commit):
+  bat/.config/bat/themes/Catppuccin Mocha.tmTheme   catppuccin/bat, commit 6810349b28055dce54076712fc05fc68da4b8ec0
+  eza/.config/eza/theme.yml                         catppuccin/eza, commit 70f805f6cc27fa5b91750b75afb4296a0ec7fec9
+  fzf/.config/fzf/fzfrc (the colours)               catppuccin/fzf, commit 7508f8141286fb95249100a2b5325960320dcf32
+They're used under the MIT licence below. catppuccin/fzf's copy of it reads
+"Copyright (c) 2022 Catppuccin"; bat's and eza's read 2021, as below.
 
 MIT License
 

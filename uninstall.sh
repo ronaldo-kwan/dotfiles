@@ -54,6 +54,8 @@ unlink_configs() {
     fi
   done < <(config_files "${PACKAGES[@]}")
   did "$links links removed, $n of your own files put back"
+  # bat's theme cache still holds the Catppuccin theme: back to bat's own themes.
+  if have batcat && bat_theme_ok; then run_quiet batcat cache --clear && did "bat: back to its own themes"; fi
 }
 
 # 3. ~/.gitconfig was a link that included your name and email from

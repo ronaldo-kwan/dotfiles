@@ -134,6 +134,27 @@ complete -W "menu save check status push pull notes install apps fresh upgrade s
 alias dotsave='dot save' dotcheck='dot check'   # the old names still work
 
 # --- Terminal customization ---
+# Everything in Catppuccin Mocha, like Ghostty: fzf's colours and layout are in
+# ~/.config/fzf/fzfrc, bat's theme in ~/.config/bat, eza's in ~/.config/eza/theme.yml.
+export FZF_DEFAULT_OPTS_FILE="$HOME/.config/fzf/fzfrc"
+# man pages in colour, through bat
+if command -v batcat >/dev/null; then
+  export MANPAGER="sh -c 'col -bx | batcat --language=man --style=plain'" MANROFFOPT="-c"
+fi
+# ble.sh's colours as you type: quiet grey suggestions (its default is a light grey
+# block), and Catppuccin for commands, strings, options and mistakes.
+if [[ ${BLE_VERSION-} ]]; then
+  ble-face auto_complete=fg=#6c7086 syntax_comment=fg=#6c7086 \
+    syntax_error=fg=#f38ba8,underline syntax_quoted=fg=#a6e3a1 syntax_varname=fg=#fab387 \
+    syntax_param_expansion=fg=#f5c2e7 syntax_expr=fg=#89dceb syntax_glob=fg=#eba0ac,bold \
+    syntax_tilde=fg=#b4befe,bold syntax_command=fg=#f9e2af syntax_history_expansion=fg=#11111b,bg=#f9e2af \
+    command_builtin=fg=#fab387 command_builtin_dot=fg=#fab387,bold command_keyword=fg=#cba6f7 \
+    command_function=fg=#89b4fa command_alias=fg=#94e2d5 command_file=fg=#a6e3a1 \
+    command_directory=fg=#89b4fa,underline argument_option=fg=#94e2d5 \
+    filename_directory=fg=#89b4fa,underline filename_executable=fg=#a6e3a1,underline \
+    filename_link=fg=#94e2d5,underline
+fi
+
 # Prompt (Starship), smarter cd (zoxide: `z <name>`), fuzzy search (fzf: Ctrl+R, Ctrl+T, Alt+C)
 command -v starship >/dev/null && eval "$(starship init bash)"
 command -v zoxide   >/dev/null && eval "$(zoxide init bash)"

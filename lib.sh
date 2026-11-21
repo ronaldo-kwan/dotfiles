@@ -16,7 +16,7 @@ FAILED=()
 # Terminal tools from apt (installed by fresh-install.sh, checked by check.sh)
 TOOLS=(git gh gum curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit flatpak)
 # Stow packages: folders here whose files are linked into your home folder
-PACKAGES=(bash git starship ghostty btop lazygit terminal-default vscode claude systemd fontconfig)
+PACKAGES=(bash git starship ghostty btop lazygit bat eza fzf fastfetch terminal-default vscode claude systemd fontconfig)
 
 # Places outside ~/dotfiles that install.sh fills, and check.sh, dot and uninstall.sh look at
 VAULT="$HOME/Documents/Obsidian Vault"   # your notes: the private GitHub repo obsidian-vault
@@ -84,7 +84,7 @@ chosen_packages() {
   local p
   for p in "${PACKAGES[@]}"; do
     case "$p" in
-      bash|starship|ghostty|btop|lazygit|terminal-default) chosen terminal && echo "$p" ;;
+      bash|starship|ghostty|btop|lazygit|bat|eza|fzf|fastfetch|terminal-default) chosen terminal && echo "$p" ;;
       vscode)  chosen app:code && echo "$p" ;;
       claude)  chosen claude-md && echo "$p" ;;
       systemd) chosen safety && echo "$p" ;;
@@ -715,6 +715,10 @@ roboto_mono_current() {
   done
   has_roboto_mono
 }
+
+# Does bat know its Catppuccin theme? (It reads themes from a cache that `batcat cache
+# --build` makes from ~/.config/bat/themes.)
+bat_theme_ok() { [[ "$(batcat --list-themes 2>/dev/null)" == *"Catppuccin Mocha"* ]]; }
 
 # Is a font family installed? (Not `fc-list | grep -q`: with pipefail that fails when
 # grep stops reading fc-list's long output early.)

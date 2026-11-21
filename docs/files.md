@@ -21,6 +21,7 @@ dotfiles/
 │   post-upgrade.sh
 ├── dot, check.sh, lib.sh             the dot command, the health check, shared helpers
 ├── bash/ git/ starship/ ghostty/ …   config files, linked into ~ by Stow
+├── licenses/                         licences of the Catppuccin themes and the wallpaper
 ├── setup/                            snapshots: apps, extensions, desktop settings
 ├── scripts/                          snapshot, SSH, website and test helpers
 ├── system/                           weekly and monthly jobs, the first-login step
@@ -36,12 +37,16 @@ These folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). E
 
 | Package | Links to | What it is |
 |---|---|---|
-| `bash` | `~/.bashrc` | Aliases (`update`, the `dot` command, ...), history, and loading for ble.sh, Starship, zoxide, fzf, eza and bat |
+| `bash` | `~/.bashrc` | Aliases (`update`, the `dot` command, ...), history, and loading for ble.sh, Starship, zoxide, fzf, eza and bat; ble.sh's colours as you type, and man pages in colour through bat |
 | `git` | `~/.gitconfig` | `main` as the default branch, `gh` for GitHub sign-in, and includes for your per-computer name and email (`~/.config/git/user.gitconfig`) and signing (`~/.config/git/signing.gitconfig`) |
-| `starship` | `~/.config/starship.toml` | The Tokyo Night prompt (Starship's `tokyo-night` preset, with the Ubuntu logo) |
-| `ghostty` | `~/.config/ghostty/config` | Catppuccin Mocha, Nerd Font, padding |
+| `starship` | `~/.config/starship.toml` | The prompt: the shape of Starship's `tokyo-night` preset, in Catppuccin Mocha colours, with the Ubuntu logo, how long a slow command took, and a red `❯` after one that failed |
+| `ghostty` | `~/.config/ghostty/config` | Catppuccin Mocha (title bar too), Nerd Font, a bar cursor, a little extra line spacing, padding |
 | `btop` | `~/.config/btop/` | Catppuccin Mocha theme and settings |
 | `lazygit` | `~/.config/lazygit/config.yml` | Catppuccin Mocha and Nerd Font icons |
+| `bat` | `~/.config/bat/` | Catppuccin Mocha theme (`install.sh` runs `batcat cache --build` for it), line numbers and git changes |
+| `eza` | `~/.config/eza/theme.yml` | Catppuccin Mocha, blue accent, for `ls`, `ll` and `tree` |
+| `fzf` | `~/.config/fzf/fzfrc` | Catppuccin Mocha colours, and the list in a rounded box under the command line (Ctrl+R, Ctrl+T, Alt+C) |
+| `fastfetch` | `~/.config/fastfetch/config.jsonc` | System info with Nerd Font icons in Catppuccin colours |
 | `terminal-default` | `~/.config/xdg-terminals.list` | Makes Ghostty the default terminal |
 | `vscode` | `~/.config/Code/User/settings.json` | Theme, fonts, ligatures |
 | `claude` | `~/.claude/CLAUDE.md` | Personal instructions for Claude Code |
@@ -100,7 +105,7 @@ Written by `dot save` and restored by `install.sh`, except `apt-packages.txt`, w
 | `dock-favorites.txt` | Apps pinned to the dock, in order |
 | `gnome-extensions.txt` | GNOME extensions that `install.sh` installs from extensions.gnome.org |
 | `apps/` | Apps that start at login (only Flatpak apps from `flatpaks.txt`, since only those are put back), default apps (Chrome as browser, Showtime for video, Calendar), qBittorrent settings and theme, Obsidian vault settings, theme and the list of community plugins (not the notes or the plugins themselves). Cookies and window sizes are left out, and home-folder paths are stored as `@HOME@` |
-| `wallpaper/` | The wallpaper (`tropic_island_night.jpg` from [catppuccin-wallpapers](https://github.com/zhichaoh/catppuccin-wallpapers)) and its MIT licence; `install.sh` copies it to `~/Pictures/Wallpapers/current` |
+| `wallpaper/` | The wallpaper (`tropic_island_night.jpg` from [catppuccin-wallpapers](https://github.com/zhichaoh/catppuccin-wallpapers); its MIT licence is in `licenses/wallpaper.txt`); `install.sh` copies it to `~/Pictures/Wallpapers/current` |
 | `keys/chatgpt.asc` | OpenAI's public signing key for the ChatGPT app's update source (OpenAI doesn't publish it at an address of its own); `install-apps.sh` checks its fingerprint |
 | `autoinstall.yaml` | Answers for the Ubuntu installer's [automated install](new-computer.md#option-2-automated-install) (no passwords in it) |
 

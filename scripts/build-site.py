@@ -13,7 +13,7 @@ SETUP = ROOT / "setup"
 
 # Groups: one switch each. Tokens are what the scripts check (lib.sh: chosen).
 GROUPS = [
-    ("terminal", "Terminal", "bash, ble.sh, Starship prompt, Ghostty, btop, lazygit, fzf, zoxide, eza, bat and the RobotoMono Nerd Font, in Catppuccin Mocha"),
+    ("terminal", "Terminal", "bash, ble.sh, Starship prompt, Ghostty, btop, lazygit, fzf, zoxide, eza, bat, fastfetch and coloured man pages, all in Catppuccin Mocha, with the RobotoMono Nerd Font"),
     ("desktop", "Desktop look", "Adwaita dark with a blue accent, Roboto fonts in every app, close-only window buttons, 4 workspaces, GNOME extensions (no Ubuntu Dock), keyboard shortcuts, dock, wallpaper, default apps"),
     ("updates", "Weekly updates and monthly clean-up", "Ubuntu and Flatpak updates every week with a notification if something fails; unused packages removed monthly"),
     ("firewall", "Firewall", "Blocks connections from outside (ufw); everything you start yourself still works"),

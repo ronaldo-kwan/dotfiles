@@ -194,7 +194,7 @@ The fonts aren't in this repo. `install.sh` downloads one fixed version of each 
 | RobotoMono Nerd Font | `NERD_FONT_VERSION` (a Nerd Fonts release) and `NERD_FONT_SHA256` (of its `RobotoMono.tar.xz`) |
 | Roboto Mono | `ROBOTO_MONO_URL` (a commit of Google Fonts' repo) and `ROBOTO_MONO_FILES` |
 
-The wallpaper is in the repo itself, in [`setup/wallpaper/`](../setup/wallpaper/) with its MIT licence. To use another, replace the file there, keeping its name (or change `WALLPAPER` in `lib.sh`).
+The wallpaper is in the repo itself, in [`setup/wallpaper/`](../setup/wallpaper/) (its MIT licence is in [`licenses/wallpaper.txt`](../licenses/wallpaper.txt)). To use another, replace the file there, keeping its name (or change `WALLPAPER` in `lib.sh`).
 
 To move to a newer version, change the address, download the file and put its checksum next to it:
 

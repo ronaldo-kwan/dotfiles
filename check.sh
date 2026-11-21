@@ -176,6 +176,9 @@ if ! chosen desktop; then info "Roboto Mono: not chosen"
 elif roboto_mono_current; then ok "Roboto Mono"
 elif has_roboto_mono; then bad "Roboto Mono: not the pinned version" install
 else bad "Roboto Mono not installed" install; fi
+if chosen terminal && have batcat; then
+  if bat_theme_ok; then ok "bat: Catppuccin Mocha theme"; else bad "bat doesn't know its Catppuccin theme yet" install; fi
+fi
 
 section "Apps and system jobs (install-apps.sh)"
 for entry in "${APPS[@]}"; do

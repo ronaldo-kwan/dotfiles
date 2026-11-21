@@ -35,6 +35,10 @@ link_configs() {
   # their config folder (like btop's log) don't write them into this repo.
   run stow --dir="$DOTFILES" --target="$HOME" --no-folding --restow "${pkgs[@]}"
   did "linked: ${pkgs[*]}"
+  # bat reads its themes from a cache: add the Catppuccin one from ~/.config/bat/themes.
+  if [[ " ${pkgs[*]} " == *" bat "* ]] && have batcat && ! bat_theme_ok; then
+    run_quiet batcat cache --build && did "bat: Catppuccin Mocha theme ready"
+  fi
 }
 
 # 2. Fonts -----------------------------------------------------------------------
@@ -221,7 +225,7 @@ restore_gnome_settings() {
 
 # 7. Wallpaper -----------------------------------------------------------------------
 # From setup/wallpaper/: tropic_island_night.jpg from the Catppuccin wallpaper collection
-# (github.com/zhichaoh/catppuccin-wallpapers, MIT; its licence is next to it). Copied to
+# (github.com/zhichaoh/catppuccin-wallpapers, MIT: licenses/wallpaper.txt). Copied to
 # ~/Pictures/Wallpapers/current, so the desktop keeps it even if ~/dotfiles moves.
 WALLPAPER_SAVED="$SETUP/wallpaper/${WALLPAPER##*/}"
 set_wallpaper() {
