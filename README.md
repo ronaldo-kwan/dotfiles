@@ -15,7 +15,7 @@ Terminal, desktop look, apps and upkeep, all in Catppuccin Mocha with Roboto fon
 
 <br>
 
-<img src="docs/images/desktop.webp" alt="The finished desktop: Ghostty showing fastfetch and the dotfiles folder in Catppuccin colours, over a Catppuccin island wallpaper" width="900">
+<img src="docs/images/desktop.webp" alt="The finished desktop: Ghostty with fastfetch, the dotfiles folder and the Tokyo Night prompt, in Catppuccin colours over a Catppuccin island wallpaper" width="900">
 
 <sub>A fresh Ubuntu 26.04 right after the automated install.</sub>
 
