@@ -10,96 +10,9 @@
   // The theme before first paint, so the page doesn't flash: a saved choice, else the system's.
   try { const t = localStorage.getItem("dotfiles-site-theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
 </script>
+<link rel="stylesheet" href="style.css">
 <style>
-  /* The look of the desktop these dotfiles make: Catppuccin colours, the island wallpaper
-     behind frosted glass (as Blur my Shell does), and the terminal as the centrepiece.
-     Mocha (dark) by default, Latte (light) when the system or the switch asks for it. */
-  :root {
-    --base: #1e1e2e; --mantle: #181825; --crust: #11111b;
-    --text: #cdd6f4; --sub: #bac2de; --faint: #9399b2; --overlay: #6c7086;
-    --surface: #313244; --surface2: #45475a;
-    --mauve: #cba6f7; --blue: #89b4fa; --teal: #94e2d5; --green: #a6e3a1; --peach: #fab387;
-    --pink: #f5c2e7; --yellow: #f9e2af; --red: #f38ba8; --sky: #89dceb; --lavender: #b4befe;
-    --glass: rgb(24 24 37 / .62); --glass-strong: rgb(24 24 37 / .82); --glass-line: rgb(255 255 255 / .08);
-    --glass-hi: rgb(255 255 255 / .05); --tile: rgb(49 50 68 / .45); --tile-hover: rgb(69 71 90 / .55);
-    --shadow: 0 20px 50px -20px rgb(0 0 0 / .6);
-    --hero-fade: linear-gradient(180deg, rgb(30 30 46 / .25) 0%, rgb(30 30 46 / .55) 55%, var(--base) 100%);
-    --grad: linear-gradient(120deg, var(--mauve), var(--blue) 55%, var(--teal));
-    --on-grad: #11111b;
-    --term-bg: rgb(17 17 27 / .88); --term-text: #cdd6f4;
-    --sans: "Roboto", "Inter", system-ui, -apple-system, "Segoe UI", Cantarell, sans-serif;
-    --mono: "RobotoMono Nerd Font", "Roboto Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
-    color-scheme: dark;
-  }
-  :root[data-theme="light"] {
-    --base: #eff1f5; --mantle: #e6e9ef; --crust: #dce0e8;
-    --text: #4c4f69; --sub: #5c5f77; --faint: #6c6f85; --overlay: #8c8fa1;
-    --surface: #ccd0da; --surface2: #bcc0cc;
-    --mauve: #8839ef; --blue: #1e66f5; --teal: #179299; --green: #40a02b; --peach: #fe640b;
-    --pink: #ea76cb; --yellow: #df8e1d; --red: #d20f39; --sky: #04a5e5; --lavender: #7287fd;
-    --glass: rgb(255 255 255 / .62); --glass-strong: rgb(255 255 255 / .84); --glass-line: rgb(76 79 105 / .12);
-    --glass-hi: rgb(255 255 255 / .5); --tile: rgb(255 255 255 / .55); --tile-hover: rgb(255 255 255 / .85);
-    --shadow: 0 20px 50px -24px rgb(76 79 105 / .45);
-    --hero-fade: linear-gradient(180deg, rgb(239 241 245 / .45) 0%, rgb(239 241 245 / .72) 50%, var(--base) 100%);
-    --on-grad: #ffffff;
-    --term-bg: rgb(30 30 46 / .92); --term-text: #cdd6f4;
-    color-scheme: light;
-  }
-  @media (prefers-color-scheme: light) { :root:not([data-theme]) {
-    --base: #eff1f5; --mantle: #e6e9ef; --crust: #dce0e8;
-    --text: #4c4f69; --sub: #5c5f77; --faint: #6c6f85; --overlay: #8c8fa1;
-    --surface: #ccd0da; --surface2: #bcc0cc;
-    --mauve: #8839ef; --blue: #1e66f5; --teal: #179299; --green: #40a02b; --peach: #fe640b;
-    --pink: #ea76cb; --yellow: #df8e1d; --red: #d20f39; --sky: #04a5e5; --lavender: #7287fd;
-    --glass: rgb(255 255 255 / .62); --glass-strong: rgb(255 255 255 / .84); --glass-line: rgb(76 79 105 / .12);
-    --glass-hi: rgb(255 255 255 / .5); --tile: rgb(255 255 255 / .55); --tile-hover: rgb(255 255 255 / .85);
-    --shadow: 0 20px 50px -24px rgb(76 79 105 / .45);
-    --hero-fade: linear-gradient(180deg, rgb(239 241 245 / .45) 0%, rgb(239 241 245 / .72) 50%, var(--base) 100%);
-    --on-grad: #ffffff;
-    --term-bg: rgb(30 30 46 / .92); --term-text: #cdd6f4;
-    color-scheme: light; } }
-
-  * { box-sizing: border-box; }
-  [hidden] { display: none !important; }
-  html { scroll-behavior: smooth; scroll-padding-top: 84px; }
-  body { margin: 0; background: var(--base); color: var(--text); font: 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
-  a { color: var(--blue); }
-  :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 8px; }
-  kbd { font: 12px var(--mono); padding: 1px 6px; border-radius: 6px; border: 1px solid var(--glass-line); background: var(--glass-hi); }
-  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .wrap { max-width: 1200px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  .glass { background: var(--glass); border: 1px solid var(--glass-line); backdrop-filter: blur(20px) saturate(150%);
-           -webkit-backdrop-filter: blur(20px) saturate(150%); box-shadow: var(--shadow); }
-  .grad-text { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
-
-  /* The wallpaper, fading into the page */
-  .backdrop { position: absolute; inset: 0 0 auto 0; height: min(980px, 115vh); z-index: -1; overflow: hidden; }
-  .backdrop::before { content: ""; position: absolute; inset: -40px; background: url("wallpaper.webp") center 30% / cover no-repeat;
-                      transform: scale(1.05); animation: drift 40s ease-in-out infinite alternate; }
-  .backdrop::after { content: ""; position: absolute; inset: 0; background: var(--hero-fade); }
-  @keyframes drift { to { transform: scale(1.12) translate(-1.5%, 1%); } }
-
-  /* Top bar */
-  .nav { position: sticky; top: 0; z-index: 20; padding-top: max(10px, env(safe-area-inset-top, 0px)); }
-  .nav::before { content: ""; position: absolute; inset: 0 -16px -12px; z-index: -1; pointer-events: none;
-                 background: linear-gradient(180deg, var(--base) 35%, transparent); opacity: 0; transition: opacity .3s; }
-  .nav.scrolled::before { opacity: 1; }
-  .nav-in { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 16px; border-radius: 16px; }
-  .brand { font: 600 15px var(--mono); color: var(--text); text-decoration: none; white-space: nowrap; display: flex; align-items: center; gap: 8px; min-width: 0; }
-  .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--grad); box-shadow: 0 0 12px var(--mauve); flex: none; }
-  .brand span { color: var(--mauve); }
-  .nav-links { display: flex; gap: 2px; margin-left: auto; }
-  .nav-links a { color: var(--sub); text-decoration: none; font-size: 14px; font-weight: 500; padding: 6px 12px; border-radius: 10px; transition: background .2s, color .2s; }
-  .nav-links a:hover { color: var(--text); background: var(--glass-hi); }
-  .nav-links a.on { color: var(--text); background: var(--tile-hover); }
-  .icon-btn { display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--glass-line);
-              background: var(--glass-hi); color: var(--text); cursor: pointer; transition: transform .2s, background .2s; flex: none; padding: 0; }
-  .icon-btn:hover { background: var(--tile-hover); transform: translateY(-1px); }
-  .icon-btn svg { width: 18px; height: 18px; }
-  .brand em { font-style: normal; }
-  /* Phones: just Build and Docs, and the brand without the owner, so it all fits */
-  @media (max-width: 760px) { .nav-links a:not(.keep) { display: none; } .nav-links a { padding: 6px 9px; } .brand em { display: none; } .nav-in { gap: 6px; } }
-
+  /* The installer page's own parts; the colours, top bar and the rest are in style.css. */
   /* Hero */
   .hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 48px; align-items: center; padding: 72px 0 56px; min-height: min(760px, 88vh); }
   @media (max-width: 960px) { .hero { grid-template-columns: minmax(0, 1fr); padding-top: 40px; gap: 32px; min-height: 0; } }
@@ -136,12 +49,6 @@
   .demo .p { color: #cba6f7; } .demo .ok { color: #a6e3a1; } .demo .dim { color: #7f849c; } .demo .hl { color: #89b4fa; } .demo .warn { color: #f9e2af; }
   .caret { display: inline-block; width: 8px; height: 1.1em; vertical-align: -2px; background: #cdd6f4; animation: blink 1s steps(1) infinite; }
   @keyframes blink { 50% { opacity: 0; } }
-
-  /* Section headings */
-  .head { margin: 24px 0 22px; }
-  .head h2 { font: 800 clamp(28px, 3.6vw, 40px)/1.1 var(--sans); letter-spacing: -0.03em; margin: 4px 0 0; }
-  .head p { margin: 8px 0 0; color: var(--sub); }
-  .kicker { font: 600 12px var(--mono); color: var(--mauve); text-transform: uppercase; letter-spacing: .14em; }
 
   /* Builder: choices left, installer right */
   .cols { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 28px; align-items: start; padding-bottom: 96px; }
@@ -216,22 +123,6 @@
   .row.pop { animation: pop .35s cubic-bezier(.3,1.6,.5,1); }
   @keyframes pop { 40% { transform: scale(.96); } }
 
-  /* Fields and small buttons */
-  input.text { width: 100%; font: inherit; font-size: 15px; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--glass-line);
-               background: var(--tile); color: var(--text); transition: border-color .2s, box-shadow .2s, background .2s; }
-  input.text::placeholder { color: var(--overlay); }
-  input.text:focus { outline: none; border-color: var(--mauve); box-shadow: 0 0 0 4px color-mix(in srgb, var(--mauve) 20%, transparent); background: var(--tile-hover); }
-  input.text[aria-invalid="true"] { border-color: var(--red); }
-  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
-  .field label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
-  .err { color: var(--red); font-size: 13px; margin-top: 4px; }
-  .err:empty { display: none; }
-  button { font: inherit; }
-  button.small { font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 9px; cursor: pointer; border: 1px solid var(--glass-line); background: var(--glass-hi); color: var(--sub); transition: background .2s, color .2s; }
-  button.small:hover { background: var(--tile-hover); color: var(--text); }
-  button.link { border: 0; background: none; color: var(--faint); padding: 4px 8px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 8px; }
-  button.link:hover { color: var(--text); background: var(--glass-hi); }
-
   /* The installer card */
   .panel { position: sticky; top: 84px; border-radius: 24px; padding: 22px; display: grid; gap: 18px; scroll-margin-top: 84px; background: var(--glass-strong); min-width: 0; }
   @media (min-width: 1021px) { .panel { max-height: calc(100vh - 100px); overflow: auto; scrollbar-width: thin; } }
@@ -271,153 +162,6 @@
   .note svg { width: 16px; height: 16px; flex: none; margin-top: 2px; color: var(--green); }
 
 
-  /* Docs: the pages and search on the left, the page in a readable column, and "On this
-     page" on the right (wide screens). On narrower screens the headings move under the
-     page's name on the left; on phones the left side folds into a menu button. */
-  .docs { padding-bottom: 96px; }
-  .head code { font: 500 .9em var(--mono); }
-  .docs-cols { display: grid; grid-template-columns: 244px minmax(0, 1fr) 200px; gap: 28px; align-items: start; }
-  .doc-side { position: sticky; top: 84px; z-index: 5; min-width: 0; }
-  .doc-menu { display: none; }
-  .doc-nav { position: relative; border-radius: 20px; padding: 12px; max-height: calc(100vh - 100px); overflow: auto; scrollbar-width: thin; overscroll-behavior: contain; }
-  .doc-search { position: relative; margin-bottom: 10px; }
-  .doc-search svg { position: absolute; left: 11px; top: 50%; translate: 0 -50%; width: 16px; height: 16px; color: var(--faint); pointer-events: none; }
-  .doc-search input.text { padding: 9px 12px 9px 34px; font-size: 14px; border-radius: 10px; }
-  .doc-pages, .doc-pages ul, .doc-toc { list-style: none; margin: 0; padding: 0; }
-  .doc-pages > li + li { margin-top: 2px; }
-  .doc-pages a, .doc-toc a { display: block; text-decoration: none; border-radius: 8px; transition: background .15s, color .15s; }
-  .doc-pages > li > a { color: var(--sub); font-size: 14.5px; font-weight: 600; line-height: 1.35; padding: 8px 10px; }
-  .doc-pages > li > a:hover { background: var(--glass-hi); color: var(--text); }
-  .doc-pages > li > a[aria-current="page"] { background: var(--tile-hover); color: var(--text); box-shadow: inset 3px 0 0 var(--mauve); }
-  .doc-sub { margin: 4px 0 8px 12px !important; padding-left: 8px !important; border-left: 1px solid var(--glass-line); }
-  .doc-sub a, .doc-toc a { color: var(--sub); font-size: 13.5px; line-height: 1.4; padding: 5px 10px; }
-  .doc-sub a:hover, .doc-toc a:hover { color: var(--text); background: var(--glass-hi); }
-  .doc-sub .l3 a, .doc-toc .l3 a { padding-left: 22px; font-size: 13px; }
-  .doc-sub a.on, .doc-toc a.on { color: var(--mauve); font-weight: 600; background: color-mix(in srgb, var(--mauve) 10%, transparent); }
-  .doc-sub code, .doc-toc code, .doc-results code { font: .92em var(--mono); }
-  .doc-aside { position: sticky; top: 84px; max-height: calc(100vh - 100px); overflow: auto; scrollbar-width: thin; padding: 6px 0 0; min-width: 0; }
-  .doc-aside-h { font: 600 11px var(--mono); color: var(--faint); text-transform: uppercase; letter-spacing: .12em; margin: 0 0 8px; padding: 0 10px; }
-  .doc-toc { border-left: 1px solid var(--glass-line); }
-  .doc-toc a { border-radius: 0 8px 8px 0; margin-left: -1px; border-left: 2px solid transparent; }
-  .doc-toc a.on { border-left-color: var(--mauve); }
-  .doc-gh { display: flex; align-items: center; gap: 8px; margin: 18px 0 0; padding: 12px 10px 0; border-top: 1px solid var(--glass-line); color: var(--faint); font-size: 13px; text-decoration: none; }
-  .doc-gh:hover { color: var(--text); }
-  .doc-gh svg { width: 15px; height: 15px; flex: none; }
-  @media (min-width: 1200px) { .doc-sub { display: none; } }
-  @media (max-width: 1199px) { .docs-cols { grid-template-columns: 244px minmax(0, 1fr); } .doc-aside { display: none; } }
-
-  /* Search results */
-  .doc-results { display: grid; gap: 4px; }
-  .doc-results p { margin: 4px 4px 8px; font-size: 13px; color: var(--faint); }
-  .doc-results a { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; text-decoration: none; border: 1px solid transparent; }
-  .doc-results a:hover, .doc-results a:focus-visible { background: var(--tile-hover); border-color: var(--glass-line); }
-  .doc-results small { font-size: 11.5px; color: var(--faint); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
-  .doc-results b { color: var(--text); font-size: 14px; font-weight: 600; line-height: 1.35; }
-  .doc-results span { color: var(--sub); font-size: 13px; line-height: 1.45; }
-  .doc-results mark { background: color-mix(in srgb, var(--yellow) 38%, transparent); color: var(--text); border-radius: 3px; padding: 0 1px; }
-
-  /* Phones and tablets: a sticky menu button that opens the same list */
-  @media (max-width: 1020px) {
-    .docs-cols { grid-template-columns: minmax(0, 1fr); gap: 14px; }
-    .doc-side { top: 74px; z-index: 15; }
-    .doc-menu { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 14px; border-radius: 14px; color: var(--text); cursor: pointer; font: inherit; text-align: left; }
-    .doc-menu > svg { width: 18px; height: 18px; flex: none; color: var(--mauve); }
-    .doc-menu .chev { color: var(--faint); transition: transform .25s; }
-    .doc-menu[aria-expanded="true"] .chev { transform: rotate(180deg); }
-    .doc-menu-text { flex: 1; min-width: 0; display: flex; gap: 6px; font-size: 14.5px; white-space: nowrap; }
-    .doc-menu-text b { font-weight: 600; flex: none; max-width: 60%; overflow: hidden; text-overflow: ellipsis; }
-    .doc-menu-text span { color: var(--faint); overflow: hidden; text-overflow: ellipsis; }
-    .doc-menu-text span:not(:empty)::before { content: "›"; margin-right: 6px; }
-    .doc-nav { display: none; position: absolute; left: 0; right: 0; top: calc(100% + 8px); max-height: min(70vh, calc(100vh - 160px)); background: var(--glass-strong); }
-    .doc-side.open .doc-nav { display: block; animation: open .2s ease; }
-    /* Headings land below the sticky menu button */
-    .docs .doc-page h2 { scroll-margin-top: 38px; } .docs .doc-page h3 { scroll-margin-top: 54px; }
-  }
-  @media (max-width: 600px) { .doc-side { top: 66px; } }
-
-  /* The page: a comfortable reading width for text; tables and code may use the card */
-  .doc-body { border-radius: 24px; padding: 12px 48px 36px; min-width: 0; font-size: 16px; line-height: 1.7; overflow-wrap: break-word; }
-  @media (max-width: 1199px) { .doc-body { padding: 8px 40px 32px; } }
-  @media (max-width: 600px) { .doc-body { padding: 4px 18px 22px; border-radius: 18px; font-size: 15.5px; } }
-  .doc-page :is(p, ul, ol, h1, h2, h3, .alert, details, blockquote) { max-width: 72ch; }
-  .doc-page:not([hidden]) { animation: open .25s ease; }
-  .doc-crumb { margin: 28px 0 0; font: 600 12px var(--mono); color: var(--mauve); text-transform: uppercase; letter-spacing: .12em; }
-  .doc-page > h1 { font: 800 clamp(28px, 3.2vw, 38px)/1.12 var(--sans); letter-spacing: -0.03em; margin: 6px 0 10px; text-wrap: balance; }
-  .doc-src { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--faint); margin: 0 0 4px; }
-  .doc-src svg { width: 14px; height: 14px; }
-  .doc-src a { color: var(--faint); }
-  .doc-src a:hover { color: var(--text); }
-  .doc-page h2 { font: 700 24px/1.25 var(--sans); letter-spacing: -0.02em; margin: 44px 0 12px; padding-top: 26px; border-top: 1px solid var(--glass-line); scroll-margin-top: 4px; }
-  .doc-page h3 { font: 700 18.5px/1.3 var(--sans); letter-spacing: -0.01em; margin: 30px 0 8px; scroll-margin-top: 16px; }
-  .doc-page :is(h2, h3) { position: relative; text-wrap: balance; }
-  .doc-page h2 code, .doc-page h3 code { font-size: .88em; }
-  .anchor { margin-left: 8px; color: var(--mauve); text-decoration: none; font-weight: 500; opacity: 0; transition: opacity .15s; border-radius: 6px; padding: 0 4px; }
-  :is(h2, h3):hover > .anchor, .anchor:focus-visible { opacity: 1; }
-  @media (hover: none) { .anchor { opacity: .45; } }
-  .doc-page p { margin: 0 0 14px; }
-  .doc-page p, .doc-page li { color: var(--sub); }
-  .doc-page strong { color: var(--text); font-weight: 600; }
-  .doc-page a:not(.anchor) { color: var(--blue); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--blue) 40%, transparent); text-underline-offset: 3px; }
-  .doc-page a:not(.anchor):hover { text-decoration-color: currentColor; }
-  .doc-page ul, .doc-page ol { padding-left: 24px; margin: 0 0 16px; }
-  .doc-page li { margin: 6px 0; padding-left: 2px; }
-  .doc-page li::marker { color: var(--overlay); }
-  .doc-page ol > li::marker { color: var(--mauve); font-weight: 600; font-size: .92em; }
-  .doc-page li > p { margin: 6px 0; }
-  .doc-page li > ul, .doc-page li > ol { margin: 6px 0; }
-  .doc-page li.task { list-style: none; margin-left: -22px; }
-  .doc-page li.task input { accent-color: var(--mauve); margin: 0 8px 0 0; vertical-align: -2px; }
-  .doc-page code { font: .86em var(--mono); padding: 1.5px 6px; border-radius: 6px; background: var(--tile); border: 1px solid var(--glass-line); color: var(--text); overflow-wrap: anywhere; }
-  .doc-page kbd { font-size: .78em; }
-  .doc-page pre { position: relative; margin: 14px 0 18px; padding: 16px 18px; border-radius: 12px; background: var(--term-bg); color: var(--term-text);
-                  border: 1px solid rgb(255 255 255 / .07); font: 13.5px/1.65 var(--mono); overflow-x: auto; scrollbar-width: thin; tab-size: 4; }
-  .doc-page pre code { font: inherit; padding: 0; border: 0; background: none; color: inherit; overflow-wrap: normal; }
-  .doc-page pre.lang-bash { padding-right: 92px; }
-  .copy-code { position: absolute; top: 9px; right: 9px; display: inline-flex; align-items: center; gap: 6px; font: 600 12px var(--sans); padding: 5px 10px; border-radius: 8px; cursor: pointer;
-               border: 1px solid rgb(255 255 255 / .12); background: rgb(49 50 68 / .9); color: #bac2de; transition: background .15s, color .15s; }
-  .copy-code svg { width: 13px; height: 13px; }
-  .copy-code:hover { background: #45475a; color: #cdd6f4; }
-  .copy-code.done { color: #a6e3a1; border-color: rgb(166 227 161 / .4); }
-  .copy-code:focus-visible { outline-color: #89b4fa; }
-  .doc-page .tbl { overflow-x: auto; margin: 14px 0 20px; border: 1px solid var(--glass-line); border-radius: 12px; scrollbar-width: thin; background: var(--glass-hi); }
-  .doc-page table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.55; }
-  .doc-page th, .doc-page td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--glass-line); color: var(--sub); }
-  .doc-page th { color: var(--text); background: var(--tile); font-weight: 600; font-size: 13px; white-space: nowrap; }
-  .doc-page tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--tile) 45%, transparent); }
-  .doc-page tbody tr:last-child td { border-bottom: 0; }
-  .doc-page td:first-child { min-width: 120px; color: var(--text); }
-  @media (max-width: 600px) { .doc-page td { min-width: 170px; } }
-  .doc-page .alert { margin: 16px 0 20px; padding: 12px 18px 6px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--a) 28%, transparent); border-left: 4px solid var(--a);
-                     background: color-mix(in srgb, var(--a) 8%, transparent); }
-  .doc-page .alert p { margin: 4px 0 8px; }
-  .doc-page .alert-title { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--a) !important; font-size: 14px; margin-bottom: 2px !important; }
-  .doc-page .alert-title::before { content: ""; width: 17px; height: 17px; background: var(--a); -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; flex: none; }
-  .alert.note { --a: var(--blue); --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v5M12 7.5v.5'/%3E%3C/svg%3E"); }
-  .alert.tip { --a: var(--green); --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z'/%3E%3C/svg%3E"); }
-  .alert.important { --a: var(--mauve); --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 5h16v11H9l-5 4z'/%3E%3Cpath d='M12 8v3.5M12 14v.5'/%3E%3C/svg%3E"); }
-  .alert.warning { --a: var(--peach); --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.5 2.5 20h19z'/%3E%3Cpath d='M12 10v4M12 17v.5'/%3E%3C/svg%3E"); }
-  .alert.caution { --a: var(--red); --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 3h8l5 5v8l-5 5H8l-5-5V8z'/%3E%3Cpath d='M12 8v5M12 16v.5'/%3E%3C/svg%3E"); }
-  .doc-page details { margin: 14px 0 18px; border: 1px solid var(--glass-line); border-radius: 12px; padding: 0 18px; background: var(--glass-hi); }
-  .doc-page details > summary { list-style: none; cursor: pointer; font-weight: 600; padding: 12px 0; color: var(--text); display: flex; align-items: center; gap: 10px; border-radius: 8px; }
-  .doc-page details > summary::-webkit-details-marker { display: none; }
-  .doc-page details > summary::before { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--mauve); border-bottom: 2px solid var(--mauve); rotate: -45deg; transition: rotate .2s; flex: none; margin: 0 2px; }
-  .doc-page details[open] > summary::before { rotate: 45deg; }
-  .doc-page details[open] { padding-bottom: 6px; }
-  .doc-page details[open] > summary { border-bottom: 1px solid var(--glass-line); border-radius: 0; margin-bottom: 10px; }
-  .doc-pager { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 40px; padding-top: 22px; border-top: 1px solid var(--glass-line); }
-  .doc-pager a { display: grid; gap: 2px; text-decoration: none; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--glass-line); background: var(--tile); min-width: 0; transition: border-color .2s, background .2s; }
-  .doc-pager a:hover { background: var(--tile-hover); border-color: var(--surface2); }
-  .doc-pager a small { font-size: 12.5px; color: var(--faint); }
-  .doc-pager a b { color: var(--text); font-weight: 600; }
-  .doc-pager a.next { grid-column: 2; text-align: right; }
-  @media (max-width: 600px) { .doc-pager { grid-template-columns: minmax(0, 1fr); } .doc-pager a.next { grid-column: 1; } }
-
-  /* Toast */
-  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); translate: -50% 20px; z-index: 40; opacity: 0; pointer-events: none;
-           display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-radius: 14px; font-weight: 600; font-size: 14px; transition: opacity .3s, translate .3s; max-width: calc(100vw - 32px); }
-  .toast.on { opacity: 1; translate: -50% 0; }
-  .toast svg { width: 18px; height: 18px; color: var(--green); flex: none; }
-
   /* Phones: a bar that jumps to the installer */
   .mbar { display: none; }
   @media (max-width: 1020px) {
@@ -427,21 +171,9 @@
     .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   }
 
-  /* Rise into view while scrolling, in browsers with scroll-driven animations; elsewhere
-     everything is simply there. Nothing waits on a script, so nothing can stay hidden. */
-  @supports (animation-timeline: view()) {
-    .reveal { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 35%; }
-  }
-  @keyframes rise { from { opacity: 0; transform: translateY(28px) scale(.985); } }
-
-  footer { color: var(--faint); font-size: 13px; padding: 28px 0 calc(40px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--glass-line); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-  footer a { color: var(--sub); }
   @media (max-width: 1020px) { footer { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); } }
 
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
-    .hero .win { transform: none; }
-  }
+  @media (prefers-reduced-motion: reduce) { .hero .win { transform: none; } }
 </style>
 </head>
 <body>
@@ -459,7 +191,7 @@
         <a href="#sec-groups" data-spy="sec-groups">Setup</a>
         <a href="#sec-apps" data-spy="sec-apps">Apps</a>
         <a href="#installer" data-spy="installer">Install</a>
-        <a href="#docs" data-spy="docs" class="keep">Docs</a>
+        <a href="docs/" class="keep">Docs</a>
       </nav>
       <button class="icon-btn" id="theme" type="button" aria-label="Switch between light and dark">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
@@ -478,7 +210,7 @@
       <div class="cta">
         <a class="btn primary" href="#build">Build your installer
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
-        <a class="btn" href="#docs">Read the docs</a>
+        <a class="btn" href="docs/">Read the docs</a>
       </div>
       <div class="stats" aria-label="What's in it">
         <div class="stat"><b data-count="items">0</b><span>things to pick</span></div>
@@ -601,51 +333,15 @@
     </aside>
   </div>
 
-  <section class="docs" id="docs" aria-labelledby="docs-h">
-    <div class="head reveal">
-      <div class="kicker">Docs</div>
-      <h2 id="docs-h">How to use it</h2>
-      <p>Setting up, everyday use with <code>dot</code>, and what runs by itself. The same pages as on GitHub.</p>
-    </div>
-    <div class="docs-cols" id="docs-cols">
-      <div class="doc-side" id="doc-side">
-        <button class="doc-menu glass" id="doc-menu" type="button" aria-expanded="false" aria-controls="doc-nav">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
-          <span class="doc-menu-text"><b id="doc-menu-page">Docs</b><span id="doc-menu-sec"></span></span>
-          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-        <nav class="doc-nav glass" id="doc-nav" aria-label="Docs">
-          <div class="doc-search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-            <label for="doc-q" class="sr">Search the docs</label>
-            <input class="text" id="doc-q" type="search" placeholder="Search the docs" autocomplete="off" spellcheck="false" aria-describedby="doc-q-status">
-          </div>
-          <p class="sr" id="doc-q-status" role="status"></p>
-          <div class="doc-results" id="doc-results" hidden></div>
-          <ol class="doc-pages" id="doc-pages"></ol>
-        </nav>
-      </div>
-      <article class="doc-body glass" id="doc-body">
-        <p class="empty">Loading the docs… They're also <a href="https://github.com/ronaldo-kwan/dotfiles#readme">on GitHub</a>.</p>
-      </article>
-      <aside class="doc-aside" id="doc-aside" aria-label="On this page">
-        <p class="doc-aside-h">On this page</p>
-        <ul class="doc-toc" id="doc-toc"></ul>
-        <a class="doc-gh" id="doc-gh" href="https://github.com/ronaldo-kwan/dotfiles">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
-          <span>View this page on GitHub</span></a>
-      </aside>
-    </div>
-  </section>
-
   <footer>
-    <span>MIT licensed. The lists and docs on this page are generated from the repo, so they match what the scripts install and do.</span>
+    <span>MIT licensed. The lists on this page are generated from the repo, so they match what the scripts install. How it all works: <a href="docs/">the docs</a>.</span>
     <span>Wallpaper: <a href="https://github.com/zhichaoh/catppuccin-wallpapers">Catppuccin wallpapers</a> (MIT)</span>
   </footer>
 </div>
 
 <div class="mbar glass"><span id="mcount"></span><a href="#installer">Get your installer</a></div>
 <div class="toast glass" id="toast" role="status" aria-live="polite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span></span></div>
+<script src="common.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -377,7 +377,7 @@ m.ROOT = pathlib.Path(sys.argv[2]); print(m.latest_release())
 PY
 )"
 t "build-site.py finds the latest release" same "$newest" v1.10.0
-# The site's docs: built from the repo's Markdown and dot's own help (build_docs stops on a
+# The docs site (site/docs/): built from the repo's Markdown and dot's own help (build_docs stops on a
 # link to a heading that doesn't exist), and the Markdown comes out as the site shows it.
 site_py() {
   python3 -I -B - "$ROOT/scripts/build-site.py" "$@" <<'PY'
@@ -399,8 +399,8 @@ t "build-site.py builds every docs page, with no broken links" same "$(site_py p
 t "... and the dot page has every command in dot's table" same "$(site_py commands)" \
   "$(sed -n 's/^  "\([a-z]\{1,\}\)|.*/\1/p' "$ROOT/dot" | tr '\n' ' ' | sed 's/ $//')"
 t "... and turns Markdown into the site's HTML" same "$(site_py $'## The `dot` menu\n\n- [ ] Run **dot ssh** ([how](#signed-commits))\n\n> [!TIP]\n> Use <kbd>Tab</kbd>.\n\n| A | B |\n|---|---|\n| `x` | [y](../setup/) |')" \
-  '<h2 id="doc-t-the-dot-menu">The <code>dot</code> menu</h2>
-<ul><li class=task><input type="checkbox" disabled> Run <strong>dot ssh</strong> (<a href="#doc-t-signed-commits">how</a>)</li></ul>
+  '<h2 id="t-the-dot-menu">The <code>dot</code> menu</h2>
+<ul><li class=task><input type="checkbox" disabled> Run <strong>dot ssh</strong> (<a href="#t-signed-commits">how</a>)</li></ul>
 <div class="alert tip"><p class="alert-title">Tip</p><p>Use <kbd>Tab</kbd>.</p></div>
 <div class="tbl"><table><thead><tr><th>A</th><th>B</th></tr></thead><tbody><tr><td><code>x</code></td><td><a href="https://github.com/ronaldo-kwan/dotfiles/tree/main/setup">y</a></td></tr></tbody></table></div>'
 

@@ -25,7 +25,7 @@ dotfiles/
 ├── setup/                            snapshots: apps, extensions, desktop settings
 ├── scripts/                          snapshot, SSH, website and test helpers
 ├── system/                           weekly and monthly jobs
-├── site/                             the installer website
+├── site/                             the website: the installer, and the docs in docs/
 ├── docs/                             these pages (images/: the README screenshot)
 ├── .githooks/                        the secret check
 └── .github/workflows/                GitHub checks and the website
@@ -116,5 +116,5 @@ Written by `dot push` and restored by `install.sh`, except `apt-packages.txt`, w
 | `.githooks/pre-commit` | The [secret check](maintenance.md#secret-check-before-commits) |
 | `.github/workflows/check.yml` | The [GitHub checks](maintenance.md#github-checks) |
 | `.github/workflows/pages.yml` | Builds and publishes the website |
-| `site/` | The [website](https://ronaldo-kwan.github.io/dotfiles/): pick options, get your own command, and read these docs. `options.json` and `docs.json` are generated |
-| `scripts/build-site.py` | Writes `site/options.json` from `install-apps.sh` and the lists in `setup/`, and `site/docs.json` from `README.md`, `docs/` and `dot`'s own help, so the site matches the scripts |
+| `site/` | The [website](https://ronaldo-kwan.github.io/dotfiles/): pick options and get your own command (`index.html`, `app.js`). `docs/` is the [docs site](https://ronaldo-kwan.github.io/dotfiles/docs/) with these pages (`docs/index.html`, `docs/docs.js`, `docs/docs.css`). Both use `style.css` and `common.js`. `options.json` and `docs/docs.json` are generated |
+| `scripts/build-site.py` | Writes `site/options.json` from `install-apps.sh` and the lists in `setup/`, and `site/docs/docs.json` from `README.md`, `docs/` and `dot`'s own help, so the site matches the scripts |

@@ -1,0 +1,130 @@
+/* Shared by the installer (index.html) and the docs (docs/index.html): Catppuccin colours,
+   the island wallpaper behind frosted glass, the top bar, fields, the toast and the footer.
+   Mocha (dark) by default, Latte (light) when the system or the switch asks for it. */
+:root {
+  --base: #1e1e2e; --mantle: #181825; --crust: #11111b;
+  --text: #cdd6f4; --sub: #bac2de; --faint: #9399b2; --overlay: #6c7086;
+  --surface: #313244; --surface2: #45475a;
+  --mauve: #cba6f7; --blue: #89b4fa; --teal: #94e2d5; --green: #a6e3a1; --peach: #fab387;
+  --pink: #f5c2e7; --yellow: #f9e2af; --red: #f38ba8; --sky: #89dceb; --lavender: #b4befe;
+  --glass: rgb(24 24 37 / .62); --glass-strong: rgb(24 24 37 / .82); --glass-line: rgb(255 255 255 / .08);
+  --glass-hi: rgb(255 255 255 / .05); --tile: rgb(49 50 68 / .45); --tile-hover: rgb(69 71 90 / .55);
+  --shadow: 0 20px 50px -20px rgb(0 0 0 / .6);
+  --hero-fade: linear-gradient(180deg, rgb(30 30 46 / .25) 0%, rgb(30 30 46 / .55) 55%, var(--base) 100%);
+  --grad: linear-gradient(120deg, var(--mauve), var(--blue) 55%, var(--teal));
+  --on-grad: #11111b;
+  --term-bg: rgb(17 17 27 / .88); --term-text: #cdd6f4;
+  --sans: "Roboto", "Inter", system-ui, -apple-system, "Segoe UI", Cantarell, sans-serif;
+  --mono: "RobotoMono Nerd Font", "Roboto Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --base: #eff1f5; --mantle: #e6e9ef; --crust: #dce0e8;
+  --text: #4c4f69; --sub: #5c5f77; --faint: #6c6f85; --overlay: #8c8fa1;
+  --surface: #ccd0da; --surface2: #bcc0cc;
+  --mauve: #8839ef; --blue: #1e66f5; --teal: #179299; --green: #40a02b; --peach: #fe640b;
+  --pink: #ea76cb; --yellow: #df8e1d; --red: #d20f39; --sky: #04a5e5; --lavender: #7287fd;
+  --glass: rgb(255 255 255 / .62); --glass-strong: rgb(255 255 255 / .84); --glass-line: rgb(76 79 105 / .12);
+  --glass-hi: rgb(255 255 255 / .5); --tile: rgb(255 255 255 / .55); --tile-hover: rgb(255 255 255 / .85);
+  --shadow: 0 20px 50px -24px rgb(76 79 105 / .45);
+  --hero-fade: linear-gradient(180deg, rgb(239 241 245 / .45) 0%, rgb(239 241 245 / .72) 50%, var(--base) 100%);
+  --on-grad: #ffffff;
+  --term-bg: rgb(30 30 46 / .92); --term-text: #cdd6f4;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme]) {
+  --base: #eff1f5; --mantle: #e6e9ef; --crust: #dce0e8;
+  --text: #4c4f69; --sub: #5c5f77; --faint: #6c6f85; --overlay: #8c8fa1;
+  --surface: #ccd0da; --surface2: #bcc0cc;
+  --mauve: #8839ef; --blue: #1e66f5; --teal: #179299; --green: #40a02b; --peach: #fe640b;
+  --pink: #ea76cb; --yellow: #df8e1d; --red: #d20f39; --sky: #04a5e5; --lavender: #7287fd;
+  --glass: rgb(255 255 255 / .62); --glass-strong: rgb(255 255 255 / .84); --glass-line: rgb(76 79 105 / .12);
+  --glass-hi: rgb(255 255 255 / .5); --tile: rgb(255 255 255 / .55); --tile-hover: rgb(255 255 255 / .85);
+  --shadow: 0 20px 50px -24px rgb(76 79 105 / .45);
+  --hero-fade: linear-gradient(180deg, rgb(239 241 245 / .45) 0%, rgb(239 241 245 / .72) 50%, var(--base) 100%);
+  --on-grad: #ffffff;
+  --term-bg: rgb(30 30 46 / .92); --term-text: #cdd6f4;
+  color-scheme: light; } }
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { scroll-behavior: smooth; scroll-padding-top: 84px; }
+body { margin: 0; background: var(--base); color: var(--text); font: 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+a { color: var(--blue); }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 8px; }
+kbd { font: 12px var(--mono); padding: 1px 6px; border-radius: 6px; border: 1px solid var(--glass-line); background: var(--glass-hi); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.wrap { max-width: 1200px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.glass { background: var(--glass); border: 1px solid var(--glass-line); backdrop-filter: blur(20px) saturate(150%);
+         -webkit-backdrop-filter: blur(20px) saturate(150%); box-shadow: var(--shadow); }
+.grad-text { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* The wallpaper, fading into the page */
+.backdrop { position: absolute; inset: 0 0 auto 0; height: min(980px, 115vh); z-index: -1; overflow: hidden; }
+.backdrop::before { content: ""; position: absolute; inset: -40px; background: url("wallpaper.webp") center 30% / cover no-repeat;
+                    transform: scale(1.05); animation: drift 40s ease-in-out infinite alternate; }
+.backdrop::after { content: ""; position: absolute; inset: 0; background: var(--hero-fade); }
+@keyframes drift { to { transform: scale(1.12) translate(-1.5%, 1%); } }
+
+/* Top bar */
+.nav { position: sticky; top: 0; z-index: 20; padding-top: max(10px, env(safe-area-inset-top, 0px)); }
+.nav::before { content: ""; position: absolute; inset: 0 -16px -12px; z-index: -1; pointer-events: none;
+               background: linear-gradient(180deg, var(--base) 35%, transparent); opacity: 0; transition: opacity .3s; }
+.nav.scrolled::before { opacity: 1; }
+.nav-in { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 16px; border-radius: 16px; }
+.brand { font: 600 15px var(--mono); color: var(--text); text-decoration: none; white-space: nowrap; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--grad); box-shadow: 0 0 12px var(--mauve); flex: none; }
+.brand span { color: var(--mauve); }
+.nav-links { display: flex; gap: 2px; margin-left: auto; }
+.nav-links a { color: var(--sub); text-decoration: none; font-size: 14px; font-weight: 500; padding: 6px 12px; border-radius: 10px; transition: background .2s, color .2s; }
+.nav-links a:hover { color: var(--text); background: var(--glass-hi); }
+.nav-links a.on { color: var(--text); background: var(--tile-hover); }
+.icon-btn { display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--glass-line);
+            background: var(--glass-hi); color: var(--text); cursor: pointer; transition: transform .2s, background .2s; flex: none; padding: 0; }
+.icon-btn:hover { background: var(--tile-hover); transform: translateY(-1px); }
+.icon-btn svg { width: 18px; height: 18px; }
+.brand em { font-style: normal; }
+/* Phones: just Build and Docs, and the brand without the owner, so it all fits */
+@media (max-width: 760px) { .nav-links a:not(.keep) { display: none; } .nav-links a { padding: 6px 9px; } .brand em { display: none; } .nav-in { gap: 6px; } }
+
+/* Section headings */
+.head { margin: 24px 0 22px; }
+.head h2 { font: 800 clamp(28px, 3.6vw, 40px)/1.1 var(--sans); letter-spacing: -0.03em; margin: 4px 0 0; }
+.head p { margin: 8px 0 0; color: var(--sub); }
+.kicker { font: 600 12px var(--mono); color: var(--mauve); text-transform: uppercase; letter-spacing: .14em; }
+
+/* Fields and small buttons */
+input.text { width: 100%; font: inherit; font-size: 15px; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--glass-line);
+             background: var(--tile); color: var(--text); transition: border-color .2s, box-shadow .2s, background .2s; }
+input.text::placeholder { color: var(--overlay); }
+input.text:focus { outline: none; border-color: var(--mauve); box-shadow: 0 0 0 4px color-mix(in srgb, var(--mauve) 20%, transparent); background: var(--tile-hover); }
+input.text[aria-invalid="true"] { border-color: var(--red); }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.field label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.err { color: var(--red); font-size: 13px; margin-top: 4px; }
+.err:empty { display: none; }
+button { font: inherit; }
+button.small { font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 9px; cursor: pointer; border: 1px solid var(--glass-line); background: var(--glass-hi); color: var(--sub); transition: background .2s, color .2s; }
+button.small:hover { background: var(--tile-hover); color: var(--text); }
+button.link { border: 0; background: none; color: var(--faint); padding: 4px 8px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 8px; }
+button.link:hover { color: var(--text); background: var(--glass-hi); }
+
+/* Toast */
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); translate: -50% 20px; z-index: 40; opacity: 0; pointer-events: none;
+         display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-radius: 14px; font-weight: 600; font-size: 14px; transition: opacity .3s, translate .3s; max-width: calc(100vw - 32px); }
+.toast.on { opacity: 1; translate: -50% 0; }
+.toast svg { width: 18px; height: 18px; color: var(--green); flex: none; }
+
+/* Rise into view while scrolling, in browsers with scroll-driven animations; elsewhere
+   everything is simply there. Nothing waits on a script, so nothing can stay hidden. */
+@supports (animation-timeline: view()) {
+  .reveal { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 35%; }
+}
+@keyframes rise { from { opacity: 0; transform: translateY(28px) scale(.985); } }
+
+footer { color: var(--faint); font-size: 13px; padding: 28px 0 calc(40px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--glass-line); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+footer a { color: var(--sub); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

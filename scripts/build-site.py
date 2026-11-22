@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Write the dotfiles website's data from the repo itself, so the site can't drift from it:
   site/options.json  what the picker offers, from the repo's own lists (what the scripts install)
-  site/docs.json     the Docs section, from README.md, docs/*.md and the dot command's own help
+  site/docs/docs.json  the docs site (site/docs/), from README.md, docs/*.md and the dot command's own help
 Run by the GitHub Pages workflow (and by hand to preview:
-python3 scripts/build-site.py && python3 -m http.server -d site).
+python3 scripts/build-site.py && python3 -m http.server -d site, then localhost:8000 and
+localhost:8000/docs/).
 """
 import html
 import json
@@ -104,7 +105,7 @@ def latest_release():
 
 
 # --- The docs ----------------------------------------------------------------------------
-# The Docs section's pages, in order: (id, tab label, title, source). The source is a file
+# The docs site's pages, in order: (id, tab label, title, source). The source is a file
 # in docs/, the README's sections from one heading up to (not including) another, or the
 # dot command's own table and help.
 DOC_PAGES = [
@@ -136,7 +137,7 @@ class Page:
         self.ids, self.toc, self.links = set(), [], []
 
     def heading_id(self, text):
-        base = f"doc-{self.id}-{slug(text)}"
+        base = f"{self.id}-{slug(text)}"
         hid, n = base, 0
         while hid in self.ids:
             n += 1
@@ -145,10 +146,10 @@ class Page:
         return hid
 
     def href(self, url, pages):
-        """A link as the site needs it: a page's heading becomes #doc-<page>-<heading>, any
-        other file in the repo a link to it on GitHub."""
+        """A link as the docs site needs it: a page's heading becomes #<page>-<heading>, the
+        website its installer page, any other file in the repo a link to it on GitHub."""
         if url.rstrip("/") == SITE_URL:
-            return "#build"
+            return "../"
         if re.match(r"[a-z]+:", url):
             return url
         path, _, anchor = url.partition("#")
@@ -159,7 +160,7 @@ class Page:
             target = posixpath.normpath(posixpath.join(base, path))
         page = pages.get(target)
         if page and (target != "README.md" or not anchor or anchor in page["readme_slugs"]):
-            hid = f"doc-{page['id']}-{anchor}" if anchor else f"doc-{page['id']}"
+            hid = f"{page['id']}-{anchor}" if anchor else page["id"]
             self.links.append((url, hid))
             return "#" + hid
         kind = "tree" if path.endswith("/") or (ROOT / target).is_dir() else "blob"
@@ -375,7 +376,7 @@ def dot_markdown():
 
 
 def build_docs():
-    """The Docs section's pages. Stops if a link points at a heading that doesn't exist."""
+    """The docs site's pages. Stops if a link points at a heading that doesn't exist."""
     pages, sources = [], {}
     for pid, tab, title, source in DOC_PAGES:
         key = source[0] if isinstance(source, tuple) else source
@@ -389,7 +390,7 @@ def build_docs():
         out.append({"id": pid, "tab": tab, "title": title, "toc": page.toc, "html": body,
                     "source": f"{REPO}/blob/main/{key}"})
         links += [(pid, url, hid) for url, hid in page.links]
-        ids |= page.ids | {f"doc-{pid}"}
+        ids |= page.ids | {pid}
     broken = [f"  {pid}: {url}" for pid, url, hid in links if hid not in ids]
     if broken:
         sys.exit("build-site.py: these doc links point at a heading that doesn't exist:\n" + "\n".join(broken))
@@ -412,11 +413,12 @@ def main():
     site = ROOT / "site"
     site.mkdir(exist_ok=True)
     (site / "options.json").write_text(json.dumps(data, indent=1) + "\n")
-    (site / "docs.json").write_text(json.dumps({"pages": docs}, indent=1, ensure_ascii=False) + "\n")
+    (site / "docs").mkdir(exist_ok=True)
+    (site / "docs" / "docs.json").write_text(json.dumps({"pages": docs}, indent=1, ensure_ascii=False) + "\n")
     print(f"wrote site/options.json: {len(data['groups'])} groups, {len(data['apps'])} apps, "
           f"{len(data['ubuntu'])} Ubuntu apps, {len(data['flatpaks'])} Flatpaks, "
           f"latest release {data['release'] or '(none)'}")
-    print(f"wrote site/docs.json: {len(docs)} pages ({', '.join(p['tab'] for p in docs)})")
+    print(f"wrote site/docs/docs.json: {len(docs)} pages ({', '.join(p['tab'] for p in docs)})")
 
 
 if __name__ == "__main__":

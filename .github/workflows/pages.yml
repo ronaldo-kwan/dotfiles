@@ -1,7 +1,8 @@
 # Publishes the installer website (site/) to GitHub Pages:
 #   https://ronaldo-kwan.github.io/dotfiles/
 # site/options.json is generated from the repo's own lists, so the site always offers
-# exactly what the scripts install; site/docs.json from README.md, docs/ and dot's own help.
+# exactly what the scripts install. The docs site (site/docs/, published at .../dotfiles/docs/)
+# gets site/docs/docs.json from README.md, docs/ and dot's own help.
 name: website
 
 on:

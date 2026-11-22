@@ -11,7 +11,7 @@ Terminal, desktop look, apps and upkeep, all in Catppuccin Mocha with Roboto fon
 [![Ubuntu 26.04](https://img.shields.io/badge/Ubuntu-26.04-E95420?logo=ubuntu&logoColor=white)](https://ubuntu.com/download/desktop)
 [![MIT licence](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
 
-[**Pick your setup on the website**](https://ronaldo-kwan.github.io/dotfiles/) · [Quick start](#quick-start) · [Everyday use](#everyday-use) · [Docs](#documentation)
+[**Pick your setup on the website**](https://ronaldo-kwan.github.io/dotfiles/) · [**Read the docs**](https://ronaldo-kwan.github.io/dotfiles/docs/) · [Quick start](#quick-start) · [Everyday use](#everyday-use) · [Docs](#documentation)
 
 <br>
 
@@ -104,6 +104,8 @@ Notes aren't part of it: `install.sh` looks for a private repo of yours called `
 Changed your mind? `dot uninstall` puts your own config files back and returns the desktop to Ubuntu's look; `dot uninstall --apps` removes the apps too. See [Undoing it](docs/new-computer.md#undoing-it).
 
 ## Documentation
+
+The same pages, with search, are also on the [docs website](https://ronaldo-kwan.github.io/dotfiles/docs/).
 
 | Page | What it covers |
 |---|---|
