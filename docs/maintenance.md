@@ -182,7 +182,7 @@ Then restart. If an extension is still off, switch it on in the Extensions app.
 - `shellcheck` on all scripts, the system check (both copies must agree), and [`scripts/test-helpers.sh`](../scripts/test-helpers.sh): quick checks of the shared helpers in `lib.sh` and of the app table in `install-apps.sh` (run it yourself with `bash scripts/test-helpers.sh`)
 - dry runs of `fresh-install.sh` (every step of setting up a new computer, including `install.sh` and `install-apps.sh`), `post-upgrade.sh` on test files, `install.sh` (which also checks the pinned downloads) and `uninstall.sh --apps`; none may change anything
 - `install.sh` (twice), a dry run of `install-apps.sh`, `post-upgrade.sh` on test files, and `uninstall.sh --apps` (no links, test apps or jobs may be left)
-- the secret check, the website build and a schema check of `setup/autoinstall.yaml`
+- the secret check and the website build
 - the desktop settings, for real in a container without a screen ([`scripts/test-desktop.sh`](../scripts/test-desktop.sh)): `install.sh` must load every saved setting, the dock and the wallpaper, and `uninstall.sh` must put them all back to Ubuntu's defaults
 - the website's choices: `install.sh` with only some parts chosen must link only those, and `dot check` must show the rest as "not chosen"
 

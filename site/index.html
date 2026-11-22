@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Dotfiles installer</title>
-<meta name="description" content="Pick what you want from ronaldo-kwan's Ubuntu dotfiles and get a one-line installer or an automated-install file.">
+<meta name="description" content="Pick what you want from ronaldo-kwan's Ubuntu dotfiles and get a one-line installer.">
 <style>
   /* Layout: a configurator. Choices on the left in collapsible sections; the installer in a
      sticky panel on the right, drawn as the terminal it will be pasted into. One column on
@@ -108,7 +108,6 @@
   input.text[aria-invalid="true"] { border-color: var(--bad); }
   .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
   .field label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 4px; }
-  .field .help { font-size: 13px; color: var(--muted); margin-top: 3px; }
   .err { color: var(--bad); font-size: 13px; margin-top: 3px; min-height: 0; }
   .err:empty { display: none; }
 
@@ -129,9 +128,6 @@
   .panel h2 { font-size: 20px; margin: 0; }
   .sum { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 14px; color: var(--muted); }
   .sum strong { color: var(--fg); font-variant-numeric: tabular-nums; }
-  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--bg); border-radius: 10px; border: 1px solid var(--line); }
-  .tabs button { border: 0; background: none; padding: 8px; font-weight: 600; color: var(--muted); }
-  .tabs button[aria-selected="true"] { background: var(--raised); color: var(--fg); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
   .steps { margin: 0; padding-left: 20px; font-size: 14px; color: var(--muted); display: grid; gap: 4px; }
   .steps strong { color: var(--fg); }
   .term { border-radius: 10px; overflow: hidden; background: var(--term-bg); }
@@ -144,9 +140,6 @@
   .actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .status { font-size: 13px; color: var(--ok); }
   .status.bad { color: var(--bad); }
-  details.preview summary { cursor: pointer; font-size: 14px; color: var(--muted); }
-  details.preview pre { max-height: 320px; overflow: auto; margin: 8px 0 0; padding: 12px; border-radius: 8px;
-                        background: var(--term-bg); color: var(--term-fg); font: 12px/1.5 var(--mono); }
   .note { font-size: 13px; color: var(--muted); margin: 0; }
 
   /* Phone: a bar that jumps to the installer */
@@ -170,7 +163,7 @@
 
   <section class="intro">
     <h1>Set up a fresh Ubuntu your way</h1>
-    <p>Pick what you want from these dotfiles, then paste one command into a new Ubuntu, or let the Ubuntu installer do it for you.
+    <p>Pick what you want from these dotfiles, then paste one command into a new Ubuntu.
        Everything here happens in your browser.</p>
     <ul class="facts"><li>Ubuntu 26.04</li><li>GNOME</li><li>Catppuccin Mocha</li><li>MIT licence</li></ul>
   </section>
@@ -224,38 +217,14 @@
     <aside class="panel" id="installer" aria-labelledby="installer-h">
       <h2 id="installer-h">Your installer</h2>
       <div class="sum"><span id="count" aria-live="polite"></span><button class="link" id="reset" type="button">Reset</button></div>
-
-      <div class="tabs" role="tablist" aria-label="How to install">
-        <button role="tab" id="tab-cmd" aria-controls="pane-cmd" aria-selected="true" type="button">One command</button>
-        <button role="tab" id="tab-auto" aria-controls="pane-auto" aria-selected="false" tabindex="-1" type="button">Automated install</button>
-      </div>
-
-      <section id="pane-cmd" role="tabpanel" aria-labelledby="tab-cmd">
-        <ol class="steps">
-          <li>Install <strong>Ubuntu 26.04</strong>, ticking third-party drivers.</li>
-          <li>Open a terminal (<kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>T</kbd>), paste this and press <strong>Enter</strong>.</li>
-          <li>Type your password once (and your name for git, if not filled in here). It runs by itself and restarts when done.</li>
-        </ol>
-        <div class="term" style="margin-top:12px"><div class="term-bar"><i></i><i></i><i></i><span>Terminal</span></div><pre id="cmd"></pre></div>
-        <div class="actions" style="margin-top:12px"><button class="primary" id="copy-cmd" type="button">Copy command</button><span class="status" id="cmd-status" role="status"></span></div>
-      </section>
-
-      <section id="pane-auto" role="tabpanel" aria-labelledby="tab-auto" hidden>
-        <ol class="steps">
-          <li><strong>Download</strong> your file and put it online, e.g. as a secret gist at <a href="https://gist.github.com">gist.github.com</a>; copy its <strong>Raw</strong> address.</li>
-          <li>Boot the Ubuntu USB stick, choose the <strong>automated installation</strong> and paste the address.</li>
-          <li>Pick the disk and type your name and password. Setup starts at your first login.</li>
-        </ol>
-        <div class="fields" style="margin-top:12px">
-          <div class="field"><label for="locale">Language</label><input class="text" id="locale" value="en_US.UTF-8" spellcheck="false"><div class="err" id="locale-err"></div></div>
-          <div class="field"><label for="keyboard">Keyboard</label><input class="text" id="keyboard" value="us" spellcheck="false"><div class="err" id="keyboard-err"></div></div>
-          <div class="field" style="grid-column:1/-1"><label for="timezone">Timezone</label><input class="text" id="timezone" spellcheck="false"><div class="help">Filled in from this browser.</div><div class="err" id="timezone-err"></div></div>
-        </div>
-        <div class="actions" style="margin-top:12px"><button class="primary" id="dl-yaml" type="button">Download autoinstall.yaml</button><span class="status" id="yaml-status" role="status"></span></div>
-        <details class="preview" style="margin-top:10px"><summary>Preview the file</summary><pre id="yaml"></pre></details>
-      </section>
-
-      <p class="note">No passwords go into either. Nothing you pick or type leaves your browser.</p>
+      <ol class="steps" style="margin-top:12px">
+        <li>Install <strong>Ubuntu 26.04</strong>, ticking third-party drivers.</li>
+        <li>Open a terminal (<kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>T</kbd>), paste this and press <strong>Enter</strong>.</li>
+        <li>Type your password once (and your name for git, if not filled in here). It runs by itself and restarts when done.</li>
+      </ol>
+      <div class="term" style="margin-top:12px"><div class="term-bar"><i></i><i></i><i></i><span>Terminal</span></div><pre id="cmd"></pre></div>
+      <div class="actions" style="margin-top:12px"><button class="primary" id="copy-cmd" type="button">Copy command</button><span class="status" id="cmd-status" role="status"></span></div>
+      <p class="note">No password goes into it. Nothing you pick or type leaves your browser.</p>
     </aside>
   </div>
 

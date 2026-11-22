@@ -1,17 +1,16 @@
 // The dotfiles installer page: builds the option lists from options.json (generated from
-// the repo by scripts/build-site.py), and turns the picks into a one-line command and an
-// autoinstall.yaml. Runs entirely in the browser.
+// the repo by scripts/build-site.py), and turns the picks into a one-line command. Runs
+// entirely in the browser.
 "use strict";
 
 const $ = (id) => document.getElementById(id);
 const STORE = "dotfiles-site-v1";
 const LISTS = ["groups", "apps", "ubuntu", "flatpaks"];
-const FIELDS = ["gitname", "gitemail", "locale", "keyboard", "timezone"];
+const FIELDS = ["gitname", "gitemail"];
 let data;
 
 // Shell single-quoting: 'it'\''s'
 const sq = (s) => "'" + String(s).replace(/'/g, "'\\''") + "'";
-const b64 = (s) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
 
 // Starting points. Each returns whether an item is on.
 const PRESETS = {
@@ -92,13 +91,9 @@ function build(saved) {
     if (saved[id] !== undefined) $(id).value = saved[id];
     $(id).addEventListener("input", update);
   }
-  if (!$("timezone").value) {
-    $("timezone").value = Intl.DateTimeFormat().resolvedOptions().timeZone || "Etc/UTC";
-  }
   if (saved.gitname || saved.gitemail) $("sec-you").open = true;
 
   $("filter").addEventListener("input", filter);
-  setupTabs(saved.tab === "auto" ? "auto" : "cmd");
 }
 
 // Show only the apps whose name or description matches; open the sections that have matches.
@@ -117,40 +112,11 @@ function filter() {
   }
 }
 
-// A two-tab switch with arrow-key support (WAI-ARIA tabs pattern).
-function setupTabs(start) {
-  const tabs = [$("tab-cmd"), $("tab-auto")];
-  const select = (tab, focus) => {
-    for (const t of tabs) {
-      const on = t === tab;
-      t.setAttribute("aria-selected", String(on));
-      t.tabIndex = on ? 0 : -1;
-      $(t.getAttribute("aria-controls")).hidden = !on;
-    }
-    if (focus) tab.focus();
-  };
-  tabs.forEach((tab, n) => {
-    tab.addEventListener("click", () => { select(tab, false); update(); });
-    tab.addEventListener("keydown", (e) => {
-      const step = { ArrowRight: 1, ArrowLeft: -1, Home: -n, End: tabs.length - 1 - n }[e.key];
-      if (step === undefined) return;
-      e.preventDefault();
-      select(tabs[(n + step + tabs.length) % tabs.length], true);
-      update();
-    });
-  });
-  select(start === "auto" ? tabs[1] : tabs[0], false);
-}
-
-// Check the typed fields. Returns which outputs can be made: the command needs only the
-// name and email; the file also needs language, keyboard and timezone.
+// Check the typed fields. Returns whether the command can be made (the name and email are fine).
 function validate() {
   const rules = {
     gitname: [(v) => !/[\n\r]/.test(v), "One line, please."],
     gitemail: [(v) => v === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), "That doesn't look like an email address."],
-    locale: [(v) => /^[A-Za-z]{2,3}(_[A-Z]{2})?(\.UTF-8)?$/.test(v), "Like en_US.UTF-8 or de_DE.UTF-8."],
-    keyboard: [(v) => /^[a-z]{2,8}$/.test(v), "A layout code, like us, gb or de."],
-    timezone: [(v) => /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+){0,2}$/.test(v), "Like Europe/Berlin or America/New_York."],
   };
   const good = {};
   for (const [id, [test, msg]] of Object.entries(rules)) {
@@ -164,8 +130,7 @@ function validate() {
     good[missing] = false;
     $(missing + "-err").textContent = "Fill in both, or leave both empty.";
   }
-  const cmd = good.gitname && good.gitemail;
-  return { cmd, yaml: cmd && good.locale && good.keyboard && good.timezone };
+  return { cmd: good.gitname && good.gitemail };
 }
 
 function picks() {
@@ -191,51 +156,6 @@ function command(vars) {
   return `${prefix}bash <(wget -qO- ${data.raw}/bootstrap.sh) --yes`;
 }
 
-// The picks in words, for comments in autoinstall.yaml (lines of up to ~84 characters).
-function describe(vars) {
-  const names = new Map(allItems().map((i) => [i.token, i.name]));
-  const v = Object.fromEntries(vars);
-  const wrap = (head, items) => {
-    const lines = [];
-    let line = head;
-    for (const [n, item] of items.entries()) {
-      const piece = item + (n < items.length - 1 ? ", " : ".");
-      if ((line + piece).length > 84) { lines.push(line.trimEnd()); line = "  "; }
-      line += piece;
-    }
-    return [...lines, line];
-  };
-  const out = [];
-  if (v.DOTFILES_SKIP) out.push(...wrap("Your choices: everything except ", v.DOTFILES_SKIP.split(" ").map((t) => names.get(t) || t)));
-  if (v.DOTFILES_CHOICES) out.push(...wrap("Your choices: only ", v.DOTFILES_CHOICES.split(" ").map((t) => names.get(t) || t)));
-  if (v.DOTFILES_GIT_NAME) out.push(`Git commits by: ${v.DOTFILES_GIT_NAME} <${v.DOTFILES_GIT_EMAIL}>`);
-  return out;
-}
-
-function autoinstall(vars) {
-  let y = data.autoinstall
-    .replace(/^(\s*locale:).*$/m, `$1 ${$("locale").value.trim()}`)
-    .replace(/^(\s*layout:).*$/m, `$1 ${$("keyboard").value.trim()}`)
-    .replace(/^(\s*timezone:).*$/m, `$1 ${$("timezone").value.trim()}`)
-    .replace(/^#cloud-config\n# Automated install[^]*?give it this file's address:\n#.*\n/,
-      `#cloud-config\n# Made on the dotfiles website on ${new Date().toISOString().slice(0, 10)}. Put it online (for example\n` +
-      "# a secret gist), choose the automated installation in the Ubuntu installer, and give it\n# the file's Raw address.\n");
-  // Codecs during the install only if ubuntu-restricted-extras is ticked.
-  const codecs = document.querySelector('input[value="pkg:ubuntu-restricted-extras"]');
-  if (codecs && !codecs.checked) {
-    y = y.replace(/^(\s*codecs:\n\s*install:) true.*$/m, "$1 false   # media codecs (unticked on the website)");
-  }
-  if (vars.length) {
-    // What you picked, for the first-login setup (read from /etc/dotfiles-choices). It's
-    // encoded so names with quotes can't break the YAML; the comments say it in words.
-    const file = vars.map(([k, v]) => `${k}=${sq(v)}`).join("\n") + "\n";
-    y = y.trimEnd() + "\n" + describe(vars).map((l) => `    # ${l}\n`).join("") +
-      "    # (The line below holds exactly this, encoded; it's removed once the setup starts.)\n" +
-      `    - curtin in-target -- sh -c 'echo ${b64(file)} | base64 -d > /etc/dotfiles-choices'\n`;
-  }
-  return y;
-}
-
 // Which preset the current picks match, if any.
 function matchingPreset(on) {
   const set = new Set(on);
@@ -251,11 +171,9 @@ function update() {
   const vars = settings(on, all.length, off);
 
   $("cmd").textContent = ok.cmd ? command(vars) : "Fix your name and email for git first (on the left).";
-  $("yaml").textContent = ok.yaml ? autoinstall(vars) : "";
   $("copy-cmd").disabled = !ok.cmd;
-  $("dl-yaml").disabled = !ok.yaml;
   if (!ok.cmd) $("sec-you").open = true;
-  $("cmd-status").textContent = $("yaml-status").textContent = "";
+  $("cmd-status").textContent = "";
   $("cmd-status").classList.remove("bad");
 
   // Counts: the panel, the phone bar and each section's badge.
@@ -273,7 +191,7 @@ function update() {
   const preset = matchingPreset(on);
   document.querySelectorAll('input[name="preset"]').forEach((r) => { r.checked = r.value === preset; });
 
-  const state = { picked: on, tab: $("tab-auto").getAttribute("aria-selected") === "true" ? "auto" : "cmd" };
+  const state = { picked: on };
   for (const id of FIELDS) state[id] = $(id).value;
   save(state);
 }
@@ -291,23 +209,12 @@ async function copy() {
   }
 }
 
-function download() {
-  const blob = new Blob([$("yaml").textContent], { type: "text/yaml" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "autoinstall.yaml";
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  $("yaml-status").textContent = "Saved to your downloads as autoinstall.yaml.";
-}
-
 fetch("options.json")
   .then((r) => r.json())
   .then((json) => {
     data = json;
     build(load());
     $("copy-cmd").addEventListener("click", copy);
-    $("dl-yaml").addEventListener("click", download);
     $("reset").addEventListener("click", () => { save({}); location.reload(); });
     // Phones: hide the "Get your installer" bar while the installer is on screen.
     if ("IntersectionObserver" in window) {

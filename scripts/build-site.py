@@ -86,7 +86,6 @@ def flatpaks():
 
 
 def main():
-    autoinstall = (SETUP / "autoinstall.yaml").read_text()
     data = {
         "repo": "https://github.com/ronaldo-kwan/dotfiles",
         "raw": "https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main",
@@ -94,7 +93,6 @@ def main():
         "apps": outside_apps(),
         "ubuntu": ubuntu_apps(),
         "flatpaks": flatpaks(),
-        "autoinstall": autoinstall,
     }
     out = ROOT / "site" / "options.json"
     out.parent.mkdir(exist_ok=True)

@@ -24,7 +24,7 @@ dotfiles/
 ├── licenses/                         licences of the Catppuccin themes and the wallpaper
 ├── setup/                            snapshots: apps, extensions, desktop settings
 ├── scripts/                          snapshot, SSH, website and test helpers
-├── system/                           weekly and monthly jobs, the first-login step
+├── system/                           weekly and monthly jobs
 ├── site/                             the installer website
 ├── docs/                             these pages (images/: the README screenshot)
 ├── .githooks/                        the secret check
@@ -107,16 +107,14 @@ Written by `dot save` and restored by `install.sh`, except `apt-packages.txt`, w
 | `apps/` | Display settings (`monitors.xml`: scale and resolution, without the screen's serial number; put back only on a computer with the same screen), apps that start at login (only Flatpak apps from `flatpaks.txt`, since only those are put back), default apps (Chrome as browser, Showtime for video, Calendar), qBittorrent settings and theme, Obsidian vault settings, theme and the list of community plugins (not the notes or the plugins themselves). Cookies and window sizes are left out, and home-folder paths are stored as `@HOME@` |
 | `wallpaper/` | The wallpaper (`tropic_island_night.jpg` from [catppuccin-wallpapers](https://github.com/zhichaoh/catppuccin-wallpapers); its MIT licence is in `licenses/wallpaper.txt`); `install.sh` copies it to `~/Pictures/Wallpapers/current`. `login-blurred.jpg` is a blurred, darkened copy for the login screen (`install-apps.sh`) |
 | `keys/chatgpt.asc` | OpenAI's public signing key for the ChatGPT app's update source (OpenAI doesn't publish it at an address of its own); `install-apps.sh` checks its fingerprint |
-| `autoinstall.yaml` | Answers for the Ubuntu installer's [automated install](new-computer.md#option-2-automated-install) (no passwords in it) |
 
 ## Automation and the website
 
 | File | What it is |
 |---|---|
 | `system/etc/` | The weekly update and monthly clean-up jobs; `@USER@` is replaced by your username when installed |
-| `system/first-login/` | The one-time first-login step an automated install adds: opens a terminal running `bootstrap.sh` |
 | `.githooks/pre-commit` | The [secret check](maintenance.md#secret-check-before-commits) |
 | `.github/workflows/check.yml` | The [GitHub checks](maintenance.md#github-checks) |
 | `.github/workflows/pages.yml` | Builds and publishes the website |
-| `site/` | The [website](https://ronaldo-kwan.github.io/dotfiles/): pick options, get a command or `autoinstall.yaml`. `options.json` is generated |
+| `site/` | The [website](https://ronaldo-kwan.github.io/dotfiles/): pick options, get your own command. `options.json` is generated |
 | `scripts/build-site.py` | Writes `site/options.json` from `install-apps.sh` and the lists in `setup/`, so the site matches the scripts |

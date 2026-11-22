@@ -57,9 +57,6 @@ echo "First: git, gum (menus) and gh (GitHub, used later). Asks for your passwor
 # lists still work for these, and fresh-install.sh fixes the clock and updates fully.
 sudo apt-get update -qq || echo "  (couldn't refresh the package lists; carrying on)"
 sudo apt-get install -y -qq git gum gh
-# After an automated install (setup/autoinstall.yaml), this ran from a one-time step at
-# the first login. It's started now, so remove that step.
-sudo rm -f /etc/xdg/autostart/dotfiles-setup.desktop /usr/local/bin/dotfiles-first-login /etc/dotfiles-choices
 
 # Remember what was picked on the website, so later runs (dot install, dot check) follow it.
 if [[ -n "${DOTFILES_CHOICES:-}${DOTFILES_SKIP:-}" ]]; then

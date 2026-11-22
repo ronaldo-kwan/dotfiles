@@ -8,8 +8,7 @@ From a blank laptop to the full setup: prepare the laptop, install Ubuntu, run o
 
 - [First: check the dotfiles still work](#first-check-the-dotfiles-still-work)
 - [Before installing Ubuntu](#before-installing-ubuntu)
-- [Option 1: one command](#option-1-one-command)
-- [Option 2: automated install](#option-2-automated-install)
+- [One command](#one-command)
 - [After the restart](#after-the-restart)
 - [One password at start-up](#one-password-at-start-up)
 - [Using the RTX 5060](#using-the-rtx-5060)
@@ -43,7 +42,7 @@ These steps are for my Lenovo Legion 5 with an RTX 5060; most apply to any lapto
 > [!IMPORTANT]
 > Save the disk passphrase and the installer's recovery key in your password manager. Without them the disk can't be read, and only Backups can bring your files back.
 
-## Option 1: one command
+## One command
 
 After Ubuntu is installed, open a terminal (<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>) and run:
 
@@ -99,22 +98,6 @@ git clone https://github.com/ronaldo-kwan/dotfiles ~/dotfiles
 
 > [!TIP]
 > If a step fails, the rest still run. Fix the cause and run it again; finished parts are skipped.
-
-## Option 2: automated install
-
-Instead of installing Ubuntu and then running the command, the Ubuntu installer can do most of it from [`setup/autoinstall.yaml`](../setup/autoinstall.yaml):
-
-1. Boot the Ubuntu USB stick. In the installer, choose the **automated installation** and paste:
-
-   ```text
-   https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/setup/autoinstall.yaml
-   ```
-
-2. The installer only asks for the **disk** (choose encryption here, see [step 4](#before-installing-ubuntu)) and your **name and password**. The file answers the rest: language, keyboard, timezone, third-party drivers, codecs and updates. git, gum and gh are installed with Ubuntu.
-3. Restart and log in. A terminal opens by itself and runs the [one command](#option-1-one-command) with `--yes`, so the only question is your name and email for git (not even that if the file holds them; a file from the website can). It runs once only.
-
-> [!NOTE]
-> The file is public and holds no password or other secret. It sets the language to `en_US.UTF-8`, the keyboard to `us` and the timezone to `Australia/Sydney`; [the website](https://ronaldo-kwan.github.io/dotfiles/) makes a copy with your own. The installer's menus for automated installs vary between Ubuntu releases; if yours doesn't offer it, use [option 1](#option-1-one-command).
 
 ## After the restart
 

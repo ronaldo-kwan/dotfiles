@@ -17,7 +17,7 @@ Terminal, desktop look, apps and upkeep, all in Catppuccin Mocha with Roboto fon
 
 <img src="docs/images/desktop.webp" alt="The finished desktop: Ghostty with fastfetch, the dotfiles folder and the Tokyo Night prompt, in Catppuccin colours over a Catppuccin island wallpaper" width="900">
 
-<sub>A fresh Ubuntu 26.04 right after the automated install.</sub>
+<sub>A fresh Ubuntu 26.04 right after setup.</sub>
 
 </div>
 
@@ -34,9 +34,7 @@ Terminal, desktop look, apps and upkeep, all in Catppuccin Mocha with Roboto fon
 ## Quick start
 
 > [!TIP]
-> Only want some of it? [The website](https://ronaldo-kwan.github.io/dotfiles/) lets you pick groups and single apps, then gives you your own command or `autoinstall.yaml`.
-
-### Option 1: one command after installing Ubuntu
+> Only want some of it? [The website](https://ronaldo-kwan.github.io/dotfiles/) lets you pick groups and single apps, then gives you your own command.
 
 1. Install Ubuntu 26.04. On a Lenovo Legion 5, read [Before installing Ubuntu](docs/new-computer.md#before-installing-ubuntu) first.
 2. Open a terminal (<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>) and run:
@@ -49,17 +47,7 @@ Terminal, desktop look, apps and upkeep, all in Catppuccin Mocha with Roboto fon
 
 It checks first that this is Ubuntu 26.04 with GNOME, and asks before going on if not. No GitHub account or sign-in is needed. Afterwards, `gh auth login` signs you in to GitHub for your notes, pushing and signed commits.
 
-### Option 2: automated install from the Ubuntu installer
-
-In the Ubuntu installer, choose the **automated installation** and give it this address:
-
-```text
-https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/setup/autoinstall.yaml
-```
-
-You only pick the disk and type your name and password. The setup starts by itself at your first login.
-
-Both options are explained step by step in [Setting up a new computer](docs/new-computer.md).
+Explained step by step in [Setting up a new computer](docs/new-computer.md).
 
 ## Everyday use
 
