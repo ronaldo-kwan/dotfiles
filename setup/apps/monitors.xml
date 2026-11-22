@@ -21,4 +21,44 @@
       </monitor>
     </logicalmonitor>
   </configuration>
+  <configuration>
+    <layoutmode>logical</layoutmode>
+    <logicalmonitor>
+      <x>1536</x>
+      <y>0</y>
+      <scale>1</scale>
+      <monitor>
+        <monitorspec>
+          <connector>HDMI-1</connector>
+          <vendor>MSI</vendor>
+          <product>MSI MP2412</product>
+          <serial>@SERIAL@</serial>
+        </monitorspec>
+        <mode>
+          <width>1920</width>
+          <height>1080</height>
+          <rate>60.000</rate>
+        </mode>
+      </monitor>
+    </logicalmonitor>
+    <logicalmonitor>
+      <x>0</x>
+      <y>0</y>
+      <scale>1.6666666269302368</scale>
+      <primary>yes</primary>
+      <monitor>
+        <monitorspec>
+          <connector>eDP-2</connector>
+          <vendor>EDO</vendor>
+          <product>LEN151WQXGA</product>
+          <serial>@SERIAL@</serial>
+        </monitorspec>
+        <mode>
+          <width>2560</width>
+          <height>1600</height>
+          <rate>165.000</rate>
+        </mode>
+      </monitor>
+    </logicalmonitor>
+  </configuration>
 </monitors>

@@ -73,8 +73,8 @@ git clone https://github.com/ronaldo-kwan/dotfiles ~/dotfiles
 | 1. Update the system | `apt full-upgrade` |
 | 2. Update firmware | BIOS, SSD and devices with `fwupdmgr`, only if the charger is plugged in |
 | 3. Terminal tools | Starship, eza, bat, fzf, zoxide, ble.sh, Ghostty, btop, lazygit and more; adds Flathub |
-| 4. `install.sh` | Configs, fonts, Flatpak apps, GNOME extensions, desktop and app settings, the secret check, the weekly reminder |
-| 5. `install-apps.sh` | Chrome, VS Code, Claude Desktop, Claude Code, Proton VPN, OBS, ONLYOFFICE, Steam, Ubuntu apps, the NVIDIA driver, weekly updates, monthly clean-up ([details](apps.md)) |
+| 4. `install.sh` | Configs, fonts, Flatpak apps, GNOME extensions (including the frosted glass), desktop and app settings (on the same laptop, its display scale too), the lock screen, the secret check, the weekly reminder |
+| 5. `install-apps.sh` | Chrome, VS Code, Claude Desktop, Claude Code, ChatGPT, Proton VPN, OBS, ONLYOFFICE, Steam, Ubuntu apps, the NVIDIA driver, weekly updates, monthly clean-up, the login screen's look, the firewall, and no Snap Firefox ([details](apps.md)) |
 | 6. `install.sh` again | VS Code's extensions and Obsidian, now that those apps exist |
 
 ### What you see
@@ -182,6 +182,7 @@ Apps stay unless you ask, because the uninstall can't tell which ones you had be
 | Ubuntu apps from `setup/apt-packages.txt`, terminal tools | Removes them, except ones Ubuntu's own desktop includes (like Backups) and general tools (git, curl, gum, gh) |
 | Flatpak apps from `setup/flatpaks.txt` | Removes each, then runtimes nothing uses |
 | Weekly updates and monthly clean-up, the firewall | Deletes the jobs; switches the firewall off |
+| The login screen's look | Removes its settings, background and profile, so the login screen is Ubuntu's again |
 | Ubuntu's Snap Firefox | Puts it back |
 
 Apps' own settings and data (your Steam games, browser profiles) stay in your home folder, so reinstalling one brings it back as it was. The NVIDIA driver always stays: removing it can leave you without a screen. To see everything it would do without changing anything: `DRY_RUN=1 dot uninstall --apps --yes`. `~/dotfiles` itself stays; delete it with `rm -rf ~/dotfiles`.
@@ -256,6 +257,10 @@ W="file://$HOME/Pictures/Wallpapers/current/catppuccin-tropic-island-night.jpg"
 gsettings set org.gnome.desktop.background picture-uri "$W"
 gsettings set org.gnome.desktop.background picture-uri-dark "$W"
 ```
+
+### Login screen
+
+The login screen's look is system-wide and needs sudo, so it's simplest with `dot apps`: choose **Let me choose** and tick only **the login screen**. What it does is described in [Apps](apps.md#what-else-it-sets-up).
 
 ### Secret check and weekly reminder
 
