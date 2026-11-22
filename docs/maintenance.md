@@ -9,7 +9,7 @@ Day-to-day use after the setup: saving changes, checking the computer, and what 
 - Everyday: [Saving changes](#saving-changes) · [More than one computer](#more-than-one-computer) · [The `dot` menu](#the-dot-menu) · [Health check](#health-check)
 - Runs by itself: [Weekly reminder](#weekly-reminder) · [Weekly updates and monthly clean-up](#weekly-updates-and-monthly-clean-up) · [Secret check before commits](#secret-check-before-commits)
 - Once in a while: [Signed commits](#signed-commits) · [After upgrading Ubuntu](#after-upgrading-ubuntu)
-- The repo: [GitHub checks](#github-checks) · [The website and choices](#the-website-and-choices)
+- The repo: [GitHub checks](#github-checks) · [The website and choices](#the-website-and-choices) · [The README screenshot](#the-readme-screenshot)
 
 ## Saving changes
 
@@ -178,6 +178,7 @@ Then restart. If an extension is still off, switch it on in the Extensions app.
 
 [`.github/workflows/check.yml`](../.github/workflows/check.yml) runs on every push, and every Monday, so a maker changing a download link or signing key shows up as a failed run (GitHub emails you) rather than on the day you set up a new computer. In a clean Ubuntu 26.04 container it runs:
 
+- [`actionlint`](https://github.com/rhysd/actionlint) on the workflow files themselves (mistyped keys, wrong job names in `needs:`, bad `${{ }}` expressions), so a broken workflow fails here instead of on the day it's needed; one fixed version, checked against its checksum like the fonts below (`ACTIONLINT_VERSION` and `ACTIONLINT_SHA256` in `check.yml`)
 - `shellcheck` on all scripts, the system check (both copies must agree), and [`scripts/test-helpers.sh`](../scripts/test-helpers.sh): quick checks of the shared helpers in `lib.sh` and of the app table in `install-apps.sh` (run it yourself with `bash scripts/test-helpers.sh`)
 - dry runs of `fresh-install.sh` (every step of setting up a new computer, including `install.sh` and `install-apps.sh`), `post-upgrade.sh` on test files, `install.sh` (which also checks the pinned downloads) and `uninstall.sh --apps`; none may change anything
 - `install.sh` (twice), a dry run of `install-apps.sh`, `post-upgrade.sh` on test files, and `uninstall.sh --apps` (no links, test apps or jobs may be left)
@@ -204,7 +205,7 @@ curl -fsSL -o /tmp/f "<new address>" && sha256sum /tmp/f
 
 Nerd Fonts publishes its checksums with each release (`SHA-256.txt`), so you can compare. Then run `DRY_RUN=1 dot install --yes`: it downloads and checks the files without installing them. After the change, `dot check` shows ✘ on each computer until `dot install` has put the new version there.
 
-[Dependabot](../.github/dependabot.yml) opens a pull request once a month when the actions the workflows use have new versions. The workflows name each action by its commit ID, with the version as a comment (`actions/checkout@fbc6f39… # v5.1.0`), since a tag like `v5` can be moved to other code; Dependabot updates both. The checks run on its pull request; merge it on GitHub if they pass.
+[Dependabot](../.github/dependabot.yml) opens a pull request once a month when the actions the workflows use have new versions. The workflows name each action by its commit ID, with the version as a comment (`actions/checkout@fbc6f39… # v5.1.0`), since a tag like `v5` can be moved to other code; Dependabot updates both. The checks run on its pull request, and when it updates the Pages actions the `website` workflow builds the site too (without publishing it); merge it on GitHub if they pass.
 
 The result shows on the repo's [Actions](https://github.com/ronaldo-kwan/dotfiles/actions) tab. To run shellcheck locally:
 
@@ -225,7 +226,35 @@ The website ([ronaldo-kwan.github.io/dotfiles](https://ronaldo-kwan.github.io/do
 
 `bootstrap.sh` saves the choices in `~/.config/dotfiles/choices` (`-name` lines are skipped items), and every script follows them from then on, including `dot check`, which shows unchosen parts as "not chosen". Delete that file to go back to everything.
 
-The site's app lists come from the repo: `scripts/build-site.py` reads `install-apps.sh` and `setup/`, and the `website` workflow ([`.github/workflows/pages.yml`](../.github/workflows/pages.yml)) rebuilds and publishes it on every push that touches them.
+The site's app lists come from the repo: `scripts/build-site.py` reads `install-apps.sh` and `setup/`, and the `website` workflow ([`.github/workflows/pages.yml`](../.github/workflows/pages.yml)) rebuilds and publishes it on every push to `main` that touches them. On a pull request it only builds the site, so a mistake shows up before merging and nothing is published.
+
+If a deploy fails, use **Re-run failed jobs** on the run: the build and the deploy are separate jobs, so only the deploy runs again, with the site the build already uploaded. Don't use **Re-run all jobs**: the build would upload the site a second time, and the deploy stops when it finds two. If the build itself failed, start a new run instead (**Run workflow** on the `website` workflow, or `gh workflow run pages.yml`).
 
 > [!NOTE]
 > A new app in `install-apps.sh` (an `APPS` entry whose choice starts with `app:`) needs a description in `APP_DESCRIPTIONS` in `scripts/build-site.py`. The build stops with a message if it's missing.
+
+## The README screenshot
+
+[`docs/images/desktop.webp`](images/desktop.webp) is taken from the `ubuntu-dotfiles-test` virtual machine in GNOME Boxes, so it shows a fresh install rather than this computer.
+
+1. Start `ubuntu-dotfiles-test` in Boxes, log in, open Ghostty in `~/dotfiles` and run `fastfetch && ls`. Close anything else.
+2. With the Boxes window still open, capture the machine's screen (Boxes comes with `virsh`):
+
+   ```bash
+   flatpak run --filesystem=/tmp --command=virsh org.gnome.Boxes -c qemu:///session screenshot ubuntu-dotfiles-test --file /tmp/vm.png
+   ```
+
+3. Swap red and blue, and save it at 1920 pixels wide:
+
+   ```bash
+   python3 -c "
+   from PIL import Image
+   im = Image.open('/tmp/vm.png').convert('RGB'); r, g, b = im.split()
+   im = Image.merge('RGB', (b, g, r))
+   im.resize((1920, round(1920 * im.height / im.width)), Image.LANCZOS).save('docs/images/desktop.webp', quality=85, method=6)"
+   ```
+
+> [!IMPORTANT]
+> Don't skip the swap. The screenshot comes out with red and blue the wrong way round: the night sky shows orange. Afterwards the terminal's background should be close to Catppuccin Mocha's `#1e1e2e`.
+
+If the picture shows something new, update the `alt` text and caption under it in `README.md`.

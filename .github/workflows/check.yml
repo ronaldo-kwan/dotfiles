@@ -21,6 +21,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Workflow files (actionlint)
+        # One fixed version, used only if its checksum matches (from the release's checksums.txt).
+        # -shellcheck= : the scripts get their own shellcheck step below.
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          f="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -fsSLo "/tmp/$f" "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/$f"
+          echo "$ACTIONLINT_SHA256  /tmp/$f" | sha256sum -c -
+          tar -xzf "/tmp/$f" -C /tmp actionlint
+          /tmp/actionlint -color -shellcheck=
       - name: Syntax check (bash -n)
         run: |
           for f in *.sh dot scripts/*.sh .githooks/pre-commit bash/.bashrc; do bash -n "$f"; done
