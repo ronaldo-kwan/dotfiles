@@ -157,6 +157,7 @@ t "its profile is Ubuntu's plus system-db:gdm (where Ubuntu's exists)" profile_o
 t "its background is in the repo" test -f "$SETUP/wallpaper/login-blurred.jpg"
 
 # Functions from scripts that run as soon as they start: load just the function.
+# shellcheck source=/dev/null  # (a function cut from the script; shellcheck checks the script itself)
 load_fn() { source <(sed -n "/^$2() {/,/^}/p" "$ROOT/$1"); }
 
 echo "Secret check (.githooks/pre-commit)"
@@ -270,9 +271,9 @@ fix_fails() {
     fix_step "A fix" "Fix it?" half; [[ "${FAILED[*]}" == "A fix" ]]' _ "$ROOT" | not grep -q KEPT-GOING
 }
 t "dot check --fix stops a fix at its first error and marks it failed" fix_fails
-mkdir -p "$T/src"; printf 'Types: deb\nEnabled: no\n' > "$T/src/app.sources"; chmod a-w "$T/src"
-src_rc=0; (cd "$ROOT" && SOURCES_DIR="$T/src" SUDO= ./post-upgrade.sh --sources-only >/dev/null 2>&1) || src_rc=$?
-chmod u+w "$T/src"
+# SUDO=false: the edit of the source file fails (for any user, root too).
+mkdir -p "$T/src"; printf 'Types: deb\nEnabled: no\n' > "$T/src/app.sources"
+src_rc=0; (cd "$ROOT" && SOURCES_DIR="$T/src" SUDO=false ./post-upgrade.sh --sources-only >/dev/null 2>&1) || src_rc=$?
 t "post-upgrade.sh --sources-only fails when it can't switch a source on" same "$src_rc" 1
 sed -n '/^# Remember what was picked/,/^fi$/p' "$ROOT/bootstrap.sh" > "$T/choices.sh"
 mkdir -p "$HOME/.config/dotfiles"; echo terminal > "$HOME/.config/dotfiles/choices"

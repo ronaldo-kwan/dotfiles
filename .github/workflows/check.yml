@@ -152,15 +152,19 @@ jobs:
           grep -q 'would run: rm' dry.txt
           test "$before" = "$(find "$HOME" -type l | sort)"
           test "$(git config core.hooksPath)" = "$PWD/.githooks"
-      - name: uninstall.sh --apps removes every link, the apps and the jobs
+      - name: uninstall.sh --apps removes every link, what the dotfiles added and the jobs
         run: |
-          # Two terminal tools and a weekly job to remove (sudo: the scripts use it)
+          # Two terminal tools and a weekly job (sudo: the scripts use it). bat counts as added
+          # by the dotfiles (as fresh-install.sh records it); fzf as one you had before.
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sudo bat fzf >/dev/null
           mkdir -p /etc/cron.weekly && printf '#!/bin/sh\n' > /etc/cron.weekly/system-update
+          added="$HOME/.local/state/dotfiles/added"
+          test -f "$added" && ! grep -qx legacy "$added"   # install.sh started a fresh record
+          echo pkg:bat >> "$added"
           ./uninstall.sh --apps --yes
-          for p in bat fzf; do
-            if dpkg -s "$p" >/dev/null 2>&1; then echo "still installed: $p"; exit 1; fi
-          done
+          if dpkg -s bat >/dev/null 2>&1; then echo "still installed: bat (the dotfiles added it)"; exit 1; fi
+          dpkg -s fzf >/dev/null 2>&1 || { echo "fzf was removed, but the dotfiles didn't add it"; exit 1; }
+          if grep -qx pkg:bat "$added"; then echo "the record wasn't emptied after --apps"; exit 1; fi
           test ! -e /etc/cron.weekly/system-update
           left="$(find "$HOME" -type l | while read -r l; do [[ "$(readlink -f "$l")" == "$PWD"/* ]] && echo "$l"; done)"
           test -z "$left" || { echo "still linked: $left"; exit 1; }
