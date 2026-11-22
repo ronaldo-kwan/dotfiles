@@ -134,11 +134,24 @@ dot() {
   if [ "${1:-}" = cd ]; then cd "${DOTFILES:-$__dotfiles_dir}" || return
   else "${DOTFILES:-$__dotfiles_dir}/dot" "$@"; fi
 }
-# Tab completes the commands in dot's own list (dot help), read when you press Tab.
+# Tab completes dot's commands (read from its COMMANDS table when you press Tab), the
+# command after `dot help`, and each command's options.
 _dot() {
-  [ "$COMP_CWORD" = 1 ] || return 0
-  local cmds; cmds="$(sed -n 's/^dot \([a-z]\{1,\}\).*|.*/\1/p' "${DOTFILES:-$__dotfiles_dir}/dot")"
-  mapfile -t COMPREPLY < <(compgen -W "$cmds" -- "${COMP_WORDS[1]}")
+  local cur="${COMP_WORDS[COMP_CWORD]}" words="" cmds
+  cmds="$(sed -n 's/^  "\([a-z]\{1,\}\)|.*/\1/p' "${DOTFILES:-$__dotfiles_dir}/dot")"
+  if [ "$COMP_CWORD" = 1 ]; then words="$cmds"
+  else
+    case "${COMP_WORDS[1]}" in
+      help)         [ "$COMP_CWORD" = 2 ] && words="$cmds" ;;
+      push)         words="--dry-run --yes --help" ;;
+      pull)         words="--yes --help" ;;
+      check)        words="--fix --help" ;;
+      install|apps) words="--yes --help" ;;
+      uninstall)    words="--apps --help" ;;
+      *)            words="--help" ;;
+    esac
+  fi
+  mapfile -t COMPREPLY < <(compgen -W "$words" -- "$cur")
 }
 complete -F _dot dot
 

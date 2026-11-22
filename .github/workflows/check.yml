@@ -134,9 +134,11 @@ jobs:
           test "$(git config core.hooksPath)" = "$PWD/.githooks"
       - name: dot command works
         run: |
-          ./dot help
-          ./dot help | grep -q 'dot push'
-          ! ./dot status   # gone: an unknown command fails
+          ./dot help > help.txt && cat help.txt   # (not piped into grep -q: dot would get SIGPIPE)
+          grep -q 'push \[message\]' help.txt
+          ./dot                                   # no terminal: the status lines and the list
+          ./dot install --help                    # explains it; doesn't start install.sh
+          if ./dot frobnicate; then exit 1; else test $? = 2; fi
       - name: install-apps.sh dry run (checks every download source, installs nothing)
         run: DRY_RUN=1 ./install-apps.sh
       - name: post-upgrade.sh on a copy of apt sources made to look upgraded

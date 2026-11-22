@@ -313,6 +313,34 @@ t "dotfiles elsewhere: the reminder's drop-in runs them there" \
 reminder_in "$HOME/dotfiles"
 t "back in ~/dotfiles: the drop-in is removed" not test -e "$REMINDER_DROPIN"
 
+echo "The dot command"
+mkdir -p "$T/dotcopy"; cp "$ROOT/dot" "$ROOT/lib.sh" "$T/dotcopy/"
+for s in install.sh install-apps.sh fresh-install.sh post-upgrade.sh uninstall.sh check.sh; do
+  printf '#!/bin/sh\ntouch "%s/ran"\n' "$T/dotcopy" > "$T/dotcopy/$s"; chmod +x "$T/dotcopy/$s"
+done
+dot_rc() { local rc=0; "$T/dotcopy/dot" "$@" >/dev/null 2>&1 || rc=$?; echo "$rc"; }
+for c in install apps fresh upgrade uninstall check; do
+  t "dot $c --help explains it without starting the script" \
+    same "$(dot_rc "$c" --yes --help)|$(test -e "$T/dotcopy/ran" && echo ran)" "0|"
+done
+t "dot help lists every command" same "$("$T/dotcopy/dot" help | grep -cE '^  (push|pull|check|edit|cd|install|apps|ssh|upgrade|fresh|uninstall|help)\b')" 12
+t "an unknown command exits 2" same "$(dot_rc frobnicate)" 2
+t "an unknown option exits 2" same "$(dot_rc push --frobnicate)" 2
+t "an old name says what replaced it" grep -q "dot push" < <("$T/dotcopy/dot" notes 2>&1)
+t "help for a command that doesn't exist exits 2" same "$(dot_rc help frobnicate)" 2
+source <(sed -n '/^# --- The commands/,/^# --- Run/p' "$ROOT/dot")   # dot's functions, without running it
+t "a typo gets the closest command" same "$(suggest psuh)|$(suggest chek)|$(suggest instal)" "dot push|dot check|dot install"
+t "a start that fits several lists them" same "$(suggest pu)" "dot push or dot pull"
+t "nothing close: no suggestion" same "$(suggest zzzzz)" ""
+t "distance counts edits" same "$(distance kitten sitting)|$(distance push push)" "3|0"
+t "auto message: one area" same "$(printf 'setup/gnome-desktop.dconf\nsetup/desktop-settings.dconf\n' | auto_message)" "Update desktop settings"
+t "auto message: two areas" same "$(printf 'bash/.bashrc\nsetup/flatpaks.txt\n' | auto_message)" "Update bash config and Flatpak apps"
+t "auto message: many areas" same "$(printf 'bash/.bashrc\nsetup/flatpaks.txt\nsetup/dock-favorites.txt\nREADME.md\n' | auto_message)" "Update bash config, Flatpak apps and 2 more"
+t "auto message: nothing" same "$(auto_message </dev/null)" "Update settings"
+t "the menu lists only commands with a label" same "$(menu_items setup | cut -d'|' -f2 | tr '\n' ' ')" "install apps ssh upgrade "
+t ".bashrc's completion finds every command" same \
+  "$(sed -n 's/^  "\([a-z]\{1,\}\)|.*/\1/p' "$ROOT/dot" | tr '\n' ' ')" "$(names | tr '\n' ' ')"
+
 echo "Setting up from a release"
 # A stand-in GitHub repo with a release tag, and bootstrap.sh's part that downloads it.
 git init -q -b main "$T/origin" && git -C "$T/origin" -c user.name=t -c user.email=t@e commit -q --allow-empty -m one
@@ -324,8 +352,8 @@ get v0.1.0
 t "DOTFILES_REF sets up from that release, on main" same "$(on)" "main|one"
 get v0.1.0
 t "... again on a computer that already has it" same "$(on)" "main|one"
-load_fn dot push_repo
-pushed() { push_repo "$T/clone" "message" >/dev/null; }
+source <(sed -n '/^# --- The commands/,/^# --- Run/p' "$ROOT/dot")   # dot's functions, without running it
+pushed() { repo_ready "$T/clone" 2>/dev/null; }
 t "dot push waits for dot pull while GitHub has newer commits" not pushed
 get
 t "without DOTFILES_REF: main, up to date" same "$(on)" "main|two"

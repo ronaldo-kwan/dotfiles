@@ -405,7 +405,7 @@ has_fix nvidiakernel && warn "NVIDIA: $(fix_hint nvidiakernel)"
 # Save last, after anything above that changed files. dot push refreshes the snapshots
 # and saves your notes too.
 if has_fix save || [[ -n "$(repo_state "$DOTFILES")" ]] || [[ -d "$VAULT/.git" && -n "$(repo_state "$VAULT")" ]]; then
-  fix_step "Save to GitHub" "Refresh the snapshots and save to GitHub (dot push)?" "$DOTFILES/dot" push
+  fix_step "Save to GitHub" "Refresh the snapshots and save to GitHub (dot push)?" "$DOTFILES/dot" push --yes
 fi
 summary
 printf '\n  %sCheck again: dot check%s\n' "$C_DIM" "$C_N"

@@ -16,12 +16,15 @@ Day-to-day use after the setup: saving changes, checking the computer, and what 
 Edit files at their usual place (for example `~/.bashrc`) or in `~/dotfiles`; both are the same file. Then save the change to GitHub:
 
 ```bash
-dot push "Describe the change"
+dot push                       # the message says what changed: "Update desktop settings and bash config"
+dot push "Describe the change" # or your own
+dot push --dry-run             # only show what would be saved (-n)
+dot push --yes                 # don't ask (-y)
 ```
 
-It refreshes the snapshots, commits everything (`git add -A`) and pushes, and does the same for your Obsidian notes (message "Update notes"). It lists the files before committing, and the [secret check](#secret-check-before-commits) runs first. If GitHub has commits this computer doesn't, it stops and asks you to `dot pull` first.
+It refreshes the snapshots, lists what will be saved in `~/dotfiles` and your Obsidian notes (message "Update notes"), and asks first. With gum you can also change the message there. Then it commits everything (`git add -A`) and pushes; the [secret check](#secret-check-before-commits) runs before each commit. If GitHub has commits this computer doesn't, it stops before changing anything and asks you to `dot pull` first.
 
-**The snapshots.** The files in `setup/` are snapshots of extensions, apps, shortcuts, the dock and desktop settings like the theme, so they don't update themselves: `dot push` refreshes them with `scripts/snapshot.sh` first. To see what changed without committing anything, run `dot save`.
+**The snapshots.** The files in `setup/` are snapshots of extensions, apps, shortcuts, the dock and desktop settings like the theme, so they don't update themselves: `dot push` refreshes them with `scripts/snapshot.sh` first. To see what changed without committing anything, run `dot push --dry-run`.
 
 - `setup/apt-packages.txt` is the exception: edit it by hand when you install or remove an Ubuntu app you want on every computer.
 - Things GNOME remembers by itself (window sizes, last-used folders, timestamps) are left out of the snapshots on purpose.
@@ -46,7 +49,9 @@ If both computers have new commits, `dot pull` stops and tells you what to run (
 
 ## The `dot` menu
 
-`dot` on its own opens a menu: arrow keys to move, <kbd>Enter</kbd> to run, <kbd>q</kbd> or <kbd>Esc</kbd> to quit. Its status line shows unsaved changes in `~/dotfiles` and your notes, and when you last pushed. After each action, any key goes back to the menu. Without `gum`, `dot` prints the list of commands instead.
+`dot` on its own opens a menu: arrow keys to move, <kbd>Enter</kbd> to run, <kbd>Esc</kbd> to quit. It checks GitHub first (5 seconds at most), then shows for `~/dotfiles` and your notes whether anything is unsaved, not pushed or new on GitHub, and when you last pushed. The cursor starts on what needs doing: **Get changes** if GitHub has new commits, **Save to GitHub** if something is unsaved, otherwise **Health check**. The setup scripts are under **Set up and repair**. After each action it says whether it worked; <kbd>Enter</kbd> goes back to the menu, <kbd>q</kbd> quits. Without `gum`, `dot` prints the same status lines and the list of commands.
+
+Every command explains itself: `dot help <command>` or `dot <command> --help` (which never starts the script). A mistyped command gets a suggestion (`dot psuh` → *Did you mean: dot push?*), and old names say what replaced them (`dot notes` → `dot push`; `dot save` still works, as `dot push --dry-run`). `dot` exits with 0 when it worked, 1 when something failed and 2 when the command line was wrong.
 
 The scripts use gum too: Yes/No buttons, the start question, the app checklist, and a live list of steps pinned at the top of the terminal. Without gum, in a short window, or when the output goes to a file or GitHub's checks, they fall back to plain text. To force the plain look:
 

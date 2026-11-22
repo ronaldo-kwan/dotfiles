@@ -76,7 +76,7 @@ These folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). E
 | `dot` | The `dot` command (`save`, `push`, `pull`, `check`, ...): a menu on its own, or `dot help`. `.bashrc` adds `dot cd` and <kbd>Tab</kbd> completion |
 | `check.sh` | The health check (`dot check`); `--notify` is the weekly reminder |
 | `scripts/ssh-setup.sh` | `dot ssh`: SSH key, signed commits, adding the key to GitHub |
-| `scripts/snapshot.sh` | Writes the snapshots in `setup/` (used by `dot push` and `dot save`, and by `check.sh` into a temporary copy) |
+| `scripts/snapshot.sh` | Writes the snapshots in `setup/` (used by `dot push`, and by `check.sh` into a temporary copy) |
 | `scripts/dump-desktop-settings.sh` | Writes `setup/desktop-settings.dconf` |
 | `scripts/save-app-settings.sh` | Writes `setup/apps/` |
 | `scripts/test-helpers.sh` | Quick checks of the helpers in `lib.sh` and the app table in `install-apps.sh`; GitHub's checks run it |
@@ -90,7 +90,7 @@ These folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). E
 
 ## Snapshots (`setup/`)
 
-Written by `dot push` (or `dot save`) and restored by `install.sh`, except `apt-packages.txt`, which you edit by hand and `install-apps.sh` installs.
+Written by `dot push` and restored by `install.sh`, except `apt-packages.txt`, which you edit by hand and `install-apps.sh` installs.
 
 | File | What it is |
 |---|---|

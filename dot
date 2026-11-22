@@ -1,179 +1,466 @@
 #!/usr/bin/env bash
-# dot: one command for everything in ~/dotfiles. `dot` alone opens a menu (with gum);
-# `dot help` lists the commands.
-# (`dot cd` is handled by the dot() function in .bashrc, since a script can't
-# change your terminal's folder.)
+# dot: one command for everything in ~/dotfiles.
+#   dot                 the menu (with gum); otherwise what needs doing, and the commands
+#   dot <command>       run one (dot help lists them)
+#   dot help <command>  what one does, with examples (or: dot <command> --help)
+# (`dot cd` is handled by the dot() function in .bashrc, since a script can't change your
+# terminal's folder.)
+#
+# Exit codes: 0 done, 1 something failed, 2 the command line was wrong.
 
 set -uo pipefail
 # shellcheck source=lib.sh
-source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib.sh"   # repo_state, ask, VAULT, DOTFILES
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib.sh"   # repo_state, repo_behind, ask, VAULT, DOTFILES
 # The scripts dot starts take its place: give them the full look (title box, summary)
 # and their own log, as if you'd run them directly.
 export UI_DEPTH="$UI_NESTED"
 unset UI_LOG
 
+# --- The commands -----------------------------------------------------------------------
+# One table for the help, the menu and tab completion (.bashrc reads the names from the
+# lines below, so keep each entry on its own line):
+#   name|arguments|group|label in the menu (none: not in the menu)|what it does
+COMMANDS=(
+  "push|[message]|daily|Save to GitHub|Save this computer's settings and your notes to GitHub"
+  "pull||daily|Get changes|Get what you saved on another computer, and apply it here"
+  "check||daily|Health check|Check this computer against ~/dotfiles, and offer to fix problems"
+  "edit||daily|Open in VS Code|Open ~/dotfiles in VS Code"
+  "cd||daily||Go to ~/dotfiles in this terminal"
+  "install||setup|Configs and desktop|Config links, fonts, Flatpaks, extensions, desktop settings"
+  "apps||setup|Apps and firewall|Apps, NVIDIA driver, weekly updates, firewall"
+  "ssh||setup|SSH and signing|SSH key for this computer, and signed (Verified) commits"
+  "upgrade||setup|After an Ubuntu upgrade|Put things back after upgrading Ubuntu to a new release"
+  "fresh||setup||Set up a freshly installed Ubuntu from scratch"
+  "uninstall|[--apps]|setup||Undo the dotfiles (--apps: remove the apps too)"
+  "help|[command]|other||List the commands, or explain one"
+)
+declare -A GROUP_TITLES=([daily]="Everyday" [setup]="Set up and repair" [other]="More")
+# Old names: what to type now.
+declare -A MOVED=([notes]="dot push" [status]="dot")
+
+# field <name> <n>: field n (1-5) of a command's entry; fails for an unknown command.
+field() {
+  local e f
+  for e in "${COMMANDS[@]}"; do
+    [[ "${e%%|*}" == "$1" ]] || continue
+    IFS='|' read -ra f <<<"$e|"; printf '%s' "${f[$(($2 - 1))]}"; return 0
+  done
+  return 1
+}
+names() { local e; for e in "${COMMANDS[@]}"; do printf '%s\n' "${e%%|*}"; done; }
+
+# --- Messages ----------------------------------------------------------------------------
+ok()   { printf '%s✔%s %s\n' "$C_OK" "$C_N" "$*"; }
+err()  { printf '%s✘%s %s\n' "$C_ERR" "$C_N" "$*" >&2; }
+hint() { printf '  %s%s%s\n' "$C_DIM" "$*" "$C_N" >&2; }
+# usage_error "message" [command]: a wrong command line; exits 2.
+usage_error() {
+  err "$1"
+  hint "See: dot help${2:+ $2}"
+  exit 2
+}
+repo_name() { [[ "$1" == "$VAULT" ]] && echo notes || echo "${1/#$HOME/\~}"; }
+
+# --- Help --------------------------------------------------------------------------------
 usage() {
-  printf '\n%sdot%s: your dotfiles in one command\n\n' "$C_ACC$C_B" "$C_N"
-  while IFS='|' read -r cmd what; do
-    if [[ -z "$cmd" ]]; then printf '\n'; continue; fi
-    printf '  %s%-23s%s %s\n' "$C_B" "$cmd" "$C_N" "$what"
-  done <<'EOF'
-dot|Menu: pick any of these with the arrow keys (needs gum)
-dot push [message]|Save to GitHub: refresh the snapshots, commit, push (and your notes)
-dot pull|Get changes saved from another computer, then apply them
-dot check|Health check, then offers to fix each problem (asks first)
-dot save|Only refresh the snapshots in setup/ and show what changed
-|
-dot install|Configs, fonts, Flatpak apps, extensions, settings (install.sh)
-dot apps|Apps, NVIDIA driver, weekly updates, firewall (install-apps.sh)
-dot fresh|Set up a freshly installed Ubuntu (fresh-install.sh)
-dot upgrade|After upgrading Ubuntu to a new release (post-upgrade.sh)
-dot ssh|SSH key for this computer, and signed (Verified) commits
-dot uninstall [--apps]|Undo the dotfiles: links, desktop look (--apps: the apps too)
-|
-dot cd|Go to ~/dotfiles
-dot edit|Open ~/dotfiles in VS Code
-dot help|This list
-EOF
-  printf '\n  %sOptions go to the script: dot apps --yes, dot install --yes%s\n\n' "$C_DIM" "$C_N"
+  local g e name args label what
+  printf '\n%sdot%s: your dotfiles in one command\n' "$C_ACC$C_B" "$C_N"
+  for g in daily setup other; do
+    printf '\n%s%s%s\n' "$C_B" "${GROUP_TITLES[$g]}" "$C_N"
+    for e in "${COMMANDS[@]}"; do
+      IFS='|' read -r name args group label what <<<"$e"
+      [[ "$group" == "$g" ]] || continue
+      printf '  %s%-20s%s %s\n' "$C_ACC" "$name${args:+ $args}" "$C_N" "$what"
+    done
+  done
+  printf '\n%sdot alone opens a menu. dot help <command> explains one, with examples.%s\n\n' "$C_DIM" "$C_N"
 }
 
-# push_repo <folder> <default message> [message...]: commit everything and push.
-push_repo() {
-  local dir="$1" default="$2" name="${1/#$HOME/\~}"; shift 2
-  local msg="${*:-$default}" behind
-  # Not on a branch (set up from a release by an older bootstrap.sh), or GitHub has commits
-  # this computer doesn't: a push would be refused, so get them first.
-  behind="$(git -C "$dir" rev-list --count 'HEAD..@{u}' 2>/dev/null || echo 0)"
-  if ! git -C "$dir" symbolic-ref -q HEAD >/dev/null || (( behind > 0 )); then
-    printf '%s✘%s %s has newer commits on GitHub. Get them first: dot pull, then dot push\n' "$C_ERR" "$C_N" "$name"
-    return 1
-  fi
-  case "$(repo_state "$dir")" in
-    "")       printf '%s✔%s nothing to save in %s\n' "$C_OK" "$C_N" "$name"; return ;;
-    unpushed) git -C "$dir" push && printf '%s✔%s pushed %s\n' "$C_OK" "$C_N" "$name"; return ;;
+# details <name>: one command's help.
+details() {
+  local name="$1" args
+  args="$(field "$name" 2)"
+  printf '\n%sdot %s%s%s\n%s\n\n' "$C_ACC$C_B" "$name" "${args:+ $args}" "$C_N" "$(field "$name" 5)"
+  case "$name" in
+    push) cat <<'EOF'
+Refreshes the snapshots in setup/ (apps, extensions, dock, desktop settings), shows what
+will be saved, and asks before committing and pushing. Your Obsidian notes go too. The
+secret check runs before each commit. If GitHub has commits this computer doesn't, it
+stops and asks you to dot pull first.
+
+  dot push                 the message says what changed ("Update desktop settings")
+  dot push "Add Steam"     your own message (for ~/dotfiles; notes get "Update notes")
+  dot push --dry-run, -n   only show what would be saved
+  dot push --yes, -y       don't ask
+EOF
+    ;;
+    pull) cat <<'EOF'
+Gets the commits saved from another computer, for ~/dotfiles and your notes, and lists
+them. It only fast-forwards: it never merges or overwrites anything. Then it offers to
+apply them (dot install), and dot apps if the app lists changed.
+
+  dot pull
+  dot pull --yes, -y       apply without asking
+EOF
+    ;;
+    check) cat <<'EOF'
+Checks links, tools, apps, extensions, firewall, signing, backups and unsaved changes.
+Each problem says what fixes it. If there are any, it offers to fix them one by one,
+asking before each. Nothing changes unless you say yes.
+
+  dot check
+  dot check --fix          go straight to the fixes
+EOF
+    ;;
+    edit) echo "Opens ~/dotfiles in VS Code (or \$VISUAL / \$EDITOR without it)." ;;
+    cd)   echo "Works from the dot() function in ~/.bashrc, since a script can't change your terminal's folder." ;;
+    install) cat <<'EOF'
+Runs install.sh: config links, fonts, Flatpak apps, GNOME extensions, desktop and app
+settings, the secret check and the weekly reminder. Safe to run again.
+
+  dot install
+  dot install --yes        yes to every question
+EOF
+    ;;
+    apps) cat <<'EOF'
+Runs install-apps.sh: apps from their makers' sources, the NVIDIA driver, weekly
+updates and the firewall. Safe to run again.
+
+  dot apps
+  dot apps --yes           yes to every question
+EOF
+    ;;
+    ssh) echo "Runs scripts/ssh-setup.sh: an SSH key for this computer on GitHub, and signed commits (one approval in the browser)." ;;
+    upgrade) echo "Runs post-upgrade.sh: after upgrading Ubuntu (26.04 -> 28.04), switches the apps' update sources back on and puts everything back." ;;
+    fresh) echo "Runs fresh-install.sh: sets up a freshly installed Ubuntu, from the clock to the apps. bootstrap.sh starts it on a new computer." ;;
+    uninstall) cat <<'EOF'
+Runs uninstall.sh: puts your own config files back and returns the desktop to Ubuntu's
+look. Asks first.
+
+  dot uninstall
+  dot uninstall --apps     the apps the dotfiles added too (you pick which)
+EOF
+    ;;
+    help) echo "  dot help push            what dot push does" ;;
   esac
-  git -C "$dir" status --short
-  git -C "$dir" add -A && git -C "$dir" commit -q -m "$msg" && git -C "$dir" push -q \
-    && printf '%s✔%s saved to GitHub: %s\n' "$C_OK" "$C_N" "$(git -C "$dir" log --format='%h %s' -1)"
+  echo
+}
+
+# suggest <word>: what it was probably meant to be: every command it starts ("dot push or
+# dot pull"), else the closest one with 2 typos at most.
+suggest() {
+  local w="$1" n best="" d bestd=3 starts=()
+  while read -r n; do
+    [[ "$n" == "$w"* ]] && starts+=("dot $n")
+    d="$(distance "$w" "$n")"
+    (( d < bestd )) && { bestd=$d; best=$n; }
+  done < <(names)
+  if (( ${#starts[@]} )); then
+    printf '%s' "${starts[0]}"; (( ${#starts[@]} > 1 )) && printf ' or %s' "${starts[@]:1}"; echo
+  elif [[ -n "$best" ]]; then echo "dot $best"; fi
+}
+# distance <a> <b>: how many letters to add, remove or change to turn a into b.
+distance() {
+  local a="$1" b="$2" i j cost
+  local -a prev cur
+  for ((j = 0; j <= ${#b}; j++)); do prev[j]=$j; done
+  for ((i = 1; i <= ${#a}; i++)); do
+    cur=("$i")
+    for ((j = 1; j <= ${#b}; j++)); do
+      [[ "${a:i-1:1}" == "${b:j-1:1}" ]] && cost=0 || cost=1
+      cur[j]=$(( prev[j] + 1 < cur[j-1] + 1 ? prev[j] + 1 : cur[j-1] + 1 ))
+      (( prev[j-1] + cost < cur[j] )) && cur[j]=$(( prev[j-1] + cost ))
+    done
+    prev=("${cur[@]}")
+  done
+  echo "${prev[${#b}]}"
+}
+
+# --- Where things stand --------------------------------------------------------------------
+# repo_line <folder>: one line on whether it's saved, from what this computer last heard
+# from GitHub (no network; the menu fetches first).
+repo_line() {
+  local d="$1" n ahead behind mark text last
+  n=$(git -C "$d" status --porcelain 2>/dev/null | wc -l)
+  behind=$(git -C "$d" rev-list --count 'HEAD..@{u}' 2>/dev/null || echo 0)
+  ahead=$(git -C "$d" rev-list --count '@{u}..HEAD' 2>/dev/null || echo 0)
+  last="$(git -C "$d" log -1 --format=%cr '@{u}' 2>/dev/null)"
+  mark="$C_OK✔$C_N" text="saved${last:+ · last push $last}"
+  if (( behind )); then mark="$C_WARN●$C_N" text="$behind new commit$( ((behind > 1)) && echo s) on GitHub → dot pull"
+  elif (( n )); then mark="$C_WARN●$C_N" text="$n unsaved change$( ((n > 1)) && echo s) → dot push"
+  elif (( ahead )); then mark="$C_WARN●$C_N" text="$ahead commit$( ((ahead > 1)) && echo s) not on GitHub yet → dot push"
+  fi
+  printf '%s %-11s %s\n' "$mark" "$(repo_name "$d")" "$text"
+}
+overview() {
+  repo_line "$DOTFILES"
+  [[ -d "$VAULT/.git" ]] && repo_line "$VAULT"
+  return 0
+}
+# next_step: the command that needs doing most (pull, push), or check when all is saved.
+next_step() {
+  local d
+  for d in "$DOTFILES" "$VAULT"; do
+    [[ -d "$d/.git" ]] || continue
+    (( $(git -C "$d" rev-list --count 'HEAD..@{u}' 2>/dev/null || echo 0) )) && { echo pull; return; }
+  done
+  for d in "$DOTFILES" "$VAULT"; do
+    [[ -d "$d/.git" && -n "$(repo_state "$d")" ]] && { echo push; return; }
+  done
+  echo check
+}
+
+# --- push ----------------------------------------------------------------------------------
+# repo_ready <folder>: can it be pushed? Not when it isn't on a branch (set up from a
+# release by an older bootstrap.sh) or GitHub has commits it doesn't (fetches first).
+repo_ready() {
+  local d="$1" name behind
+  name="$(repo_name "$d")"
+  if ! git -C "$d" symbolic-ref -q HEAD >/dev/null; then
+    err "$name isn't on a branch, so it can't take new commits"
+    hint "Get it back on main: dot pull, then dot push"; return 1
+  fi
+  behind="$(repo_behind "$d")"
+  if (( behind > 0 )); then
+    err "$name: GitHub has $behind commit$( ((behind > 1)) && echo s) this computer doesn't"
+    hint "Get them first: dot pull, then dot push"; return 1
+  fi
+}
+
+# changed_files <folder>: the files a commit would take, one per line.
+changed_files() {
+  { git -C "$1" -c core.quotePath=false diff --name-only HEAD 2>/dev/null
+    git -C "$1" -c core.quotePath=false ls-files --others --exclude-standard; } | sort -u
+}
+
+# auto_message: a commit message from the changed files on stdin ("Update desktop
+# settings and bash config").
+auto_message() {
+  local p a areas=() seen=$'\n'
+  while IFS= read -r p; do
+    case "$p" in
+      setup/vscode-extensions.txt) a="VS Code extensions" ;;
+      setup/gnome-extensions.txt|setup/gnome-extension-settings.dconf) a="GNOME extensions" ;;
+      setup/flatpaks.txt) a="Flatpak apps" ;;
+      setup/apt-packages.txt) a="app list" ;;
+      setup/dock-favorites.txt) a="dock" ;;
+      setup/apps/*) a="app settings" ;;
+      setup/*) a="desktop settings" ;;
+      docs/*|README.md) a="docs" ;;
+      .github/*) a="CI" ;;
+      *.sh|dot|scripts/*|.githooks/*) a="scripts" ;;
+      */*) a="${p%%/*} config" ;;
+      *) a="$p" ;;
+    esac
+    [[ "$seen" == *$'\n'"$a"$'\n'* ]] && continue
+    seen+="$a"$'\n'; areas+=("$a")
+  done
+  case "${#areas[@]}" in
+    0) echo "Update settings" ;;
+    1) echo "Update ${areas[0]}" ;;
+    2) echo "Update ${areas[0]} and ${areas[1]}" ;;
+    3) echo "Update ${areas[0]}, ${areas[1]} and ${areas[2]}" ;;
+    *) echo "Update ${areas[0]}, ${areas[1]} and $(( ${#areas[@]} - 2 )) more" ;;
+  esac
+}
+
+# preview <folder> <message>: what a save would commit.
+preview() {
+  local d="$1" files n
+  files="$(git -C "$d" -c color.status="$([[ -n "$C_N" ]] && echo always || echo never)" status --short)"
+  n=$(wc -l <<<"$files")
+  printf '\n%s%s%s  %s"%s"%s\n' "$C_B" "$(repo_name "$d")" "$C_N" "$C_DIM" "$2" "$C_N"
+  if [[ -z "$files" ]]; then
+    printf '  %s(commits not on GitHub yet)%s\n' "$C_DIM" "$C_N"
+    return
+  fi
+  head -n 12 <<<"$files" | sed 's/^/  /'
+  (( n > 12 )) && printf '  %s… and %s more%s\n' "$C_DIM" $((n - 12)) "$C_N"
+  return 0
+}
+
+# save_repo <folder> <message>: commit what's changed (if anything) and push.
+save_repo() {
+  local d="$1" name
+  name="$(repo_name "$d")"
+  if [[ -n "$(git -C "$d" status --porcelain)" ]]; then
+    git -C "$d" add -A && git -C "$d" commit -q -m "$2" || { err "$name: couldn't commit (see above)"; return 1; }
+  fi
+  git -C "$d" push -q || { err "$name: couldn't push (see above)"; return 1; }
+  ok "$name saved to GitHub: $(git -C "$d" log --format='%h %s' -1)"
 }
 
 # snapshot: refresh the snapshots in setup/ (scripts/snapshot.sh).
 snapshot() {
-  bash "$DOTFILES/scripts/snapshot.sh" && return
-  printf '%s!%s a snapshot couldn'"'"'t be refreshed (see above); it was left as it was\n' "$C_WARN" "$C_N"
+  if ui_gum; then gum spin --title "Refreshing the snapshots…" -- bash "$DOTFILES/scripts/snapshot.sh" && return
+  else bash "$DOTFILES/scripts/snapshot.sh" && return; fi
+  printf '%s!%s a snapshot couldn'"'"'t be refreshed; it was left as it was\n' "$C_WARN" "$C_N"
   return 1
 }
 
+cmd_push() {
+  local dry=0 words=() a d msg todo=() repos=("$DOTFILES") pick rc=0
+  for a in "$@"; do
+    case "$a" in
+      -n|--dry-run) dry=1 ;;
+      -y|--yes)     YES_ALL=1 ;;
+      -h|--help)    details push; return 0 ;;
+      -*)           usage_error "dot push: unknown option $a" push ;;
+      *)            words+=("$a") ;;
+    esac
+  done
+  [[ -d "$VAULT/.git" ]] && repos+=("$VAULT")
+  for d in "${repos[@]}"; do repo_ready "$d" || return 1; done
+  snapshot
+  for d in "${repos[@]}"; do [[ -n "$(repo_state "$d")" ]] && todo+=("$d"); done
+  if (( ${#todo[@]} == 0 )); then ok "Nothing to save: everything is on GitHub"; return 0; fi
+
+  msg="${words[*]:-$(changed_files "$DOTFILES" | auto_message)}"
+  for d in "${todo[@]}"; do
+    if [[ "$d" == "$VAULT" ]]; then preview "$d" "Update notes"; else preview "$d" "$msg"; fi
+  done
+  echo
+  if (( dry )); then hint "Dry run: nothing was committed. To save it: dot push"; return 0; fi
+
+  if [[ "$YES_ALL" != 1 ]] && ui_gum; then
+    while true; do
+      pick="$(gum choose --header "Save to GitHub?" "Save" "Change the message" "Cancel")" || pick=Cancel
+      case "$pick" in
+        Save) break ;;
+        Change*) msg="$(gum input --value "$msg" --width 72 --prompt "Message › ")" || continue
+                 [[ -n "$msg" ]] || msg="$(changed_files "$DOTFILES" | auto_message)" ;;
+        *) echo "Nothing was saved."; return 0 ;;
+      esac
+    done
+  elif ! ask "Save to GitHub?"; then
+    echo "Nothing was saved."; return 0
+  fi
+  for d in "${todo[@]}"; do
+    if [[ "$d" == "$VAULT" ]]; then save_repo "$d" "Update notes" || rc=1; else save_repo "$d" "$msg" || rc=1; fi
+  done
+  return "$rc"
+}
+
+# --- pull ----------------------------------------------------------------------------------
 # pull_repo <folder>: get the commits saved from another computer, without merging (only
 # fast-forwards). Returns 0 if something came down, 1 if there was nothing new, 2 if it
 # couldn't pull.
 pull_repo() {
-  local dir="$1" before after name="${1/#$HOME/\~}"
+  local dir="$1" before after name
+  name="$(repo_name "$dir")"
   before="$(git -C "$dir" rev-parse HEAD 2>/dev/null)" || return 2
   if ! git -C "$dir" -c advice.diverging=false pull --ff-only --quiet; then
-    printf '%s✘%s couldn'"'"'t pull %s (see above)\n' "$C_ERR" "$C_N" "$name"
-    printf '  %sIf this computer has its own new commits too: git -C %s pull --rebase, then dot push%s\n' "$C_DIM" "$name" "$C_N"
+    err "couldn't get the changes for $name (see above)"
+    hint "If this computer has its own new commits too: git -C ${dir/#$HOME/\~} pull --rebase, then dot push"
     return 2
   fi
   after="$(git -C "$dir" rev-parse HEAD)"
-  if [[ "$before" == "$after" ]]; then
-    printf '%s✔%s %s is up to date\n' "$C_OK" "$C_N" "$name"; return 1
-  fi
-  printf '%s✔%s %s: %s new commit(s)\n' "$C_OK" "$C_N" "$name" "$(git -C "$dir" rev-list --count "$before..$after")"
+  if [[ "$before" == "$after" ]]; then ok "$name is up to date"; return 1; fi
+  ok "$name: $(git -C "$dir" rev-list --count "$before..$after") new commit(s)"
   git -C "$dir" --no-pager log --format='    %h %s (%cr)' "$before..$after"
 }
 
-# --- The menu (dot alone, or dot menu) --------------------------------------------------
-status_line() {
-  local n last
-  n=$(git -C "$DOTFILES" status --porcelain 2>/dev/null | wc -l)
-  last="$(git -C "$DOTFILES" log -1 --format=%cr '@{u}' 2>/dev/null)"
-  if (( n )); then printf '● %s unsaved change%s in ~/dotfiles: Push to save' "$n" "$( ((n > 1)) && echo s)"
-  elif [[ -n "$(repo_state "$DOTFILES")" ]]; then printf '● commits not on GitHub yet: Push'
-  else printf '✔ dotfiles saved'; fi
-  [[ -n "$last" ]] && printf ' · last push %s' "$last"
-  if [[ -d "$VAULT/.git" ]]; then
-    if [[ -n "$(repo_state "$VAULT")" ]]; then printf '\n● notes not saved: Push'; else printf '\n✔ notes saved'; fi
+cmd_pull() {
+  local a start rc changed
+  for a in "$@"; do
+    case "$a" in
+      -y|--yes)  YES_ALL=1 ;;
+      -h|--help) details pull; return 0 ;;
+      *)         usage_error "dot pull: unknown option $a" pull ;;
+    esac
+  done
+  start="$(git -C "$DOTFILES" rev-parse HEAD)"
+  # Set up from a release by an older bootstrap.sh (not on a branch): back to main.
+  git -C "$DOTFILES" symbolic-ref -q HEAD >/dev/null || git -C "$DOTFILES" checkout --quiet main || return 1
+  pull_repo "$DOTFILES"; rc=$?
+  [[ -d "$VAULT/.git" ]] && pull_repo "$VAULT"
+  (( rc == 2 )) && return 1
+  [[ "$(git -C "$DOTFILES" rev-parse HEAD)" != "$start" ]] || return 0
+  # Config files are links, so they're live already; settings, extensions and new
+  # links need install.sh. New apps need install-apps.sh.
+  changed="$(git -C "$DOTFILES" diff --name-only "$start" HEAD)"
+  echo
+  if ask "Apply the changes to this computer now (dot install)?"; then
+    "$DOTFILES/install.sh" --yes || return 1
+  else
+    hint "Apply them later: dot install"
+  fi
+  if grep -qE '^(install-apps\.sh|setup/apt-packages\.txt)$' <<<"$changed"; then
+    if ask "The app list changed. Install the new apps too (dot apps)?"; then
+      "$DOTFILES/install-apps.sh" || return 1
+    else
+      hint "Install them later: dot apps"
+    fi
   fi
 }
-menu() {
-  local pick msg key items=(
-    "Save to GitHub         dot push|push"
-    "Get changes            dot pull|pull"
-    "Health check and fix   dot check|check"
-    "Apps and firewall      dot apps|apps"
-    "Configs and desktop    dot install|install"
-    "SSH and signing        dot ssh|ssh"
-    "After Ubuntu upgrade   dot upgrade|upgrade"
-    "Open in VS Code        dot edit|edit"
-    "Quit|quit")
-  while true; do
-    clear
-    printf '\n %s%sdotfiles%s\n\n' "$C_ACC" "$C_B" "$C_N"
-    pick="$(gum choose --label-delimiter='|' --header "$(status_line)" --height 11 "${items[@]}")" || break
-    echo
-    case "$pick" in
-      quit) break ;;
-      push)
-        msg="$(gum input --prompt "Commit message › " --placeholder "Update settings")" || continue
-        "$DOTFILES/dot" push ${msg:+"$msg"} ;;
-      edit) "$DOTFILES/dot" edit; continue ;;
-      *)    "$DOTFILES/dot" "$pick" ;;
-    esac
-    printf '\n %sPress any key for the menu, q to quit%s ' "$C_DIM" "$C_N"
-    read -rsn1 key; [[ "$key" == q ]] && break
+
+# --- The menu ------------------------------------------------------------------------------
+# menu_items <group>: "label   dot name|name" for gum, from the table.
+menu_items() {
+  local e name args group label what
+  for e in "${COMMANDS[@]}"; do
+    IFS='|' read -r name args group label what <<<"$e"
+    [[ "$group" == "$1" && -n "$label" ]] && printf '%-24s dot %s|%s\n' "$label" "$name" "$name"
   done
-  echo
+  return 0
 }
 
+# run_from_menu <name>: run one command, then say how it went.
+run_from_menu() {
+  local rc=0 key
+  echo
+  "$DOTFILES/dot" "$1" || rc=$?
+  echo
+  if (( rc == 0 )); then ok "Done"; else err "dot $1 didn't finish (exit code $rc)"; fi
+  printf '\n%sEnter: back to the menu · q: quit%s ' "$C_DIM" "$C_N"
+  read -rsn1 key
+  [[ "$key" != q ]]
+}
+
+menu() {
+  local pick daily setup default header
+  mapfile -t daily < <(menu_items daily)
+  mapfile -t setup < <(menu_items setup)
+  # What GitHub has, once: the status lines and the suggested step need it.
+  gum spin --title "Checking GitHub…" -- bash -c '
+    for d in "$@"; do [ -d "$d/.git" ] && GIT_TERMINAL_PROMPT=0 timeout 5 git -C "$d" fetch --quiet; done; true' \
+    _ "$DOTFILES" "$VAULT"
+  while true; do
+    clear
+    header="$(NO_COLOR=1 C_OK='' C_WARN='' C_N='' overview)"
+    default="$(next_step)"
+    pick="$(gum choose --label-delimiter='|' --height 12 --header "$(printf 'dotfiles\n\n%s\n' "$header")" \
+      --selected="$(printf '%s\n' "${daily[@]}" | grep "|$default$" | cut -d'|' -f1)" \
+      "${daily[@]}" "Set up and repair        ›|setup" "Quit|quit")" || break
+    case "$pick" in
+      quit) break ;;
+      setup)
+        pick="$(gum choose --label-delimiter='|' --header "Set up and repair" "${setup[@]}" "‹ Back|back")" || continue
+        [[ "$pick" == back ]] && continue ;;
+    esac
+    if [[ "$pick" == edit ]]; then "$DOTFILES/dot" edit; continue; fi
+    run_from_menu "$pick" || break
+  done
+  clear
+}
+
+# --- Run -----------------------------------------------------------------------------------
 cmd="${1:-}"; [[ $# -gt 0 ]] && shift
-if [[ -z "$cmd" || "$cmd" == menu ]]; then
-  if ui_gum; then menu; exit 0; fi
-  [[ "$cmd" == menu ]] && echo "The menu needs gum: sudo apt install gum"
-  cmd=help
+case "$cmd" in
+  "")
+    if ui_gum; then menu; exit 0; fi
+    echo; overview; usage; exit 0 ;;
+  -h|--help) usage; exit 0 ;;
+  -V|--version) git -C "$DOTFILES" describe --tags --always --dirty 2>/dev/null || echo unknown; exit 0 ;;
+esac
+# Every command explains itself with --help, before anything runs (the scripts below
+# would take it as an ordinary option and start).
+if field "$cmd" 1 >/dev/null && [[ " $* " == *" -h "* || " $* " == *" --help "* ]]; then
+  details "$cmd"; exit 0
 fi
 case "$cmd" in
-  save)
-    snapshot || exit 1
-    if [[ -z "$(git -C "$DOTFILES" status --porcelain)" ]]; then
-      printf '%s✔%s snapshots refreshed; nothing changed\n' "$C_OK" "$C_N"
-    else
-      printf '%s✔%s snapshots refreshed. Changed:\n' "$C_OK" "$C_N"
-      git -C "$DOTFILES" status --short
-      printf '%sTo save them to GitHub: dot push%s\n' "$C_DIM" "$C_N"
-    fi ;;
-  push)
-    # Snapshots first, so what's saved matches this computer. One that couldn't be
-    # refreshed stays as it was, so the rest is still worth saving.
-    snapshot
-    push_repo "$DOTFILES" "Update settings" "$@"; rc=$?
-    if [[ -d "$VAULT/.git" ]]; then push_repo "$VAULT" "Update notes" || rc=1; fi
-    exit "$rc" ;;
-  pull)
-    start="$(git -C "$DOTFILES" rev-parse HEAD)"
-    # Set up from a release by an older bootstrap.sh (not on a branch): back to main.
-    git -C "$DOTFILES" symbolic-ref -q HEAD >/dev/null || git -C "$DOTFILES" checkout --quiet main || exit 1
-    pull_repo "$DOTFILES"; rc=$?
-    [[ -d "$VAULT/.git" ]] && pull_repo "$VAULT"
-    (( rc == 2 )) && exit 1
-    [[ "$(git -C "$DOTFILES" rev-parse HEAD)" != "$start" ]] || exit 0
-    # Config files are links, so they're live already; settings, extensions and new
-    # links need install.sh. New apps need install-apps.sh.
-    changed="$(git -C "$DOTFILES" diff --name-only "$start" HEAD)"
-    echo
-    if ask "Apply the changes to this computer now (dot install)?"; then
-      "$DOTFILES/install.sh" --yes
-    else
-      printf '  %sApply them later: dot install%s\n' "$C_DIM" "$C_N"
-    fi
-    if grep -qE '^(install-apps\.sh|setup/apt-packages\.txt)$' <<<"$changed"; then
-      if ask "The app list changed. Install the new apps too (dot apps)?"; then
-        "$DOTFILES/install-apps.sh"
-      else
-        printf '  %sInstall them later: dot apps%s\n' "$C_DIM" "$C_N"
-      fi
-    fi ;;
+  push)    cmd_push "$@" ;;
+  pull)    cmd_pull "$@" ;;
   check)   exec "$DOTFILES/check.sh" "$@" ;;
   install) exec "$DOTFILES/install.sh" "$@" ;;
   apps)    exec "$DOTFILES/install-apps.sh" "$@" ;;
@@ -181,7 +468,24 @@ case "$cmd" in
   upgrade) exec "$DOTFILES/post-upgrade.sh" "$@" ;;
   ssh)     exec "$DOTFILES/scripts/ssh-setup.sh" "$@" ;;
   uninstall) exec "$DOTFILES/uninstall.sh" "$@" ;;
-  edit)    exec code "$DOTFILES" ;;
-  help|-h|--help) usage ;;
-  *) printf '%s✘%s unknown command: %s\n' "$C_ERR" "$C_N" "$cmd"; usage; exit 1 ;;
+  edit)
+    if have code; then exec code "$DOTFILES"; fi
+    ed="${VISUAL:-${EDITOR:-}}"
+    [[ -n "$ed" ]] || { err "VS Code isn't installed, and \$EDITOR isn't set"; hint "The files are in ${DOTFILES/#$HOME/\~}"; exit 1; }
+    exec $ed "$DOTFILES" ;;   # unquoted: $EDITOR may be "code --wait"
+  cd)
+    err "dot cd works from the dot() function in ~/.bashrc, which this terminal doesn't have yet"
+    hint "Open a new terminal, or: cd ${DOTFILES/#$HOME/\~}"; exit 1 ;;
+  help)
+    if [[ -z "${1:-}" ]]; then usage
+    elif field "$1" 1 >/dev/null; then details "$1"
+    else usage_error "no command called $1"; fi ;;
+  save)    cmd_push --dry-run "$@" ;;   # the old name: what dot push would save
+  *)
+    if [[ -n "${MOVED[$cmd]:-}" ]]; then usage_error "dot $cmd is now: ${MOVED[$cmd]}"; fi
+    s="$(suggest "$cmd")"
+    err "dot has no command called $cmd"
+    [[ -n "$s" ]] && hint "Did you mean: $s?"
+    hint "See all of them: dot help"
+    exit 2 ;;
 esac

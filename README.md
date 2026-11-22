@@ -51,14 +51,13 @@ Explained step by step in [Setting up a new computer](docs/new-computer.md).
 
 ## Everyday use
 
-Everything goes through one command, `dot`. On its own, **`dot` opens a menu**: arrow keys to pick, <kbd>Enter</kbd> to run, and the top line shows whether anything is unsaved. Or type a command directly (`dot help` lists them; <kbd>Tab</kbd> completes):
+Everything goes through one command, `dot`. On its own, **`dot` opens a menu** that shows whether anything is unsaved or new on GitHub, with the cursor already on what to do next. Or type a command directly: `dot help` lists them, `dot help push` (or `dot push --help`) explains one with examples, and <kbd>Tab</kbd> completes commands and options.
 
 | Command | What it does |
 |---|---|
-| `dot push "message"` | Refreshes the snapshots in `setup/` (apps, extensions, dock, desktop settings), then commits everything and pushes to GitHub, your Obsidian notes too (the secret check runs first) |
+| `dot push` | Refreshes the snapshots in `setup/` (apps, extensions, dock, desktop settings), shows what will be saved, and asks before committing and pushing, your Obsidian notes too. The message says what changed ("Update desktop settings"), or give your own: `dot push "Add Steam"`. `--dry-run` only shows it |
 | `dot pull` | Gets changes you saved on another computer, then offers to apply them |
 | `dot check` | Health check: links, tools, apps, extensions, firewall, signing, backups, unsaved changes. If something's wrong, offers to fix each problem in order (asks first) |
-| `dot save` | Only refreshes the snapshots and shows what changed, without committing |
 | `dot cd` · `dot edit` | Go to `~/dotfiles` · open it in VS Code |
 | `dot install` · `dot apps` · `dot fresh` | Run the setup scripts again (each is safe to rerun) |
 | `dot uninstall` | Undo it: your own config files back, Ubuntu's desktop look, extensions and fonts removed. `--apps` also removes the apps you pick ([details](docs/new-computer.md#undoing-it)) |
@@ -71,7 +70,7 @@ Everything goes through one command, `dot`. On its own, **`dot` opens a menu**: 
 
 | When | Run |
 |---|---|
-| You changed settings, apps, extensions, the dock or your notes | `dot push "Describe the change"` |
+| You changed settings, apps, extensions, the dock or your notes | `dot push` |
 | You saved changes on another computer | `dot pull` |
 | Something seems off or missing | `dot check` |
 | First time on a computer, for **Verified** commits | `dot ssh` (one approval in the browser) |
