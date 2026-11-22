@@ -24,12 +24,13 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+# Two jobs, so a failed deploy can be retried with "Re-run failed jobs": that re-runs only
+# the deploy, which publishes the site the build already uploaded. (In one job, a retry
+# uploaded the site a second time and the deploy refused to choose between the two.)
+# It also gives GitHub time to list the upload before the deploy looks for it.
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build the options from the repo
@@ -38,5 +39,13 @@ jobs:
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
       - id: deploy
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
