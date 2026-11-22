@@ -154,7 +154,7 @@ case "$cmd" in
     # Set up from a release (bootstrap.sh's DOTFILES_REF): getting changes means moving to main.
     rel="$(repo_release "$DOTFILES")"
     if [[ -n "$rel" ]]; then
-      echo "~/dotfiles is on release $rel, so it doesn't change when main does."
+      echo "${DOTFILES/#$HOME/\~} is on release $rel, so it doesn't change when main does."
       ask "Move it to main (the newest version) and get the changes?" || { echo "Nothing changed."; exit 0; }
       git -C "$DOTFILES" checkout --quiet main || exit 1
     fi
