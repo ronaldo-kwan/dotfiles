@@ -16,7 +16,7 @@ dump() { # dump /path/ 'key1|key2|...'
   local path="$1" skip="${2:-}" rel
   rel="${path#/}"; rel="${rel%/}"
   dconf dump "$path" \
-    | { if [[ -n "$skip" ]]; then grep -vE "^(${skip})="; else cat; fi; } \
+    | { if [[ -n "$skip" ]]; then grep -vE "^(${skip})=" || true; else cat; fi; } \
     | awk -v rel="$rel" '
         /^\[.*\]$/ { s = substr($0, 2, length($0) - 2); print "[" (s == "/" ? rel : rel "/" s) "]"; next }
         { print }'

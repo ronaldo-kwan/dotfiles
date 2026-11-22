@@ -126,9 +126,13 @@ alias c='clear'
 # --- My functions ---
 # dot: one command for the dotfiles (dot help). `dot cd` needs to be a function,
 # because only the shell itself can change its folder.
+# The dotfiles folder: where this file links to (it may not be ~/dotfiles, see
+# DOTFILES_DIR in bootstrap.sh), else ~/dotfiles. $DOTFILES, if set, wins.
+__dotfiles_dir="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
+[ -x "$__dotfiles_dir/dot" ] || __dotfiles_dir="$HOME/dotfiles"
 dot() {
-  if [ "${1:-}" = cd ]; then cd "${DOTFILES:-$HOME/dotfiles}" || return
-  else "${DOTFILES:-$HOME/dotfiles}/dot" "$@"; fi
+  if [ "${1:-}" = cd ]; then cd "${DOTFILES:-$__dotfiles_dir}" || return
+  else "${DOTFILES:-$__dotfiles_dir}/dot" "$@"; fi
 }
 complete -W "menu save check status push pull notes install apps fresh upgrade ssh uninstall cd edit help" dot
 alias dotsave='dot save' dotcheck='dot check'   # the old names still work

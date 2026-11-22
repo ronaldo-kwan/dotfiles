@@ -23,12 +23,15 @@ link_configs() {
     return 0
   fi
   local pkgs f target; mapfile -t pkgs < <(chosen_packages)
-  # Move aside real files that stow would refuse to replace.
+  # Move aside real files that stow would refuse to replace. An .orig already there is
+  # your file from before the dotfiles, so it's kept, and the newer file goes to .orig.<date>.
   while IFS= read -r -d '' f; do
     target="$HOME/${f#*/}"
     if [[ -e "$target" && ! -L "$target" ]]; then
-      run mv "$target" "$target.orig"
-      did "kept existing ${target/#$HOME/\~} as ${target/#$HOME/\~}.orig"
+      local backup="$target.orig"
+      [[ -e "$backup" ]] && backup="$target.orig.$(date +%Y%m%d-%H%M%S)"
+      run mv "$target" "$backup"
+      did "kept existing ${target/#$HOME/\~} as ${backup/#$HOME/\~}"
     fi
   done < <(config_files "${pkgs[@]}")
   # --no-folding links individual files, so apps that write extra files into
@@ -246,23 +249,29 @@ set_wallpaper() {
 
 # 8. App settings -------------------------------------------------------------------
 # Apps that start at login, default apps, qBittorrent (saved by `dotsave` in setup/apps/).
-# Existing files that differ are kept as <name>.orig.
+# Existing files that differ are kept as <name>.orig (the first time) or <name>.prev.
 put_file() { # put_file <saved file> <destination>: copy, turning @HOME@ into this home folder
   local src="$1" dst="$2"
   if [[ -f "$dst" ]] && cmp -s <(fill_home "$src") "$dst"; then return 0; fi
+  # The first time, yours is kept as .orig: your file from before the dotfiles, which
+  # later runs never replace (apps like qBittorrent rewrite their settings, so they
+  # differ again each run). After that, the file being replaced is kept as .prev.
+  local keep="$dst.orig"; [[ -e "$keep" ]] && keep="$dst.prev"
   if [[ "$DRY_RUN" == 1 ]]; then
-    echo "    would write ${dst/#$HOME/\~}$([[ -f "$dst" ]] && echo " (yours kept as .orig)")"; return 0
+    echo "    would write ${dst/#$HOME/\~}$([[ -f "$dst" ]] && echo " (yours kept as .${keep##*.})")"; return 0
   fi
   mkdir -p "$(dirname "$dst")"
-  [[ -f "$dst" ]] && mv "$dst" "$dst.orig"
+  if [[ -f "$dst" ]]; then mv "$dst" "$keep"; fi
   fill_home "$src" > "$dst"
   echo "    ${dst/#$HOME/\~}"
 }
 
 # monitors_for_here <saved monitors.xml>: print it with each screen's serial number filled
-# in from the screens connected now, matched by maker and model (dot save leaves the
-# serials out). Fails if a screen it names isn't connected, so the display settings
-# saved on one computer are never used with another screen.
+# in from the screens connected now (dot save leaves the serials out): the screen on the
+# same connector with the same maker and model, or else the only connected screen of that
+# maker and model. Fails if a screen it names isn't connected (or two identical screens
+# can't be told apart), so the display settings saved on one computer are never used with
+# another screen.
 monitors_for_here() {
   local live
   have gdbus || return 1
@@ -272,13 +281,21 @@ monitors_for_here() {
 import re, sys
 saved, live = open(sys.argv[1]).read(), sys.argv[2]
 # Connected screens, from GNOME: (('eDP-1', 'maker', 'model', 'serial'), [modes...
-screens = {(v, p): s for _c, v, p, s in re.findall(r"\(\('([^']*)', '([^']*)', '([^']*)', '([^']*)'\), \[", live)}
+screens = re.findall(r"\(\('([^']*)', '([^']*)', '([^']*)', '([^']*)'\), \[", live)
+def tag(spec, name):
+    found = re.search(r"<%s>([^<]*)</%s>" % (name, name), spec)
+    return found.group(1) if found else None
 def fill(m):
     spec = m.group(0)
-    key = (re.search(r"<vendor>([^<]*)</vendor>", spec).group(1), re.search(r"<product>([^<]*)</product>", spec).group(1))
-    if key not in screens:
+    conn, vendor, product = tag(spec, "connector"), tag(spec, "vendor"), tag(spec, "product")
+    same_model = [s for c, v, p, s in screens if (v, p) == (vendor, product)]
+    on_connector = [s for c, v, p, s in screens if (c, v, p) == (conn, vendor, product)]
+    # Two identical screens: only the connector tells them apart (else both would get
+    # one serial, and GNOME would ignore the settings).
+    serials = on_connector or (same_model if len(same_model) == 1 else [])
+    if not serials:
         sys.exit(1)
-    return spec.replace("<serial>@SERIAL@</serial>", "<serial>%s</serial>" % screens[key])
+    return spec.replace("<serial>@SERIAL@</serial>", "<serial>%s</serial>" % serials[0])
 print(re.sub(r"<monitorspec>.*?</monitorspec>", fill, saved, flags=re.S), end="")
 PY
 }
@@ -397,6 +414,21 @@ json.dump(data, open(path, "w"))
 # Secret check before commits (in ~/dotfiles and the vault), and a weekly reminder
 # (Sunday evening, or the next login) when settings changed since the last dotsave or
 # changes aren't committed. The reminder only notifies; it never commits.
+# The reminder's unit runs ~/dotfiles/check.sh. Dotfiles kept somewhere else (DOTFILES_DIR
+# in bootstrap.sh) get a drop-in next to it that points it at the real folder.
+reminder_folder() {
+  if [[ "$DOTFILES" == "$HOME/dotfiles" ]]; then
+    if [[ -f "$REMINDER_DROPIN" ]]; then run rm -f "$REMINDER_DROPIN"; fi
+    return 0
+  fi
+  if [[ "$DRY_RUN" == 1 ]]; then echo "    would point the weekly reminder at ${DOTFILES/#$HOME/\~}"; return 0; fi
+  mkdir -p "$(dirname "$REMINDER_DROPIN")"
+  # (In unit files % starts a specifier, so a literal one is written %%.)
+  printf '# Written by install.sh: the dotfiles are in %s, not ~/dotfiles.\n[Service]\nExecStart=\nExecStart="%s/check.sh" --notify\n' \
+    "$DOTFILES" "${DOTFILES//%/%%}" > "$REMINDER_DROPIN"
+  did "weekly reminder runs ${DOTFILES/#$HOME/\~}/check.sh"
+}
+
 setup_safety_checks() {
   need safety || return 0
   local d
@@ -408,6 +440,7 @@ setup_safety_checks() {
   # Signed commits, if this computer has an SSH key (dot ssh creates one).
   run bash "$DOTFILES/scripts/ssh-setup.sh" --signing-only
   if has_user_systemd; then
+    reminder_folder
     run systemctl --user daemon-reload
     run systemctl --user enable --now dotfiles-reminder.timer 2>/dev/null
     did "weekly reminder on (see: systemctl --user list-timers dotfiles-reminder.timer)"

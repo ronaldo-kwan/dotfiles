@@ -65,6 +65,11 @@ if [[ -n "${DOTFILES_CHOICES:-}${DOTFILES_SKIP:-}" ]]; then
     for c in ${DOTFILES_CHOICES:-}; do echo "$c"; done
     for c in ${DOTFILES_SKIP:-}; do echo "-$c"; done; } > "$HOME/.config/dotfiles/choices"
   echo "Your choices are saved in ~/.config/dotfiles/choices"
+elif [[ -f "$HOME/.config/dotfiles/choices" ]]; then
+  # Nothing picked this time means everything: choices from an earlier run would
+  # otherwise still leave parts out (lib.sh reads the file when nothing is given).
+  rm -f "$HOME/.config/dotfiles/choices"
+  echo "Choices from an earlier run removed: this run sets up everything"
 fi
 
 if [[ -d "$DIR/.git" ]]; then

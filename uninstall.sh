@@ -31,6 +31,10 @@ reminder_off() {
   if has_user_systemd; then
     run_quiet systemctl --user disable --now dotfiles-reminder.timer || true
     did "weekly reminder off"
+    if [[ -f "$REMINDER_DROPIN" ]]; then   # install.sh's pointer to a dotfiles folder elsewhere
+      run rm -f "$REMINDER_DROPIN"
+      [[ "$DRY_RUN" == 1 ]] || rmdir "$(dirname "$REMINDER_DROPIN")" 2>/dev/null || true
+    fi
   else
     skip "no systemd user session"
   fi

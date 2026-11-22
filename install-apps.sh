@@ -538,7 +538,9 @@ for i in "${!APPS[@]}"; do
     note "already done (checking the download anyway)"
   fi
   if (( CHECKLIST )); then
-    [[ "$CHOSEN" == *" $i "* ]] || { step_end skip "not chosen"; continue; }
+    # Only what was to do at the start was in the checklist. One that became needed since
+    # (Steam on the NVIDIA card, once Steam is installed) follows from what you ticked.
+    [[ "$CHOSEN" == *" $i "* || "${STATUS[i]}" != todo ]] || { step_end skip "not chosen"; continue; }
   elif [[ "$DRY_RUN" != 1 ]] && ! ask "$verb $name?"; then
     step_end skip "you chose not to"; continue
   fi

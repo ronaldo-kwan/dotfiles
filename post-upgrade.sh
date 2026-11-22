@@ -92,8 +92,7 @@ check_nvidia() {
 if [[ "${1:-}" == "--sources-only" ]]; then
   STEP_TOTAL=1
   run_step "Switch app update sources back on" reenable_sources
-  summary
-  exit 0
+  summary; exit $?   # 1 if it failed
 fi
 
 title="After an Ubuntu upgrade"; [[ "$DRY_RUN" == 1 ]] && title+=" (dry run: changes nothing)"

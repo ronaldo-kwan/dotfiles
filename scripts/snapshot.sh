@@ -13,6 +13,7 @@ set -uo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib.sh"   # DOTFILES, have, chosen
 d="${1:-$DOTFILES/setup}"
 [[ -d "$d" ]] || { echo "snapshot.sh: $d not found" >&2; exit 1; }
+rc=0   # 1 if a snapshot couldn't be written (dot save then says so)
 
 have code && chosen app:code && code --list-extensions > "$d/vscode-extensions.txt"
 # Flatpaks: what's installed, plus the saved ones this computer didn't choose.
@@ -45,12 +46,20 @@ if have dconf && chosen desktop; then
   dconf dump /org/gnome/shell/extensions/ \
     | grep -vE '^(last-version-installed|overridden-settings|check-x11wayland|cli-toggle|indicator-position-max)=' \
     | sed '/^\[[^]]*\]$/{N;/\n$/d}' > "$d/gnome-extension-settings.dconf"
-  # Shortcuts, power, sound, Files, file dialogs, search order, backups, app settings
-  bash "$DOTFILES/scripts/dump-desktop-settings.sh" > "$d/desktop-settings.dconf"
+  # Shortcuts, power, sound, Files, file dialogs, search order, backups, app settings.
+  # Written to a new file first: if the script stops partway, the saved one stays as it
+  # was (a half-written one would lose every setting after the point it stopped).
+  if bash "$DOTFILES/scripts/dump-desktop-settings.sh" > "$d/desktop-settings.dconf.new"; then
+    mv "$d/desktop-settings.dconf.new" "$d/desktop-settings.dconf"
+  else
+    rm -f "$d/desktop-settings.dconf.new"
+    echo "snapshot.sh: couldn't read the desktop settings; setup/desktop-settings.dconf left as it was" >&2
+    rc=1
+  fi
 fi
 
 # Apps that start at login, default apps, qBittorrent, Obsidian settings
 bash "$DOTFILES/scripts/save-app-settings.sh" "$d"
 
 have gsettings && chosen desktop && gsettings get org.gnome.shell favorite-apps > "$d/dock-favorites.txt"
-exit 0
+exit "$rc"

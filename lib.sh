@@ -23,6 +23,8 @@ VAULT="$HOME/Documents/Obsidian Vault"   # your notes: the private GitHub repo o
 WALLPAPER="$HOME/Pictures/Wallpapers/current/catppuccin-tropic-island-night-16x9.jpg"
 NERD_FONT_DIR="$HOME/.local/share/fonts/RobotoMonoNerdFont"   # the terminal's font
 MONO_FONT_DIR="$HOME/.local/share/fonts/RobotoMono"           # the desktop's monospace font
+# Only when ~/dotfiles is somewhere else: points the weekly reminder there
+REMINDER_DROPIN="$HOME/.config/systemd/user/dotfiles-reminder.service.d/dotfiles-folder.conf"
 # The desktop settings in setup/ and where in dconf each goes: install.sh loads them,
 # uninstall.sh resets every key in them.
 DCONF_FILES=("gnome-desktop.dconf|/org/gnome/"
@@ -223,7 +225,8 @@ quiet() {
   if [[ "$UI_TTY" == 1 ]]; then
     "$@" >> "$UI_LOG" 2>&1 < /dev/null &
     pid=$!
-    local prev_int; prev_int="$(trap -p INT)"
+    # The traps it had (the progress panel's: put the terminal back), restored after.
+    local prev_int prev_term; prev_int="$(trap -p INT)" prev_term="$(trap -p TERM)"
     trap 'printf "\e[?25h"; kill "$pid" 2>/dev/null' INT TERM
     printf '\e[?25l'
     # The spinner line is redrawn in place, so it must fit on one line: a longer one wraps,
@@ -245,6 +248,7 @@ quiet() {
     printf '\r\e[K\e[?25h'
     trap - INT TERM
     [[ -n "$prev_int" ]] && eval "$prev_int"
+    [[ -n "$prev_term" ]] && eval "$prev_term"
   else
     printf '    … %s\n' "$label"
     "$@" >> "$UI_LOG" 2>&1 < /dev/null || rc=$?

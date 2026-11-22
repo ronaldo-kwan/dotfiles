@@ -24,11 +24,27 @@ done < <(git diff --cached --no-renames --name-only --diff-filter=AMT -z)
 # Known token formats (standing on their own, not inside a longer string such as an
 # embedded font), private keys, and settings that assign a password, token or key
 # (values like true/false/none/placeholders don't count).
-patterns='(^|[^A-Za-z0-9+/_-])(gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|sk-ant-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{32,}'
-patterns+='|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[abprs]-[A-Za-z0-9-]{10,}|glpat-[A-Za-z0-9_-]{20})([^A-Za-z0-9_-]|$)'
-patterns+='|-----BEGIN [A-Z ]*PRIVATE KEY-----'
-patterns+='|(password|passwd|secret|token|api[_-]?key|stream[_-]?key|auth[_-]?key)["'"'"']?[[:space:]]*[:=][[:space:]]*["'"'"']?[^"'"'"'[:space:],}]{6,}'
-ignore_values='[:=][[:space:]]*["'"'"']?(true|false|none|null|nil|yes|no|0|1|\$\{?[A-Za-z_]+\}?|<[^>]*>|@[A-Z]+@|x{3,}|\*{3,}|\.{3})["'"'"']?[[:space:],}]*$'
+# Tokens and private keys always count. A setting counts unless its own value is one
+# of ignore_values (checked against that setting only, not the rest of the line, so
+# `"token": "<real token>", "debug": false` is still caught).
+# OpenAI keys: sk-<letters> (old), sk-proj-/sk-svcacct-/sk-admin- (with - and _ inside).
+tokens='(^|[^A-Za-z0-9+/_-])(gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|sk-ant-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{32,}'
+tokens+='|sk-(proj|svcacct|admin)-[A-Za-z0-9_-]{20,}'
+tokens+='|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[abprs]-[A-Za-z0-9-]{10,}|glpat-[A-Za-z0-9_-]{20})([^A-Za-z0-9_-]|$)'
+tokens+='|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+settings='(password|passwd|secret|token|api[_-]?key|stream[_-]?key|auth[_-]?key)["'"'"']?[[:space:]]*[:=][[:space:]]*["'"'"']?[^"'"'"'[:space:],}]{6,}'
+ignore_values='[:=][[:space:]]*["'"'"']?(true|false|none|null|nil|yes|no|0|1|\$\{?[A-Za-z_]+\}?|<[^>]*>|@[A-Z]+@|x{3,}|\*{3,}|\.{3})$'
+
+# secret_in <text>: prints what the line looks like ("a token or private key", "a
+# password setting"), or nothing if it looks fine.
+secret_in() {
+  local m
+  if grep -qiE -- "$tokens" <<< "$1"; then echo "a token or private key"; return; fi
+  while IFS= read -r m; do
+    grep -qiE -- "$ignore_values" <<< "$m" && continue
+    echo "a ${m%%[[:space:]\"\':=]*} setting"; return
+  done < <(grep -oiE -- "$settings" <<< "$1")
+}
 
 file='' line=0
 while IFS= read -r l; do
@@ -38,11 +54,8 @@ while IFS= read -r l; do
     '@@ '*) line="$(sed -E 's/^@@ -[0-9,]+ \+([0-9]+).*/\1/' <<< "$l")"; continue ;;
     '+'*)
       text="${l:1}"
-      if grep -qiE -- "$patterns" <<< "$text" && ! grep -qiE -- "$ignore_values" <<< "$text"; then
-        m="$(grep -oiE -- "$patterns" <<< "$text" | head -1)"
-        if [[ "$m" == *[:=]* ]]; then kind="a ${m%%[[:space:]\"\':=]*} setting"; else kind="a token or private key"; fi
-        flag "$file:$line looks like $kind"
-      fi
+      kind="$(secret_in "$text")"
+      [[ -n "$kind" ]] && flag "$file:$line looks like $kind"
       line=$((line + 1)) ;;
     ' '*) line=$((line + 1)) ;;
   esac
