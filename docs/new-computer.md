@@ -6,6 +6,7 @@ From a blank laptop to the full setup: prepare the laptop, install Ubuntu, run o
 
 **Contents**
 
+- [First: check the dotfiles still work](#first-check-the-dotfiles-still-work)
 - [Before installing Ubuntu](#before-installing-ubuntu)
 - [Option 1: one command](#option-1-one-command)
 - [Option 2: automated install](#option-2-automated-install)
@@ -15,6 +16,18 @@ From a blank laptop to the full setup: prepare the laptop, install Ubuntu, run o
 - [Running the parts separately](#running-the-parts-separately)
 - [Undoing it](#undoing-it)
 - [Manual setup](#manual-setup)
+
+## First: check the dotfiles still work
+
+A day or so before, from your current computer, run the GitHub checks:
+
+```bash
+gh workflow run check.yml --repo ronaldo-kwan/dotfiles
+```
+
+(Or **Actions → check → Run workflow** on GitHub, which works from a phone too.) Within a few minutes it has installed everything in a clean Ubuntu 26.04 and tried every app's download and signing key. If something fails, such as a maker that moved a download or changed its key, fix it now and push, rather than halfway through the new computer's setup. See [GitHub checks](maintenance.md#github-checks) for what it covers.
+
+This matters most when the repo has been quiet for a while: GitHub turns off the weekly run after 60 days without commits, and Dependabot's pull requests may be waiting unmerged.
 
 ## Before installing Ubuntu
 
