@@ -176,7 +176,7 @@ Then restart. If an extension is still off, switch it on in the Extensions app.
 
 ## GitHub checks
 
-[`.github/workflows/check.yml`](../.github/workflows/check.yml) runs on every push, and every Monday, so a maker changing a download link or signing key shows up as a failed run (GitHub emails you) rather than on the day you set up a new computer. In a clean Ubuntu 26.04 container it runs:
+[`.github/workflows/check.yml`](../.github/workflows/check.yml) runs on every push and pull request. Before setting up a new computer, run it by hand (`gh workflow run check.yml --repo ronaldo-kwan/dotfiles`, or **Actions → check → Run workflow**), so a maker changing a download link or signing key shows up as a failed run rather than halfway through the setup; see [New computer](new-computer.md#first-check-the-dotfiles-still-work). In a clean Ubuntu 26.04 container it runs:
 
 - [`actionlint`](https://github.com/rhysd/actionlint) on the workflow files themselves (mistyped keys, wrong job names in `needs:`, bad `${{ }}` expressions), so a broken workflow fails here instead of on the day it's needed; one fixed version, checked against its checksum like the fonts below (`ACTIONLINT_VERSION` and `ACTIONLINT_SHA256` in `check.yml`)
 - `shellcheck` on all scripts, the system check (both copies must agree), and [`scripts/test-helpers.sh`](../scripts/test-helpers.sh): quick checks of the shared helpers in `lib.sh` and of the app table in `install-apps.sh` (run it yourself with `bash scripts/test-helpers.sh`)
@@ -205,7 +205,14 @@ curl -fsSL -o /tmp/f "<new address>" && sha256sum /tmp/f
 
 Nerd Fonts publishes its checksums with each release (`SHA-256.txt`), so you can compare. Then run `DRY_RUN=1 dot install --yes`: it downloads and checks the files without installing them. After the change, `dot check` shows ✘ on each computer until `dot install` has put the new version there.
 
-[Dependabot](../.github/dependabot.yml) opens a pull request once a month when the actions the workflows use have new versions. The workflows name each action by its commit ID, with the version as a comment (`actions/checkout@fbc6f39… # v5.1.0`), since a tag like `v5` can be moved to other code; Dependabot updates both. The checks run on its pull request, and when it updates the Pages actions the `website` workflow builds the site too (without publishing it); merge it on GitHub if they pass.
+The workflows name each action by its commit ID, with the version as a comment (`actions/checkout@3d3c42e… # v7.0.1`), since a tag like `v7` can be moved to other code. Nothing updates them by itself, so update them by hand when a run warns that an action is old (GitHub retires old Node.js versions, for example) or fails because of one. For each action, find its newest release and that release's commit ID:
+
+```bash
+gh release view --repo actions/checkout --json tagName --jq .tagName   # e.g. v7.0.1
+gh api repos/actions/checkout/commits/v7.0.1 --jq .sha
+```
+
+Then replace the commit ID and the version comment on every line that uses it (`grep -rn 'actions/checkout@' .github/workflows`), and read the release notes for a new major version. The actions are `actions/checkout`, `actions/configure-pages`, `actions/upload-pages-artifact` and `actions/deploy-pages`. Pushing runs both workflows on the new versions.
 
 The result shows on the repo's [Actions](https://github.com/ronaldo-kwan/dotfiles/actions) tab. To run shellcheck locally:
 

@@ -27,7 +27,7 @@ gh workflow run check.yml --repo ronaldo-kwan/dotfiles
 
 (Or **Actions → check → Run workflow** on GitHub, which works from a phone too.) Within a few minutes it has installed everything in a clean Ubuntu 26.04 and tried every app's download and signing key. If something fails, such as a maker that moved a download or changed its key, fix it now and push, rather than halfway through the new computer's setup. See [GitHub checks](maintenance.md#github-checks) for what it covers.
 
-This matters most when the repo has been quiet for a while: GitHub turns off the weekly run after 60 days without commits, and Dependabot's pull requests may be waiting unmerged.
+Nothing runs these checks on a schedule, so this is the only time they run unless you've pushed recently. If the run warns that an action is old, or fails because of one, see [updating the actions](maintenance.md#pinned-downloads).
 
 ## Before installing Ubuntu
 

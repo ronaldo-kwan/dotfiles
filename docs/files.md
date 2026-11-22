@@ -118,6 +118,5 @@ Written by `dot save` and restored by `install.sh`, except `apt-packages.txt`, w
 | `.githooks/pre-commit` | The [secret check](maintenance.md#secret-check-before-commits) |
 | `.github/workflows/check.yml` | The [GitHub checks](maintenance.md#github-checks) |
 | `.github/workflows/pages.yml` | Builds and publishes the website |
-| `.github/dependabot.yml` | Monthly pull requests when the workflows' actions have new versions |
 | `site/` | The [website](https://ronaldo-kwan.github.io/dotfiles/): pick options, get a command or `autoinstall.yaml`. `options.json` is generated |
 | `scripts/build-site.py` | Writes `site/options.json` from `install-apps.sh` and the lists in `setup/`, so the site matches the scripts |
