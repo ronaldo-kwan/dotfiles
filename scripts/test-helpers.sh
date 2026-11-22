@@ -328,7 +328,9 @@ t "an unknown command exits 2" same "$(dot_rc frobnicate)" 2
 t "an unknown option exits 2" same "$(dot_rc push --frobnicate)" 2
 t "an old name says what replaced it" grep -q "dot push" < <("$T/dotcopy/dot" notes 2>&1)
 t "help for a command that doesn't exist exits 2" same "$(dot_rc help frobnicate)" 2
-source <(sed -n '/^# --- The commands/,/^# --- Run/p' "$ROOT/dot")   # dot's functions, without running it
+# dot's functions, without running it (shellcheck checks dot itself)
+# shellcheck source=/dev/null
+source <(sed -n '/^# --- The commands/,/^# --- Run/p' "$ROOT/dot")
 t "a typo gets the closest command" same "$(suggest psuh)|$(suggest chek)|$(suggest instal)" "dot push|dot check|dot install"
 t "a start that fits several lists them" same "$(suggest pu)" "dot push or dot pull"
 t "nothing close: no suggestion" same "$(suggest zzzzz)" ""
@@ -352,8 +354,7 @@ get v0.1.0
 t "DOTFILES_REF sets up from that release, on main" same "$(on)" "main|one"
 get v0.1.0
 t "... again on a computer that already has it" same "$(on)" "main|one"
-source <(sed -n '/^# --- The commands/,/^# --- Run/p' "$ROOT/dot")   # dot's functions, without running it
-pushed() { repo_ready "$T/clone" 2>/dev/null; }
+pushed() { repo_ready "$T/clone" 2>/dev/null; }   # (dot's functions were loaded above)
 t "dot push waits for dot pull while GitHub has newer commits" not pushed
 get
 t "without DOTFILES_REF: main, up to date" same "$(on)" "main|two"
