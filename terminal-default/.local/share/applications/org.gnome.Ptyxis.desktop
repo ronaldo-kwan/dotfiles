@@ -1,0 +1,9 @@
+# Hides Ubuntu's built-in terminal (Ptyxis, named "Terminal") from the app grid
+# and search, so typing "ter" finds Ghostty first. Ptyxis stays installed and
+# still runs with `ptyxis`; delete this file to bring it back.
+[Desktop Entry]
+Type=Application
+Name=Terminal
+Exec=ptyxis
+TryExec=ptyxis
+NoDisplay=true

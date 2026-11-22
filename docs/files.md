@@ -47,7 +47,7 @@ These folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). E
 | `eza` | `~/.config/eza/theme.yml` | Catppuccin Mocha, blue accent, for `ls`, `ll` and `tree` |
 | `fzf` | `~/.config/fzf/fzfrc` | Catppuccin Mocha colours, and the list in a rounded box under the command line (Ctrl+R, Ctrl+T, Alt+C) |
 | `fastfetch` | `~/.config/fastfetch/config.jsonc` | System info with Nerd Font icons in Catppuccin colours |
-| `terminal-default` | `~/.config/xdg-terminals.list` | Makes Ghostty the default terminal |
+| `terminal-default` | `~/.config/xdg-terminals.list`, `~/.local/share/applications/org.gnome.Ptyxis.desktop` | Makes Ghostty the default terminal, and hides Ubuntu's built-in Terminal (Ptyxis) from the app grid and search so typing "ter" finds Ghostty first |
 | `vscode` | `~/.config/Code/User/settings.json` | Theme, fonts, ligatures |
 | `claude` | `~/.claude/CLAUDE.md` | Personal instructions for Claude Code |
 | `systemd` | `~/.config/systemd/user/dotfiles-reminder.*` | The [weekly reminder](maintenance.md#weekly-reminder) |
