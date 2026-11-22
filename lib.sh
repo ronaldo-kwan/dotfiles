@@ -742,6 +742,37 @@ has_nerd_font() { has_font "RobotoMono Nerd Font"; }
 # Ubuntu has no package for it; Roboto itself comes from fonts-roboto (apt-packages.txt).
 has_roboto_mono() { has_font "Roboto Mono"; }   # (the Nerd Font is "RobotoMono", no space)
 
+# --- What the dotfiles added (for dot uninstall) -------------------------------------------
+# One line per thing install.sh, install-apps.sh or fresh-install.sh installed or switched
+# on that wasn't there before: app:<choice>, pkg:<package>, flatpak:<ID>, extension:<uuid>,
+# firewall, snapfirefox (removed). dot uninstall removes only these, so an app, extension
+# or firewall you had before stays. Not in ~/.config/dotfiles, which uninstall deletes first.
+# A computer set up before this record existed gets "legacy": then nobody knows what was
+# there before, and uninstall offers everything, as it used to.
+ADDED_FILE="${ADDED_FILE:-$HOME/.local/state/dotfiles/added}"
+WEEKLY_JOB="${WEEKLY_JOB:-/etc/cron.weekly/system-update}"   # a sign of an earlier setup (tests use another)
+# added_init: start the record (at the start of a run, before anything is installed)
+added_init() {
+  [[ "$DRY_RUN" == 1 || -f "$ADDED_FILE" ]] && return 0
+  mkdir -p "$(dirname "$ADDED_FILE")"
+  { echo "# What the dotfiles added to this computer (dot uninstall removes only these)."
+    if [[ -f "$WEEKLY_JOB" || -f "$WALLPAPER" \
+          || "$(readlink -f "$HOME/.bashrc" 2>/dev/null)" == "$DOTFILES/"* ]]; then
+      echo "# Set up before this record was kept, so what was there before isn't known:"
+      echo legacy
+    fi; } > "$ADDED_FILE"
+}
+# mark_added <item>: note that the dotfiles added it (nothing in a dry run)
+mark_added() {
+  [[ "$DRY_RUN" == 1 ]] && return 0
+  [[ -f "$ADDED_FILE" ]] || added_init
+  grep -qxF -- "$1" "$ADDED_FILE" 2>/dev/null || echo "$1" >> "$ADDED_FILE"
+}
+# was_added <item>: did the dotfiles add it? (Yes for everything without a record, or a legacy one.)
+was_added() {
+  [[ ! -f "$ADDED_FILE" ]] || grep -qxF -e legacy -e "$1" "$ADDED_FILE"
+}
+
 # fill_user <file>: print a system/ script with @USER@ replaced by this user's name.
 fill_user() { sed "s/@USER@/$(id -un)/g" "$1"; }
 # fill_home <file>: print a saved setup/ file with @HOME@ replaced by this home folder

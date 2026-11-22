@@ -118,16 +118,18 @@ EOF
   did "$n settings back to Ubuntu's defaults, plus the dock, extensions and wallpaper"
 }
 
-# 5. The extensions install.sh downloaded (Ubuntu's own ones stay).
+# 5. The extensions install.sh downloaded (Ubuntu's own ones, and ones you had before, stay).
 remove_extensions() {
   have gnome-extensions || { skip "gnome-extensions isn't installed"; return 0; }
-  local uuid n=0
+  local uuid n=0 kept=()
   while read -r uuid; do
     [[ -d "$HOME/.local/share/gnome-shell/extensions/$uuid" ]] || continue
+    was_added "extension:$uuid" || { kept+=("$uuid"); continue; }
     run gnome-extensions uninstall "$uuid" 2>/dev/null || rm -rf "$HOME/.local/share/gnome-shell/extensions/$uuid"
     did "$uuid"; n=$((n + 1))
   done < <(list_of gnome-extensions.txt)
   (( n )) || echo "    none installed"
+  (( ${#kept[@]} == 0 )) || note "kept (you had them before the dotfiles): ${kept[*]}"
 }
 
 # 6. Fonts and wallpaper install.sh downloaded.
@@ -186,12 +188,14 @@ installed_of() { local p; for p in "$@"; do installed "$p" && echo "$p"; done; r
 # app_items: one line per thing that can be removed, "label|kind|what|files". kind is apt
 # (what = packages), flatpak (an app ID), jobs, loginscreen, firewall or snapfirefox. files are deleted
 # with it (the app's update source and key); a ppa: entry is removed with add-apt-repository.
+# Only what the dotfiles added (was_added, lib.sh): an app, the firewall or the Snap Firefox
+# you had before stays out of the list. Computers set up before that was recorded list all.
 app_items() {
   local entry choice name p pkgs desk tools
   # Apps from their makers (APPS and APP_PARTS in install-apps.sh), if one of their packages is installed
   for entry in "${APPS[@]}"; do
     IFS='|' read -r choice name _ <<< "$entry"
-    [[ -n "${APP_PARTS[$choice]:-}" ]] || continue
+    [[ -n "${APP_PARTS[$choice]:-}" ]] && was_added "$choice" || continue
     pkgs="${APP_PARTS[$choice]%%|*}"
     # shellcheck disable=SC2086  # one word per package
     [[ -n "$(installed_of $pkgs)" ]] && echo "${name%% (*}|apt|${APP_PARTS[$choice]}"
@@ -201,20 +205,20 @@ app_items() {
   desk="$(apt-cache depends ubuntu-desktop ubuntu-desktop-minimal 2>/dev/null | awk '/(Depends|Recommends):/ {print $2}')"
   pkgs=""
   for p in $(list_of apt-packages.txt); do
-    installed "$p" && ! grep -qxF "$p" <<< "$desk" && pkgs+="$p "
+    installed "$p" && ! grep -qxF "$p" <<< "$desk" && was_added "pkg:$p" && pkgs+="$p "
   done
   [[ -n "$pkgs" ]] && echo "Ubuntu apps: ${pkgs% }|apt|${pkgs% }|"
   # Terminal tools, except the general ones other things use (git, curl, gum, gh, stow, flatpak)
   tools=""
   for p in "${TOOLS[@]}"; do
     case "$p" in git|curl|gum|gh|stow|flatpak) continue ;; esac
-    installed "$p" && tools+="$p "
+    installed "$p" && was_added "pkg:$p" && tools+="$p "
   done
   [[ -n "$tools" ]] && echo "Terminal tools: ${tools% }|apt|${tools% }|"
   if have flatpak; then
     local id name
     while IFS=$'\t' read -r id name; do
-      grep -qxF "$id" "$SETUP/flatpaks.txt" && echo "$name (Flatpak)|flatpak|$id|"
+      grep -qxF "$id" "$SETUP/flatpaks.txt" && was_added "flatpak:$id" && echo "$name (Flatpak)|flatpak|$id|"
     done < <(flatpak list --app --columns=application,name 2>/dev/null)
   fi
   [[ -f /etc/cron.weekly/system-update || -f /etc/cron.monthly/system-cleanup ]] \
@@ -225,8 +229,8 @@ app_items() {
     head -1 "$GDM_PROFILE" 2>/dev/null | grep -q '^# Written by ~/dotfiles' && files+=" $GDM_PROFILE"
     echo "The login screen's look (back to Ubuntu's)|loginscreen||$files"
   fi
-  grep -qx 'ENABLED=yes' /etc/ufw/ufw.conf 2>/dev/null && echo "Firewall (switch it off)|firewall||"
-  if have snap && ! snap list firefox >/dev/null 2>&1; then echo "Ubuntu's Snap Firefox (put it back)|snapfirefox||"; fi
+  grep -qx 'ENABLED=yes' /etc/ufw/ufw.conf 2>/dev/null && was_added firewall && echo "Firewall (switch it off)|firewall||"
+  if have snap && was_added snapfirefox && ! snap list firefox >/dev/null 2>&1; then echo "Ubuntu's Snap Firefox (put it back)|snapfirefox||"; fi
   return 0
 }
 
@@ -349,6 +353,11 @@ run_steps \
 
 summary; ok=$?
 [[ "$DRY_RUN" == 1 ]] && exit "$ok"
+# Everything the dotfiles added was offered: what you kept is yours now, so a later
+# uninstall doesn't offer it again (and a later install records afresh).
+if (( APPS_TOO )) && [[ -f "$ADDED_FILE" ]]; then
+  printf '# What the dotfiles added to this computer (dot uninstall removes only these).\n# Emptied by dot uninstall --apps on %s: what you kept is yours.\n' "$(date +%F)" > "$ADDED_FILE"
+fi
 printf '\n%sStill to do%s\n' "$C_B" "$C_N"
 note "Log out and back in, so GNOME drops the removed extensions and fonts"
 if (( ! APPS_TOO )); then

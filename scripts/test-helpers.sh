@@ -156,6 +156,137 @@ profile_ok() { [[ ! -f /usr/share/dconf/profile/gdm || "$(login_profile | grep -
 t "its profile is Ubuntu's plus system-db:gdm (where Ubuntu's exists)" profile_ok
 t "its background is in the repo" test -f "$SETUP/wallpaper/login-blurred.jpg"
 
+# Functions from scripts that run as soon as they start: load just the function.
+load_fn() { source <(sed -n "/^$2() {/,/^}/p" "$ROOT/$1"); }
+
+echo "Secret check (.githooks/pre-commit)"
+git init -q "$T/secrets"
+# hook_on "line": does the secret check stop a commit that adds this line?
+hook_on() {
+  printf '%s\n' "$1" > "$T/secrets/f.txt"
+  git -C "$T/secrets" add f.txt
+  local rc=0; (cd "$T/secrets" && bash "$ROOT/.githooks/pre-commit" >/dev/null 2>&1) || rc=$?
+  git -C "$T/secrets" rm -q --cached f.txt
+  return "$rc"
+}
+# The made-up secrets are put together here, so this file itself never holds one (CI
+# runs the secret check on every file).
+gh36="ghp_$(printf 'a%.0s' {1..36})" oai="$(printf 'Ab1_-%.0s' {1..8})" K=Key P=word
+t "stops a GitHub token" not hook_on "TOKEN=$gh36"
+t "stops a token on a line that ends in false" not hook_on "{\"token\": \"$gh36\", \"debug\": false}"
+t "stops a real setting on a line that ends in true" not hook_on "{\"api$K\":\"abcdef123456\",\"enabled\":true}"
+t "stops an OpenAI sk-proj- key" not hook_on "OPENAI=sk-proj-$oai"
+t "stops an OpenAI sk-svcacct- key" not hook_on "x sk-svcacct-$oai"
+t "stops a private key" not hook_on "-----BEGIN OPENSSH PRIVATE ${K^^}-----"
+t "stops a password setting" not hook_on "pass$P = hunter2hunter2"
+t "lets a placeholder through" hook_on "password = xxxxxxxx"
+t "lets a variable through" hook_on 'token: ${GITHUB_TOKEN}'
+t "lets <placeholder> through" hook_on 'api_key=<your-api-key>'
+t "lets @HOME@ through" hook_on 'password: @HOME@'
+t "lets true/false settings through" hook_on '"token": true, "debug": false'
+t "lets sk- inside a word through" hook_on "risk-management-of-the-whole-project-today"
+
+echo "Saved files put back (install.sh put_file)"
+load_fn install.sh put_file
+mkdir -p "$T/put"; echo saved > "$T/put/src"; echo mine > "$T/put/conf"
+put_file "$T/put/src" "$T/put/conf" >/dev/null
+echo changed-by-the-app > "$T/put/conf"
+put_file "$T/put/src" "$T/put/conf" >/dev/null
+t "the file is the saved one" same "$(cat "$T/put/conf")" saved
+t "the first .orig (yours from before) is kept on a second run" same "$(cat "$T/put/conf.orig")" mine
+t "the file it replaced the second time is in .prev" same "$(cat "$T/put/conf.prev")" changed-by-the-app
+
+echo "Display settings (install.sh monitors_for_here)"
+load_fn install.sh monitors_for_here
+mkdir -p "$T/mon"
+cat > "$T/mon/two.xml" <<'EOF'
+<monitors><configuration>
+<monitorspec><connector>DP-1</connector><vendor>DEL</vendor><product>U2720Q</product><serial>@SERIAL@</serial></monitorspec>
+<monitorspec><connector>DP-2</connector><vendor>DEL</vendor><product>U2720Q</product><serial>@SERIAL@</serial></monitorspec>
+</configuration></monitors>
+EOF
+# screens "(('connector', 'maker', 'model', 'serial'), [..." ...: what GNOME reports as connected
+screens() { printf '#!/bin/sh\necho "(uint32 1, [%s])"\n' "$*" > "$T/bin/gdbus"; chmod +x "$T/bin/gdbus"; }
+serials() { PATH="$T/bin:$PATH" monitors_for_here "$1" | grep -o '<serial>[^<]*' | sed 's/<serial>//' | tr '\n' ' '; }
+screens "(('DP-1', 'DEL', 'U2720Q', 'AAA'), [()]), (('DP-2', 'DEL', 'U2720Q', 'BBB'), [()])"
+t "two identical screens each get their own serial" same "$(serials "$T/mon/two.xml")" "AAA BBB "
+screens "(('HDMI-1', 'DEL', 'U2720Q', 'AAA'), [()]), (('HDMI-2', 'DEL', 'U2720Q', 'BBB'), [()])"
+t "identical screens that can't be told apart: left alone" not bash -c \
+  'source <(sed -n "/^monitors_for_here() {/,/^}/p" "$1/install.sh"); have() { command -v "$1" >/dev/null; }; PATH="$2:$PATH" monitors_for_here "$3" >/dev/null' \
+  _ "$ROOT" "$T/bin" "$T/mon/two.xml"
+screens "(('eDP-2', 'EDO', 'LEN151WQXGA', 'S1'), [()]), (('HDMI-1', 'MSI', 'MSI MP2412', 'S2'), [()])"
+t "a screen on another connector, the only one of its model, still matches" \
+  same "$(serials "$SETUP/apps/monitors.xml")" "S1 S2 S1 "
+
+echo "Snapshots (dot save)"
+# A stand-in dconf: `dump` prints one setting, except for a folder with nothing set.
+printf '#!/bin/sh\n[ "$1" = dump ] && [ "$2" = /org/gnome/desktop/wm/keybindings/ ] && exit 0\n[ "$1" = dump ] && printf "[/]\\nk=1\\n"\nexit 0\n' > "$T/bin/dconf"
+chmod +x "$T/bin/dconf"
+dump_ok() { PATH="$T/bin:$PATH" bash "$ROOT/scripts/dump-desktop-settings.sh" > "$T/desktop.dconf" && grep -q '^\[org/gnome/deja-dup\]' "$T/desktop.dconf"; }
+t "an empty dconf folder doesn't stop the desktop settings halfway" dump_ok
+cp -r "$SETUP" "$T/snap-setup"; before="$(sha256sum < "$T/snap-setup/desktop-settings.dconf")"
+printf '#!/bin/sh\nexit 1\n' > "$T/bin/dconf"
+snap_rc=0; PATH="$T/bin:$PATH" bash "$ROOT/scripts/snapshot.sh" "$T/snap-setup" >/dev/null 2>&1 || snap_rc=$?
+t "a failed read of the desktop settings makes snapshot.sh fail" same "$snap_rc" 1
+t "... and leaves the saved desktop-settings.dconf as it was" same "$(sha256sum < "$T/snap-setup/desktop-settings.dconf")" "$before"
+t "... with no half-written file left" not test -e "$T/snap-setup/desktop-settings.dconf.new"
+mv "$T/bin/dconf" "$T/bin/dconf.off"   # (later checks use no dconf)
+
+echo "What the dotfiles added (dot uninstall removes only these)"
+ADDED_FILE="$T/state/added" WEEKLY_JOB="$T/no-weekly-job"   # (this computer may have the real one)
+t "without a record, everything counts as added (as before)" was_added app:chrome
+added_init
+t "a fresh computer's record isn't legacy" not grep -qx legacy "$ADDED_FILE"
+t "something not recorded wasn't added" not was_added app:chrome
+mark_added app:chrome; mark_added app:chrome
+t "something recorded was added" was_added app:chrome
+t "recorded once" same "$(grep -cx app:chrome "$ADDED_FILE")" 1
+t "a dry run records nothing" bash -c 'DRY_RUN=1; source "$1/lib.sh"; ADDED_FILE="$2"; mark_added pkg:vlc; ! grep -qx pkg:vlc "$2"' _ "$ROOT" "$ADDED_FILE"
+ADDED_FILE="$T/state/legacy" old_wallpaper="$T/legacy-home/${WALLPAPER#"$HOME"/}"   # its wallpaper is there
+mkdir -p "$(dirname "$old_wallpaper")"; touch "$old_wallpaper"
+WALLPAPER="$old_wallpaper" added_init
+t "a computer set up before the record is legacy: everything counts" was_added app:steam
+ADDED_FILE="$T/state/none"
+
+echo "Why an extension didn't install (install.sh download_extension)"
+load_fn install.sh download_extension
+# A stand-in curl: exits with $CURL_RC, or answers HTTP $CURL_CODE.
+printf '#!/bin/sh\n[ "${CURL_RC:-0}" = 0 ] || exit "$CURL_RC"\nprintf "%%s" "$CURL_CODE"\n' > "$T/bin/curl"; chmod +x "$T/bin/curl"
+why() { EXTENSIONS_SITE=https://extensions.gnome.org PATH="$T/bin:$PATH" download_extension x@y 49 "$T/ext.zip"; }
+t "no internet says so" same "$(CURL_RC=6 why)" "couldn't reach extensions.gnome.org (no internet?)"
+t "no version for this GNOME says so" same "$(CURL_CODE=404 why)" "extensions.gnome.org has no version of it for GNOME 49 (yet)"
+t "a site error says so" same "$(CURL_CODE=503 why)" "extensions.gnome.org answered with an error (HTTP 503); try again later"
+mv "$T/bin/curl" "$T/bin/curl.off"
+
+echo "Other fixes"
+trap_kept() {
+  bash -c 'source "$1/lib.sh"; trap "echo stop" TERM; UI_TTY=1
+    quiet test true >/dev/null 2>&1 </dev/null; [[ -n "$(trap -p TERM)" ]]' _ "$ROOT"
+}
+t "quiet() keeps the progress panel's TERM trap" trap_kept
+fix_fails() {
+  bash -c 'source "$1/lib.sh"; source <(sed -n "/^fix_step() {/,/^}/p" "$1/check.sh"); YES_ALL=1
+    half() { false; echo "    KEPT-GOING"; }
+    fix_step "A fix" "Fix it?" half; [[ "${FAILED[*]}" == "A fix" ]]' _ "$ROOT" | not grep -q KEPT-GOING
+}
+t "dot check --fix stops a fix at its first error and marks it failed" fix_fails
+mkdir -p "$T/src"; printf 'Types: deb\nEnabled: no\n' > "$T/src/app.sources"; chmod a-w "$T/src"
+src_rc=0; (cd "$ROOT" && SOURCES_DIR="$T/src" SUDO= ./post-upgrade.sh --sources-only >/dev/null 2>&1) || src_rc=$?
+chmod u+w "$T/src"
+t "post-upgrade.sh --sources-only fails when it can't switch a source on" same "$src_rc" 1
+sed -n '/^# Remember what was picked/,/^fi$/p' "$ROOT/bootstrap.sh" > "$T/choices.sh"
+mkdir -p "$HOME/.config/dotfiles"; echo terminal > "$HOME/.config/dotfiles/choices"
+DOTFILES_CHOICES='' DOTFILES_SKIP='' bash "$T/choices.sh" >/dev/null
+t "bootstrap.sh with no picks removes earlier choices" not test -e "$HOME/.config/dotfiles/choices"
+load_fn install.sh reminder_folder
+REMINDER_DROPIN="$T/dropin.conf"
+reminder_in() { DOTFILES="$1" reminder_folder >/dev/null; }
+reminder_in "$T/my 100% code/dotfiles"
+t "dotfiles elsewhere: the reminder's drop-in runs them there" \
+  grep -qxF "ExecStart=\"$T/my 100%% code/dotfiles/check.sh\" --notify" "$REMINDER_DROPIN"
+reminder_in "$HOME/dotfiles"
+t "back in ~/dotfiles: the drop-in is removed" not test -e "$REMINDER_DROPIN"
+
 echo "App table (install-apps.sh)"
 t "every app: entry has its APP_PARTS" bash -c '
   for e in "${@:2}"; do c="${e%%|*}"; [[ "$c" != app:* ]] || [[ " $1 " == *" $c "* ]] || { echo "      missing APP_PARTS for $c"; exit 1; }; done' \

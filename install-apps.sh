@@ -190,6 +190,7 @@ setup_firewall() {
     note "port $port left open for qBittorrent"
   fi
   run sudo ufw --force enable
+  mark_added firewall   # it was off (else this step is skipped): dot uninstall may switch it off
   note "on; see the rules: sudo ufw status verbose"
 }
 
@@ -372,6 +373,7 @@ install_ubuntu_apps() {
     fi
   fi
   apt_get install -y "${missing[@]}"
+  for p in "${missing[@]}"; do mark_added "pkg:$p"; done   # for dot uninstall
 }
 
 setup_weekly_updates() {
@@ -439,6 +441,7 @@ remove_snap_firefox() {
   fi
   if snap list firefox >/dev/null 2>&1; then
     run sudo snap remove firefox
+    mark_added snapfirefox   # (removed, not added): dot uninstall may put it back
   fi
   # Ubuntu's "firefox" package only exists to install the Snap; an update to it
   # would bring the Snap back, so remove it too. Nothing else depends on it.
@@ -483,6 +486,7 @@ if [[ "$DRY_RUN" != 1 ]]; then
   keep_sudo || exit 1
 fi
 clock_step
+added_init   # before anything is installed: what was already here isn't counted as added
 
 # What's already done, not needed, or still to do (quietly, before anything runs).
 STATUS=()
@@ -527,7 +531,7 @@ done
 ui_plan "${titles[@]}"
 
 for i in "${!APPS[@]}"; do
-  IFS='|' read -r _ name check fn verb <<< "${APPS[$i]}"
+  IFS='|' read -r choice name check fn verb <<< "${APPS[$i]}"
   verb="${verb:-Install}"
   step_begin "$verb: $name"
   if [[ "${STATUS[i]}" == notchosen ]]; then step_end skip "not chosen"; continue; fi
@@ -547,6 +551,9 @@ for i in "${!APPS[@]}"; do
   ( set -e; "$fn" )
   rc=$?
   if (( rc != 0 )); then step_end fail "exit code $rc"; else step_end ok; fi
+  # An app from its maker that wasn't here before (ones already installed were skipped
+  # above), for dot uninstall. Ubuntu apps, the firewall and Snap Firefox mark their own.
+  if (( rc == 0 )) && [[ "$choice" == app:* ]]; then mark_added "$choice"; fi
 done
 
 summary; ok=$?

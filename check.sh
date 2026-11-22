@@ -310,7 +310,11 @@ fix_step() {
   local title="$1" q="$2"; shift 2
   step_begin "$title"
   if ! ask "$q"; then step_end skip "you chose not to"; return; fi
-  ( set -e; "$@" ) && step_end ok || step_end fail
+  # Not `( set -e; ... ) && ...`: after && bash ignores set -e inside the ( ), so a fix
+  # that failed halfway would carry on and could still show ✔. Like run_step in lib.sh.
+  ( set -e; "$@" )
+  local rc=$?
+  if (( rc == 0 )); then step_end ok; else step_end fail "exit code $rc"; fi
 }
 add_unsaved() {
   { printf '\n# Added by dot check --fix on %s\n' "$(date +%F)"; printf '%s\n' "${unsaved[@]}"; } >> "$SETUP/apt-packages.txt"

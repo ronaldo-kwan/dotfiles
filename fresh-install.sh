@@ -53,6 +53,7 @@ choose_answer_mode
 ask_or_quit "Start?"
 [[ "$DRY_RUN" == 1 ]] || keep_sudo || exit 1
 clock_step   # before the first update: apt rejects updates while the clock is wrong
+added_init   # before anything is installed: what was already here isn't counted as added
 
 # 1. Update the system --------------------------------------------------------------
 update_system() {
@@ -80,7 +81,10 @@ update_firmware() {
 
 # 3. Terminal tools and Flathub ---------------------------------------------------------
 install_tools() {
+  local t new=()
+  for t in "${TOOLS[@]}"; do installed "$t" || new+=("$t"); done
   apt_get_as "Installing ${#TOOLS[@]} terminal tools" install -y "${TOOLS[@]}"
+  for t in ${new[@]+"${new[@]}"}; do mark_added "pkg:$t"; done   # for dot uninstall
   run sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 }
 

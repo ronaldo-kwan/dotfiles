@@ -96,11 +96,14 @@ install_vscode_extensions() {
     skip "VS Code isn't installed yet"
     return 0
   fi
-  local ext failed=()
+  local ext failed=() out
   while read -r ext; do
-    if run_quiet code --install-extension "$ext"; then did "$ext"; else failed+=("$ext"); fi
+    if [[ "$DRY_RUN" == 1 ]]; then run code --install-extension "$ext"; continue; fi
+    # On a failure, VS Code's own last line says why ("not found", a network error, ...).
+    if out="$(code --install-extension "$ext" 2>&1)"; then did "$ext"
+    else failed+=("$ext"); warn "$ext: $(grep -v '^\s*$' <<< "$out" | tail -1)"; fi
   done < <(list_of vscode-extensions.txt)
-  # The others are installed; say which didn't (often no internet), so the step shows ✘.
+  # The others are installed; the step shows ✘ for the ones that weren't.
   (( ${#failed[@]} == 0 )) || { warn "couldn't install: ${failed[*]} (run dot install again)"; return 1; }
 }
 
@@ -117,8 +120,11 @@ install_flatpaks() {
   local -a apps
   mapfile -t apps < <(chosen_from flatpaks.txt flatpak:)
   (( ${#apps[@]} )) || { skip "no Flatpak apps chosen"; return 0; }
+  local app new=()
+  for app in "${apps[@]}"; do flatpak info "$app" >/dev/null 2>&1 || new+=("$app"); done
   quiet "Installing ${#apps[@]} Flatpak apps (already installed ones are skipped)" \
     flatpak install -y --noninteractive flathub "${apps[@]}"
+  for app in ${new[@]+"${new[@]}"}; do mark_added "flatpak:$app"; done   # for dot uninstall
 }
 
 # Flatpak apps read fontconfig from their own folder (~/.var/app/<id>/config), not
@@ -143,6 +149,28 @@ flatpak_fonts() {
 # New extensions start working after you log out and back in.
 # REINSTALL_EXTENSIONS=1 downloads them again even if installed (post-upgrade.sh uses
 # this after a new Ubuntu release, which brings a new GNOME version).
+
+# download_extension <uuid> <GNOME version> <zip>: download the version of an extension
+# made for this GNOME. If it can't, prints why (no internet is not the same problem as
+# no version for this GNOME, which is common just after an Ubuntu upgrade).
+EXTENSIONS_SITE="${EXTENSIONS_SITE:-https://extensions.gnome.org}"   # (tests use another)
+download_extension() {
+  local uuid="$1" gnome="$2" zip="$3" code url
+  if ! code="$(curl -sSG -o "$zip.json" -w '%{http_code}' "$EXTENSIONS_SITE/extension-info/" \
+         --data-urlencode "uuid=$uuid" --data-urlencode "shell_version=$gnome" 2>/dev/null)"; then
+    echo "couldn't reach ${EXTENSIONS_SITE#https://} (no internet?)"; return 1
+  fi
+  case "$code" in
+    200) ;;
+    404) echo "${EXTENSIONS_SITE#https://} has no version of it for GNOME $gnome (yet)"; return 1 ;;
+    *)   echo "${EXTENSIONS_SITE#https://} answered with an error (HTTP $code); try again later"; return 1 ;;
+  esac
+  url="$(python3 -I -c 'import sys,json; print(json.load(sys.stdin)["download_url"])' < "$zip.json" 2>/dev/null)" \
+    || { echo "unexpected answer from ${EXTENSIONS_SITE#https://}"; return 1; }
+  curl -fsSL -o "$zip" "$EXTENSIONS_SITE$url" 2>/dev/null \
+    || { echo "found a version for GNOME $gnome, but its download failed"; return 1; }
+}
+
 install_gnome_extensions() {
   need desktop || return 0
   local missing=()
@@ -151,23 +179,24 @@ install_gnome_extensions() {
     skip "needs ${missing[*]}"
     return 0
   fi
-  local shell_version tmp uuid info url failed=()
+  local shell_version tmp uuid why was_there failed=()
   shell_version="$(gnome-shell --version | grep -oE '[0-9]+' | head -1)"
   tmp="$(mktemp -d)"
   while read -r uuid; do
-    if [[ "${REINSTALL_EXTENSIONS:-0}" != 1 ]] && gnome-extensions info "$uuid" >/dev/null 2>&1; then
+    was_there=0; gnome-extensions info "$uuid" >/dev/null 2>&1 && was_there=1
+    if [[ "${REINSTALL_EXTENSIONS:-0}" != 1 ]] && (( was_there )); then
       echo "    $uuid: already installed"
     # One that isn't available for this GNOME version (common just after an Ubuntu
-    # upgrade) or doesn't download is left out; the others still go ahead.
-    elif ! info="$(curl -fsSG https://extensions.gnome.org/extension-info/ \
-           --data-urlencode "uuid=$uuid" --data-urlencode "shell_version=$shell_version")" \
-      || ! url="$(python3 -I -c 'import sys,json; print(json.load(sys.stdin)["download_url"])' <<< "$info" 2>/dev/null)" \
-      || ! curl -fsSL -o "$tmp/ext.zip" "https://extensions.gnome.org$url" \
-      || ! run gnome-extensions install --force "$tmp/ext.zip"; then
-      warn "$uuid: not available for GNOME $shell_version, or the download failed"
+    # upgrade) or doesn't download is left out, saying why; the others still go ahead.
+    elif ! why="$(download_extension "$uuid" "$shell_version" "$tmp/ext.zip")"; then
+      warn "$uuid: $why"
+      failed+=("$uuid"); continue
+    elif ! run gnome-extensions install --force "$tmp/ext.zip"; then
+      warn "$uuid: downloaded, but gnome-extensions couldn't install it"
       failed+=("$uuid"); continue
     else
       did "$uuid: installed"
+      (( was_there )) || mark_added "extension:$uuid"   # for dot uninstall: it wasn't yours before
     fi
     # Add it to the enabled list (keeps everything already enabled). Held back during
     # fresh-install.sh, which switches everything on just before its restart.
@@ -466,12 +495,13 @@ header "$title" \
   "Config links, Roboto fonts, VS Code extensions, Flatpak apps, GNOME extensions," \
   "desktop look, shortcuts and settings, wallpaper, app settings, Obsidian," \
   "secret check before commits and a weekly reminder. No sudo needed." \
-  "Files it replaces are kept as <name>.orig."
+  "Files it replaces are kept as <name>.orig (the first time) or <name>.prev."
 # -y / --yes (used by fresh-install.sh), or Yes to everything chosen earlier, skips this.
 yes_flag "$@"
 [[ "$DRY_RUN" == 1 ]] && note "Dry run: shows what it would change; downloads are made and checked, nothing is installed."
 ask_or_quit "Continue?"
 [[ "$DRY_RUN" == 1 ]] || git_identity
+added_init   # before anything is installed: what was already here isn't counted as added
 
 run_steps \
   "Linking config files|link_configs" \

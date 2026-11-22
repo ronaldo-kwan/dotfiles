@@ -144,7 +144,7 @@ Each script can also run on its own, for example on a computer that's already se
 
 | Script | Needs sudo | What it does |
 |---|---|---|
-| `~/dotfiles/install.sh` (`dot install`) | No | Links the config files (keeping existing ones as `.orig`), installs the Roboto Mono fonts, VS Code extensions, Flatpak apps and GNOME extensions for this GNOME version, and restores the desktop look, shortcuts, settings, dock, wallpaper, app settings and the Obsidian vault. Switches on the secret check and the weekly reminder. Extensions start after you log out and back in. `DRY_RUN=1 dot install --yes` only shows what it would change |
+| `~/dotfiles/install.sh` (`dot install`) | No | Links the config files (keeping existing ones as `.orig`; later, saved app settings it replaces go to `.prev`, so the `.orig` from before the dotfiles is never overwritten), installs the Roboto Mono fonts, VS Code extensions, Flatpak apps and GNOME extensions for this GNOME version, and restores the desktop look, shortcuts, settings, dock, wallpaper, app settings and the Obsidian vault. Switches on the secret check and the weekly reminder. Extensions start after you log out and back in. `DRY_RUN=1 dot install --yes` only shows what it would change |
 | `~/dotfiles/install-apps.sh` (`dot apps`) | Yes | Apps and system parts; see [Apps](apps.md) |
 | `~/dotfiles/fresh-install.sh` (`dot fresh`) | Yes | All of the above, plus the system and firmware update. `DRY_RUN=1 dot fresh --yes` only shows what it would do |
 | `~/dotfiles/check.sh` (`dot check`) | No | Shows what's missing. Changes nothing |
@@ -163,14 +163,16 @@ On its own, it changes only your user's files and settings, no sudo:
 
 - **Config links are removed.** Files you had before (kept as `<name>.orig`) come back; without one, `~/.bashrc` becomes Ubuntu's default. Your git name and email move into a plain `~/.gitconfig`, so commits keep working.
 - **The desktop goes back to Ubuntu's defaults:** theme, fonts, shortcuts, dock, wallpaper, Files and other settings `install.sh` loaded. Backups' settings stay, so automatic backups keep running.
-- **What it added is removed:** the GNOME extensions it downloaded, the Roboto Mono fonts, the wallpaper, and its copies of font settings in Flatpak apps and of login apps.
+- **What it added is removed:** the GNOME extensions it downloaded (not ones you had before), the Roboto Mono fonts, the wallpaper, and its copies of font settings in Flatpak apps and of login apps.
 - **The weekly reminder and the secret check are switched off,** and the website's saved choices are deleted.
 
 Then log out and back in.
 
 ### Removing the apps too (`--apps`)
 
-Apps stay unless you ask, because the uninstall can't tell which ones you had before the dotfiles (the install skips apps that are already there), and removing them needs sudo. With `--apps` it shows a checklist of what it found, all ticked: <kbd>Space</kbd> unticks what you want to keep, <kbd>Enter</kbd> removes the rest after one password.
+Apps stay unless you ask, because removing them needs sudo. With `--apps` it shows a checklist of what it found, all ticked: <kbd>Space</kbd> unticks what you want to keep, <kbd>Enter</kbd> removes the rest after one password.
+
+Only what the dotfiles added is on the list. The install scripts write down each app, package, Flatpak and GNOME extension they install that wasn't there before, and whether they switched the firewall on or removed the Snap Firefox. The list is kept in `~/.local/state/dotfiles/added`. Anything you had before the dotfiles isn't on it and stays. A computer set up before this list existed is marked `legacy`: nobody knows what was there before, so everything that matches is offered, as it used to be. After `--apps`, the list is emptied: whatever you kept is now yours.
 
 | On the list | What removing it does |
 |---|---|

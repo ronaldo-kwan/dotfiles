@@ -42,6 +42,14 @@ jobs:
           shellcheck -x -S warning *.sh dot scripts/*.sh .githooks/pre-commit system/etc/cron.*/*
       - name: Shared helpers and the app table (scripts/test-helpers.sh)
         run: bash scripts/test-helpers.sh
+      - name: No secrets in any file (the pre-commit secret check, on the whole repo)
+        # The hook only sees what a commit adds, and git commit --no-verify skips it:
+        # here every file is checked, as if all were being added at once.
+        run: |
+          d="$(mktemp -d)"
+          git ls-files -z | xargs -0 cp --parents -t "$d"
+          cd "$d" && git init -q && git add -A
+          bash "$GITHUB_WORKSPACE/.githooks/pre-commit"
       - name: The website's options build from the repo's lists
         run: python3 scripts/build-site.py
       - name: The system check (bootstrap.sh's copy and lib.sh's agree)
