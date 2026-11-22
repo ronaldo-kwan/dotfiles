@@ -248,8 +248,8 @@ gsettings set org.gnome.shell favorite-apps "$(cat ~/dotfiles/setup/dock-favorit
 
 ```bash
 mkdir -p ~/Pictures/Wallpapers/current
-cp ~/dotfiles/setup/wallpaper/catppuccin-tropic-island-night.jpg ~/Pictures/Wallpapers/current/
-W="file://$HOME/Pictures/Wallpapers/current/catppuccin-tropic-island-night.jpg"
+cp ~/dotfiles/setup/wallpaper/catppuccin-tropic-island-night-16x9.jpg ~/Pictures/Wallpapers/current/
+W="file://$HOME/Pictures/Wallpapers/current/catppuccin-tropic-island-night-16x9.jpg"
 gsettings set org.gnome.desktop.background picture-uri "$W"
 gsettings set org.gnome.desktop.background picture-uri-dark "$W"
 ```

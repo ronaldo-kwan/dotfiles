@@ -20,7 +20,7 @@ PACKAGES=(bash git starship ghostty btop lazygit bat eza fzf fastfetch terminal-
 
 # Places outside ~/dotfiles that install.sh fills, and check.sh, dot and uninstall.sh look at
 VAULT="$HOME/Documents/Obsidian Vault"   # your notes: the private GitHub repo obsidian-vault
-WALLPAPER="$HOME/Pictures/Wallpapers/current/catppuccin-tropic-island-night.jpg"
+WALLPAPER="$HOME/Pictures/Wallpapers/current/catppuccin-tropic-island-night-16x9.jpg"
 NERD_FONT_DIR="$HOME/.local/share/fonts/RobotoMonoNerdFont"   # the terminal's font
 MONO_FONT_DIR="$HOME/.local/share/fonts/RobotoMono"           # the desktop's monospace font
 # The desktop settings in setup/ and where in dconf each goes: install.sh loads them,
