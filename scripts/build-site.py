@@ -214,8 +214,8 @@ def blocks(lines, page, pages, tight=False):
         elif m := re.match(r"(#{2,4}) +(.*)", s):
             level, text = len(m.group(1)), m.group(2)
             hid = page.heading_id(text)
-            if level == 2:
-                page.toc.append({"id": hid, "text": inline(text, page, pages)})
+            if level <= 3:
+                page.toc.append({"id": hid, "text": inline(text, page, pages), "level": level})
             out.append(f'<h{level} id="{hid}">{inline(text, page, pages)}</h{level}>')
             i += 1
         elif s.startswith("|") and i + 1 < len(lines) and re.match(r"\|? *:?-{3,}", lines[i + 1].strip()):
