@@ -125,6 +125,23 @@ stale_snapshots() {
   diff -rq "$SETUP" "$tmp/setup" 2>/dev/null | sed -E "s|^Files $SETUP/([^ ]+) and .*|\1|; s|^Only in $tmp/setup/?([^:]*): (.*)|\1/\2 (new)|; s|^Only in $SETUP/?([^:]*): (.*)|\1/\2 (gone)|; s|^/||"
   rm -rf "$tmp"
 }
+# Backups install.sh made when it replaced a file: <name>.orig (yours from before the
+# dotfiles), <name>.orig.<date> and <name>.prev (replaced later). Not a problem, just
+# listed so they don't pile up unseen. dot uninstall puts the .orig ones back.
+dotfiles_backups() {   # prints each backup's path
+  local f b
+  while IFS= read -r -d '' f; do
+    for b in "$HOME/${f#*/}".orig "$HOME/${f#*/}".orig.*; do [[ -e "$b" ]] && echo "$b"; done
+  done < <(config_files "${PACKAGES[@]}")
+  for b in "$HOME"/.config/{mimeapps.list,monitors.xml}.{orig,prev} \
+           "$HOME"/.config/qBittorrent/qBittorrent.conf.{orig,prev} "$HOME"/.config/qBittorrent/themes/*.{orig,prev} \
+           "$HOME"/.config/autostart/*.desktop.{orig,prev} "$HOME"/.var/app/*/config/fontconfig/fonts.conf.{orig,prev}; do
+    [[ -e "$b" ]] && echo "$b"
+  done
+  return 0
+}
+BACKUPS_PILED_UP=5   # the weekly reminder mentions backups from this many on
+
 if [[ "$MODE" == notify ]]; then
   msgs=()
   mapfile -t stale < <(stale_snapshots)
@@ -133,6 +150,11 @@ if [[ "$MODE" == notify ]]; then
   (( ${#unsaved[@]} )) && msgs+=("Ubuntu apps not in apt-packages.txt: ${unsaved[*]}")
   (( ${#unsaved_other[@]} )) && msgs+=("Apps from other sources not saved: ${unsaved_other[*]} (add to install-apps.sh, or -name)")
   [[ "$(backups_state)" == off ]] && msgs+=("Automatic backups are off. Open Backups and turn on Back Up Automatically.")
+  # Once, until answered: dot uninstall --apps can't tell your apps from the dotfiles' ones.
+  added_is_legacy && msgs+=("dot uninstall can't tell which apps you had before the dotfiles. Run: dot check --fix")
+  # Only once they've piled up: a few backups (your .orig from before) are expected.
+  mapfile -t backups < <(dotfiles_backups)
+  (( ${#backups[@]} >= BACKUPS_PILED_UP )) && msgs+=("${#backups[@]} backups of files the dotfiles replaced (.orig, .prev). See them: dot check")
   for d in "$DOTFILES" "$VAULT"; do
     [[ -d "$d/.git" ]] || continue
     s="$(repo_state "$d")"
@@ -167,21 +189,6 @@ while IFS= read -r -d '' f; do
   [[ "$(readlink -f "$HOME/${f#*/}")" == "$(readlink -f "$DOTFILES/$f")" ]] || broken+=("~/${f#*/}")
 done < <(config_files "${pkgs[@]}")
 list_missing "all config files linked (${pkgs[*]})" install "${broken[@]}"
-# Backups install.sh made when it replaced a file: <name>.orig (yours from before the
-# dotfiles), <name>.orig.<date> and <name>.prev (replaced later). Not a problem, just
-# listed so they don't pile up unseen. dot uninstall puts the .orig ones back.
-dotfiles_backups() {   # prints each backup's path
-  local f b
-  while IFS= read -r -d '' f; do
-    for b in "$HOME/${f#*/}".orig "$HOME/${f#*/}".orig.*; do [[ -e "$b" ]] && echo "$b"; done
-  done < <(config_files "${PACKAGES[@]}")
-  for b in "$HOME"/.config/{mimeapps.list,monitors.xml}.{orig,prev} \
-           "$HOME"/.config/qBittorrent/qBittorrent.conf.{orig,prev} "$HOME"/.config/qBittorrent/themes/*.{orig,prev} \
-           "$HOME"/.config/autostart/*.desktop.{orig,prev} "$HOME"/.var/app/*/config/fontconfig/fonts.conf.{orig,prev}; do
-    [[ -e "$b" ]] && echo "$b"
-  done
-  return 0
-}
 mapfile -t backups < <(dotfiles_backups)
 if (( ${#backups[@]} )); then
   info "${#backups[@]} backup(s) of files the dotfiles replaced; look through them and delete what you don't need:"

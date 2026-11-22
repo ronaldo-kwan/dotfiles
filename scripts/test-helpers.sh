@@ -9,6 +9,9 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 export HOME="$T/home" NO_COLOR=1 DOT_PLAIN=1 UI_LOG="$T/ui.log"   # no saved choices, no colours
+# UTF-8 whatever the terminal's locale: the spinner and panel count their ✔ ⠋ … as one
+# character each, which they only are in UTF-8 (without a locale set, they're bytes).
+export LC_ALL=C.UTF-8
 unset DOTFILES_CHOICES DOTFILES_SKIP DRY_RUN
 mkdir -p "$HOME"
 # shellcheck source=../lib.sh
@@ -359,6 +362,21 @@ mkdir -p "$HOME/.config/qBittorrent"
 touch "$HOME/.bashrc.orig" "$HOME/.bashrc.orig.20261122-101010" "$HOME/.config/qBittorrent/qBittorrent.conf.prev"
 t "dot check lists the backups install.sh made" same "$(dotfiles_backups | sed "s|$HOME/||" | sort | tr '\n' ' ')" \
   ".bashrc.orig .bashrc.orig.20261122-101010 .config/qBittorrent/qBittorrent.conf.prev "
+
+echo "The weekly reminder (check.sh --notify)"
+# notify-send is a stand-in, so no real notification pops up.
+printf '#!/bin/sh\nexit 0\n' > "$T/bin/notify-send"; chmod +x "$T/bin/notify-send"
+remind() { PATH="$T/bin:$PATH" ADDED_FILE="$1" timeout 120 bash "$ROOT/check.sh" --notify 2>/dev/null; }
+mkdir -p "$T/state" && printf 'legacy\n' > "$T/state/remind-legacy"
+for day in 1 2 3; do touch "$HOME/.bashrc.orig.2026010$day-000000"; done   # 6, with the 3 from above
+reminder="$(remind "$T/state/remind-legacy")"
+t "it mentions a legacy record" grep -q "dot check --fix" <<< "$reminder"
+t "it mentions backups once they pile up (6)" grep -q "6 backups of files the dotfiles replaced" <<< "$reminder"
+rm -f "$HOME"/.bashrc.orig.2026010?-000000
+printf '# answered\n' > "$T/state/remind-answered"
+reminder="$(remind "$T/state/remind-answered")"
+t "... but not once the record is answered" not grep -q "dot check --fix" <<< "$reminder"
+t "... nor for a few backups (3)" not grep -q "backups of files the dotfiles replaced" <<< "$reminder"
 
 echo "App table (install-apps.sh)"
 t "every app: entry has its APP_PARTS" bash -c '
