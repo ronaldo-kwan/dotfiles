@@ -5,206 +5,419 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Dotfiles installer</title>
 <meta name="description" content="Pick what you want from ronaldo-kwan's Ubuntu dotfiles and get a one-line installer.">
+<meta name="theme-color" content="#1e1e2e">
+<script>
+  // The theme before first paint, so the page doesn't flash: a saved choice, else the system's.
+  try { const t = localStorage.getItem("dotfiles-site-theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
+</script>
 <style>
-  /* Layout: a configurator. Choices on the left in collapsible sections; the installer in a
-     sticky panel on the right, drawn as the terminal it will be pasted into. One column on
-     phones, with a bar at the bottom that jumps to the installer. */
+  /* The look of the desktop these dotfiles make: Catppuccin colours, the island wallpaper
+     behind frosted glass (as Blur my Shell does), and the terminal as the centrepiece.
+     Mocha (dark) by default, Latte (light) when the system or the switch asks for it. */
   :root {
-    /* Catppuccin Latte: the dotfiles' own palette, light */
-    --bg: #eff1f5; --panel: #e6e9ef; --raised: #ffffff; --line: #ccd0da; --line-strong: #acb0be;
-    --fg: #4c4f69; --muted: #5c5f77; --faint: #7c7f93;
-    --accent: #8839ef; --on-accent: #ffffff; --accent-soft: #e9dcfd;
-    --ok: #40a02b; --bad: #d20f39; --link: #1e66f5;
-    --term-bg: #1e1e2e; --term-fg: #cdd6f4; --term-dim: #7f849c; --term-prompt: #cba6f7; --term-bar: #181825;
-    --sans: system-ui, -apple-system, "Segoe UI", Cantarell, "Noto Sans", sans-serif;
-    --mono: "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-    --r: 10px;
+    --base: #1e1e2e; --mantle: #181825; --crust: #11111b;
+    --text: #cdd6f4; --sub: #bac2de; --faint: #9399b2; --overlay: #6c7086;
+    --surface: #313244; --surface2: #45475a;
+    --mauve: #cba6f7; --blue: #89b4fa; --teal: #94e2d5; --green: #a6e3a1; --peach: #fab387;
+    --pink: #f5c2e7; --yellow: #f9e2af; --red: #f38ba8; --sky: #89dceb; --lavender: #b4befe;
+    --glass: rgb(24 24 37 / .62); --glass-strong: rgb(24 24 37 / .82); --glass-line: rgb(255 255 255 / .08);
+    --glass-hi: rgb(255 255 255 / .05); --tile: rgb(49 50 68 / .45); --tile-hover: rgb(69 71 90 / .55);
+    --shadow: 0 20px 50px -20px rgb(0 0 0 / .6);
+    --hero-fade: linear-gradient(180deg, rgb(30 30 46 / .25) 0%, rgb(30 30 46 / .55) 55%, var(--base) 100%);
+    --grad: linear-gradient(120deg, var(--mauve), var(--blue) 55%, var(--teal));
+    --on-grad: #11111b;
+    --term-bg: rgb(17 17 27 / .88); --term-text: #cdd6f4;
+    --sans: "Roboto", "Inter", system-ui, -apple-system, "Segoe UI", Cantarell, sans-serif;
+    --mono: "RobotoMono Nerd Font", "Roboto Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: dark;
   }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-    /* Catppuccin Mocha, dark */
-    --bg: #1e1e2e; --panel: #181825; --raised: #26263a; --line: #313244; --line-strong: #45475a;
-    --fg: #cdd6f4; --muted: #bac2de; --faint: #9399b2;
-    --accent: #cba6f7; --on-accent: #1e1e2e; --accent-soft: #3a3150;
-    --ok: #a6e3a1; --bad: #f38ba8; --link: #89b4fa;
-    --term-bg: #11111b; --term-bar: #181825; color-scheme: dark; } }
-  :root[data-theme="dark"] {
-    --bg: #1e1e2e; --panel: #181825; --raised: #26263a; --line: #313244; --line-strong: #45475a;
-    --fg: #cdd6f4; --muted: #bac2de; --faint: #9399b2;
-    --accent: #cba6f7; --on-accent: #1e1e2e; --accent-soft: #3a3150;
-    --ok: #a6e3a1; --bad: #f38ba8; --link: #89b4fa;
-    --term-bg: #11111b; --term-bar: #181825; color-scheme: dark; }
+  :root[data-theme="light"] {
+    --base: #eff1f5; --mantle: #e6e9ef; --crust: #dce0e8;
+    --text: #4c4f69; --sub: #5c5f77; --faint: #6c6f85; --overlay: #8c8fa1;
+    --surface: #ccd0da; --surface2: #bcc0cc;
+    --mauve: #8839ef; --blue: #1e66f5; --teal: #179299; --green: #40a02b; --peach: #fe640b;
+    --pink: #ea76cb; --yellow: #df8e1d; --red: #d20f39; --sky: #04a5e5; --lavender: #7287fd;
+    --glass: rgb(255 255 255 / .62); --glass-strong: rgb(255 255 255 / .84); --glass-line: rgb(76 79 105 / .12);
+    --glass-hi: rgb(255 255 255 / .5); --tile: rgb(255 255 255 / .55); --tile-hover: rgb(255 255 255 / .85);
+    --shadow: 0 20px 50px -24px rgb(76 79 105 / .45);
+    --hero-fade: linear-gradient(180deg, rgb(239 241 245 / .45) 0%, rgb(239 241 245 / .72) 50%, var(--base) 100%);
+    --on-grad: #ffffff;
+    --term-bg: rgb(30 30 46 / .92); --term-text: #cdd6f4;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: light) { :root:not([data-theme]) {
+    --base: #eff1f5; --mantle: #e6e9ef; --crust: #dce0e8;
+    --text: #4c4f69; --sub: #5c5f77; --faint: #6c6f85; --overlay: #8c8fa1;
+    --surface: #ccd0da; --surface2: #bcc0cc;
+    --mauve: #8839ef; --blue: #1e66f5; --teal: #179299; --green: #40a02b; --peach: #fe640b;
+    --pink: #ea76cb; --yellow: #df8e1d; --red: #d20f39; --sky: #04a5e5; --lavender: #7287fd;
+    --glass: rgb(255 255 255 / .62); --glass-strong: rgb(255 255 255 / .84); --glass-line: rgb(76 79 105 / .12);
+    --glass-hi: rgb(255 255 255 / .5); --tile: rgb(255 255 255 / .55); --tile-hover: rgb(255 255 255 / .85);
+    --shadow: 0 20px 50px -24px rgb(76 79 105 / .45);
+    --hero-fade: linear-gradient(180deg, rgb(239 241 245 / .45) 0%, rgb(239 241 245 / .72) 50%, var(--base) 100%);
+    --on-grad: #ffffff;
+    --term-bg: rgb(30 30 46 / .92); --term-text: #cdd6f4;
+    color-scheme: light; } }
 
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 var(--sans); }
-  a { color: var(--link); }
-  .wrap { max-width: 1160px; margin: 0 auto; padding-block: 0 96px;
-          padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  :focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 4px; }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
-  html { scroll-behavior: smooth; }
+  [hidden] { display: none !important; }
+  html { scroll-behavior: smooth; scroll-padding-top: 84px; }
+  body { margin: 0; background: var(--base); color: var(--text); font: 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  a { color: var(--blue); }
+  :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 8px; }
+  kbd { font: 12px var(--mono); padding: 1px 6px; border-radius: 6px; border: 1px solid var(--glass-line); background: var(--glass-hi); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .glass { background: var(--glass); border: 1px solid var(--glass-line); backdrop-filter: blur(20px) saturate(150%);
+           -webkit-backdrop-filter: blur(20px) saturate(150%); box-shadow: var(--shadow); }
+  .grad-text { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
-  /* Header and intro */
-  .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-block: 18px; }
-  .brand { font: 600 15px var(--mono); color: var(--fg); text-decoration: none; white-space: nowrap; }
-  .brand span { color: var(--accent); }
-  .top a.gh { font-size: 14px; }
-  .intro { padding-block: 12px 28px; max-width: 70ch; }
-  h1 { font: 700 clamp(28px, 4vw, 40px)/1.15 var(--sans); letter-spacing: -0.02em; margin: 0 0 10px; text-wrap: balance; }
-  .intro p { margin: 0 0 14px; color: var(--muted); font-size: 17px; }
-  .facts { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0; list-style: none; }
-  .facts li { font: 13px var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; }
+  /* The wallpaper, fading into the page */
+  .backdrop { position: absolute; inset: 0 0 auto 0; height: min(980px, 115vh); z-index: -1; overflow: hidden; }
+  .backdrop::before { content: ""; position: absolute; inset: -40px; background: url("wallpaper.webp") center 30% / cover no-repeat;
+                      transform: scale(1.05); animation: drift 40s ease-in-out infinite alternate; }
+  .backdrop::after { content: ""; position: absolute; inset: 0; background: var(--hero-fade); }
+  @keyframes drift { to { transform: scale(1.12) translate(-1.5%, 1%); } }
 
-  /* Two columns */
-  .cols { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 32px; align-items: start; }
-  @media (max-width: 960px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+  /* Top bar */
+  .nav { position: sticky; top: 0; z-index: 20; padding-top: max(10px, env(safe-area-inset-top, 0px)); }
+  .nav::before { content: ""; position: absolute; inset: 0 -16px -12px; z-index: -1; pointer-events: none;
+                 background: linear-gradient(180deg, var(--base) 35%, transparent); opacity: 0; transition: opacity .3s; }
+  .nav.scrolled::before { opacity: 1; }
+  .nav-in { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 16px; border-radius: 16px; }
+  .brand { font: 600 15px var(--mono); color: var(--text); text-decoration: none; white-space: nowrap; display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--grad); box-shadow: 0 0 12px var(--mauve); flex: none; }
+  .brand span { color: var(--mauve); }
+  .nav-links { display: flex; gap: 2px; margin-left: auto; }
+  .nav-links a { color: var(--sub); text-decoration: none; font-size: 14px; font-weight: 500; padding: 6px 12px; border-radius: 10px; transition: background .2s, color .2s; }
+  .nav-links a:hover { color: var(--text); background: var(--glass-hi); }
+  .nav-links a.on { color: var(--text); background: var(--tile-hover); }
+  .icon-btn { display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--glass-line);
+              background: var(--glass-hi); color: var(--text); cursor: pointer; transition: transform .2s, background .2s; flex: none; padding: 0; }
+  .icon-btn:hover { background: var(--tile-hover); transform: translateY(-1px); }
+  .icon-btn svg { width: 18px; height: 18px; }
+  @media (max-width: 760px) { .nav-links { display: none; } #theme { margin-left: auto; } .brand { font-size: 14px; } }
+
+  /* Hero */
+  .hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 48px; align-items: center; padding: 72px 0 56px; min-height: min(760px, 88vh); }
+  @media (max-width: 960px) { .hero { grid-template-columns: minmax(0, 1fr); padding-top: 40px; gap: 32px; min-height: 0; } }
+  .chip { display: inline-flex; align-items: center; gap: 8px; font: 500 13px var(--mono); color: var(--text); padding: 6px 12px; border-radius: 999px; max-width: 100%; }
+  .chip i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); animation: pulse 2.4s ease-in-out infinite; flex: none; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  h1 { font: 800 clamp(40px, 6.4vw, 76px)/1.02 var(--sans); letter-spacing: -0.035em; margin: 22px 0 18px; text-wrap: balance; }
+  .lede { font-size: clamp(17px, 1.6vw, 19px); color: var(--sub); margin: 0 0 30px; max-width: 46ch; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 15px var(--sans); padding: 12px 20px; border-radius: 12px;
+         border: 1px solid var(--glass-line); text-decoration: none; cursor: pointer; transition: transform .2s, box-shadow .2s, background .2s; color: var(--text);
+         background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  .btn:hover { transform: translateY(-2px); }
+  .btn svg { width: 18px; height: 18px; }
+  .btn.primary { background: var(--grad); background-size: 160% 100%; color: var(--on-grad); border: 0; box-shadow: 0 10px 30px -10px var(--mauve); transition: transform .2s, box-shadow .2s, background-position .5s; }
+  .btn.primary:hover { background-position: 100% 0; box-shadow: 0 14px 36px -10px var(--blue); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+  .stats { display: flex; gap: 32px; margin-top: 40px; flex-wrap: wrap; }
+  .stat b { display: block; font: 800 32px/1 var(--sans); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; color: var(--faint); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+
+  /* Terminal window (hero demo and the command) */
+  .win { border-radius: 16px; overflow: hidden; background: var(--term-bg); border: 1px solid rgb(255 255 255 / .08); min-width: 0;
+         box-shadow: 0 40px 80px -30px rgb(0 0 0 / .7), 0 0 0 1px rgb(0 0 0 / .2); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); color: var(--term-text); }
+  .win-bar { display: flex; align-items: center; gap: 8px; padding: 11px 14px; background: rgb(255 255 255 / .03); border-bottom: 1px solid rgb(255 255 255 / .05); }
+  .win-bar i { width: 11px; height: 11px; border-radius: 50%; background: #45475a; flex: none; }
+  .win-bar i:nth-child(1) { background: #f38ba8; } .win-bar i:nth-child(2) { background: #f9e2af; } .win-bar i:nth-child(3) { background: #a6e3a1; }
+  .win-bar span { flex: 1; text-align: center; font: 500 12px var(--mono); color: #7f849c; margin-right: 44px; }
+  .hero .win { transform: perspective(1400px) rotateY(-7deg) rotateX(3deg); transition: transform .6s cubic-bezier(.2,.7,.2,1); }
+  .hero .win:hover { transform: perspective(1400px) rotateY(0) rotateX(0); }
+  @media (max-width: 960px) { .hero .win { transform: none; } }
+  .demo { margin: 0; padding: 18px 20px 22px; font: 13.5px/1.75 var(--mono); min-height: 340px; white-space: pre-wrap; word-break: break-word; }
+  @media (max-width: 600px) { .demo { font-size: 12px; min-height: 300px; padding: 14px; } }
+  .demo .p { color: #cba6f7; } .demo .ok { color: #a6e3a1; } .demo .dim { color: #7f849c; } .demo .hl { color: #89b4fa; } .demo .warn { color: #f9e2af; }
+  .caret { display: inline-block; width: 8px; height: 1.1em; vertical-align: -2px; background: #cdd6f4; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Section headings */
+  .head { margin: 24px 0 22px; }
+  .head h2 { font: 800 clamp(28px, 3.6vw, 40px)/1.1 var(--sans); letter-spacing: -0.03em; margin: 4px 0 0; }
+  .head p { margin: 8px 0 0; color: var(--sub); }
+  .kicker { font: 600 12px var(--mono); color: var(--mauve); text-transform: uppercase; letter-spacing: .14em; }
+
+  /* Builder: choices left, installer right */
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 28px; align-items: start; padding-bottom: 96px; }
+  @media (max-width: 1020px) { .cols { grid-template-columns: minmax(0, 1fr); } }
 
   /* Presets */
-  .presets { border: 0; padding: 0; margin: 0 0 20px; }
-  .presets legend { font-size: 14px; font-weight: 600; margin-bottom: 8px; padding: 0; }
-  .seg { display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 8px; }
-  .seg label { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border: 1px solid var(--line);
-               border-radius: var(--r); background: var(--raised); cursor: pointer; min-width: 0; }
-  .seg label:hover { border-color: var(--line-strong); }
+  .presets { border: 0; padding: 0; margin: 0 0 18px; min-width: 0; }
+  .seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 700px) { .seg { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .seg label { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 16px; border-radius: 16px; cursor: pointer;
+               background: var(--glass); border: 1px solid var(--glass-line); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+               transition: transform .25s, border-color .25s, box-shadow .25s; min-width: 0; }
+  .seg label:hover { transform: translateY(-3px); border-color: var(--surface2); }
   .seg input { position: absolute; opacity: 0; pointer-events: none; }
-  .seg label:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
-  .seg label:has(input:focus-visible) { outline: 2px solid var(--link); outline-offset: 2px; }
-  .seg b { font-size: 15px; } .seg small { font-size: 13px; color: var(--muted); }
+  .seg svg { width: 26px; height: 26px; color: var(--mauve); margin-bottom: 6px; transition: transform .3s; }
+  .seg b { font-size: 15px; } .seg small { font-size: 13px; color: var(--faint); line-height: 1.4; }
+  .seg label:has(input:checked) { border-color: transparent; box-shadow: 0 0 0 2px var(--mauve), 0 16px 40px -18px var(--mauve); }
+  .seg label:has(input:checked) svg { transform: scale(1.15) rotate(-6deg); }
+  .seg label:has(input:checked)::after { content: ""; position: absolute; top: 12px; right: 12px; width: 10px; height: 10px; border-radius: 50%;
+               background: var(--grad); box-shadow: 0 0 12px var(--mauve); }
+  .seg label:has(input:focus-visible) { outline: 2px solid var(--blue); outline-offset: 3px; }
 
-  /* Sections */
-  details.sec { border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); margin-bottom: 12px; }
-  details.sec > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px;
-                          padding: 14px 16px; font-weight: 600; }
+  /* Find bar and jump chips */
+  .finder { position: sticky; top: 74px; z-index: 10; display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 16px; margin: 0 0 14px; flex-wrap: wrap; }
+  .search { position: relative; flex: 1 1 240px; min-width: 0; }
+  .search > svg { position: absolute; left: 12px; top: 50%; translate: 0 -50%; width: 18px; height: 18px; color: var(--faint); pointer-events: none; }
+  .search kbd { position: absolute; right: 10px; top: 50%; translate: 0 -50%; pointer-events: none; }
+  .search input.text { padding-left: 40px; padding-right: 40px; }
+  .jumps { display: flex; gap: 6px; flex-wrap: wrap; }
+  .jumps a { font-size: 13px; font-weight: 600; color: var(--sub); text-decoration: none; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--glass-line); background: var(--glass-hi); white-space: nowrap; transition: background .2s, color .2s; }
+  .jumps a:hover { background: var(--tile-hover); color: var(--text); }
+  .jumps a b { font: 500 12px var(--mono); color: var(--mauve); margin-left: 4px; }
+  @media (max-width: 600px) { .finder { top: 66px; } .jumps { display: none; } }
+
+  /* Section cards */
+  details.sec { border-radius: 20px; margin-bottom: 14px; scroll-margin-top: 150px; }
+  details.sec > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 14px; padding: 18px 20px; border-radius: 20px; }
   details.sec > summary::-webkit-details-marker { display: none; }
-  details.sec > summary::before { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--faint); border-bottom: 2px solid var(--faint);
-                                  transform: rotate(-45deg); transition: transform .15s; flex: none; }
-  details.sec[open] > summary::before { transform: rotate(45deg); }
-  .sec-title { flex: 1; min-width: 0; }
-  .sec-title small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); }
-  .badge { font: 12px var(--mono); color: var(--muted); background: var(--bg); border: 1px solid var(--line);
-           border-radius: 999px; padding: 1px 9px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .sec-body { padding: 0 16px 16px; }
-  .tools { display: flex; gap: 6px; margin-bottom: 10px; }
-  .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
-  .empty { color: var(--muted); font-size: 14px; margin: 4px 0 0; }
+  details.sec > summary:hover { background: var(--glass-hi); }
+  .sec-ic { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; flex: none; color: var(--on-grad); background: var(--grad); box-shadow: 0 8px 20px -10px var(--mauve); }
+  .sec-ic svg { width: 20px; height: 20px; }
+  .sec-title { flex: 1; min-width: 0; font-weight: 700; font-size: 17px; }
+  .sec-title small { display: block; font-weight: 400; font-size: 13px; color: var(--faint); }
+  .badge { font: 500 12px var(--mono); color: var(--text); background: var(--tile); border: 1px solid var(--glass-line); border-radius: 999px; padding: 3px 10px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .chev { width: 18px; height: 18px; color: var(--faint); transition: transform .3s; flex: none; }
+  details.sec[open] .chev { transform: rotate(180deg); }
+  .sec-body { padding: 0 20px 20px; }
+  details.sec[open] .sec-body { animation: open .35s ease; }
+  @keyframes open { from { opacity: 0; transform: translateY(-6px); } }
+  .tools { display: flex; gap: 6px; margin-bottom: 12px; }
+  .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+  .empty { color: var(--faint); font-size: 14px; margin: 4px 0 0; }
+  @media (max-width: 600px) { details.sec > summary { padding: 14px; gap: 10px; } .sec-body { padding: 0 14px 14px; } .sec-ic { width: 34px; height: 34px; } }
 
-  /* An option row with a switch */
-  .row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 8px;
-         background: var(--raised); border: 1px solid var(--line); cursor: pointer; min-width: 0; }
-  .row:hover { border-color: var(--line-strong); }
-  .row .txt { min-width: 0; }
-  .row b { display: block; font-weight: 600; font-size: 15px; }
-  .row small { display: block; color: var(--muted); font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
-  .switch { appearance: none; flex: none; width: 34px; height: 20px; margin: 2px 0 0; border-radius: 999px;
-            background: var(--line-strong); position: relative; cursor: pointer; transition: background .15s; }
-  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%;
-                   background: var(--raised); transition: transform .15s; }
-  .switch:checked { background: var(--accent); }
-  .switch:checked::after { transform: translateX(14px); background: var(--on-accent); }
+  /* An option tile: click anywhere to pick. The checkbox stays real (and focusable) for keyboards and screen readers. */
+  .row { position: relative; display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 14px; cursor: pointer; min-width: 0;
+         background: var(--tile); border: 1px solid var(--glass-line); transition: transform .2s, background .2s, border-color .2s, box-shadow .2s, opacity .2s; }
+  .row:hover { background: var(--tile-hover); transform: translateY(-2px); }
+  .row:not(:has(input:checked)) { opacity: .62; }
+  .row:not(:has(input:checked)):hover { opacity: .9; }
+  .row:has(input:checked) { border-color: color-mix(in srgb, var(--c, var(--mauve)) 55%, transparent); box-shadow: 0 10px 26px -18px var(--c, var(--mauve)); }
+  .row:has(input:focus-visible) { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .row .av { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 11px; flex: none; font: 700 14px var(--sans); letter-spacing: -0.02em;
+             color: var(--c, var(--mauve)); background: color-mix(in srgb, var(--c, var(--mauve)) 18%, transparent); border: 1px solid color-mix(in srgb, var(--c, var(--mauve)) 30%, transparent); }
+  .row .txt { min-width: 0; flex: 1; padding-right: 22px; }
+  .row b { display: block; font-weight: 600; font-size: 15px; line-height: 1.35; }
+  .row small { display: block; color: var(--faint); font-size: 13px; line-height: 1.45; margin-top: 2px; overflow-wrap: anywhere; }
+  .switch { appearance: none; -webkit-appearance: none; position: absolute; top: 12px; right: 12px; width: 20px; height: 20px; margin: 0; border-radius: 50%; cursor: pointer;
+            border: 1.5px solid var(--surface2); background: transparent; transition: background .2s, border-color .2s; }
+  .switch:checked { border-color: transparent; background: var(--c, var(--mauve)) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2311111b' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 13px no-repeat; }
+  .switch:focus-visible { outline: none; }
+  .row.pop { animation: pop .35s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes pop { 40% { transform: scale(.96); } }
 
-  /* Filter and fields */
-  .filter { margin: 20px 0 10px; }
-  input.text { width: 100%; font: inherit; font-size: 15px; padding: 9px 12px; border-radius: 8px;
-               border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg); }
-  input.text[aria-invalid="true"] { border-color: var(--bad); }
-  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
-  .field label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 4px; }
-  .err { color: var(--bad); font-size: 13px; margin-top: 3px; min-height: 0; }
+  /* Fields and small buttons */
+  input.text { width: 100%; font: inherit; font-size: 15px; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--glass-line);
+               background: var(--tile); color: var(--text); transition: border-color .2s, box-shadow .2s, background .2s; }
+  input.text::placeholder { color: var(--overlay); }
+  input.text:focus { outline: none; border-color: var(--mauve); box-shadow: 0 0 0 4px color-mix(in srgb, var(--mauve) 20%, transparent); background: var(--tile-hover); }
+  input.text[aria-invalid="true"] { border-color: var(--red); }
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  .field label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .err { color: var(--red); font-size: 13px; margin-top: 4px; }
   .err:empty { display: none; }
+  button { font: inherit; }
+  button.small { font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 9px; cursor: pointer; border: 1px solid var(--glass-line); background: var(--glass-hi); color: var(--sub); transition: background .2s, color .2s; }
+  button.small:hover { background: var(--tile-hover); color: var(--text); }
+  button.link { border: 0; background: none; color: var(--faint); padding: 4px 8px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 8px; }
+  button.link:hover { color: var(--text); background: var(--glass-hi); }
 
-  /* Buttons */
-  button { font: inherit; font-size: 14px; border-radius: 8px; padding: 7px 12px; cursor: pointer;
-           border: 1px solid var(--line-strong); background: var(--raised); color: var(--fg); }
-  button:hover { border-color: var(--faint); }
-  button.small { font-size: 13px; padding: 3px 10px; }
-  button.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; padding: 9px 16px; }
-  button:disabled { opacity: .5; cursor: not-allowed; }
-  button.link { border: 0; background: none; color: var(--link); padding: 0; text-decoration: underline; font-size: 13px; }
+  /* The installer card */
+  .panel { position: sticky; top: 84px; border-radius: 24px; padding: 22px; display: grid; gap: 18px; scroll-margin-top: 84px; background: var(--glass-strong); min-width: 0; }
+  @media (min-width: 1021px) { .panel { max-height: calc(100vh - 100px); overflow: auto; scrollbar-width: thin; } }
+  @media (max-width: 1020px) { .panel { position: static; } }
+  .panel-head { display: flex; align-items: center; gap: 16px; }
+  .ring { position: relative; width: 84px; height: 84px; flex: none; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 8; }
+  .ring .track { stroke: var(--surface); }
+  .ring .bar { stroke: url(#ringgrad); stroke-linecap: round; transition: stroke-dashoffset .6s cubic-bezier(.3,.8,.3,1); }
+  .ring-num { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1; }
+  .ring-num b { font: 800 24px var(--sans); font-variant-numeric: tabular-nums; }
+  .ring-num small { font-size: 11px; color: var(--faint); margin-top: 3px; }
+  .panel h2 { font: 800 22px/1.2 var(--sans); letter-spacing: -0.02em; margin: 0; }
+  .sum { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--sub); flex-wrap: wrap; margin-top: 4px; }
+  .sum strong { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .split { display: flex; gap: 6px; flex-wrap: wrap; }
+  .split span { font: 500 12px var(--mono); padding: 3px 9px; border-radius: 8px; background: var(--tile); border: 1px solid var(--glass-line); color: var(--sub); }
+  .split span b { color: var(--text); font-weight: 600; }
+  .cmdwin pre { margin: 0; padding: 14px 16px 16px; font: 13px/1.7 var(--mono); white-space: pre-wrap; word-break: break-all; max-height: 260px; overflow: auto; }
+  .cmdwin pre::before { content: "❯ "; color: #cba6f7; }
+  .t-var { color: #cba6f7; } .t-val { color: #a6e3a1; } .t-cmd { color: #89b4fa; font-weight: 600; } .t-url { color: #94e2d5; } .t-flag { color: #fab387; } .t-err { color: #f38ba8; }
+  .copy { width: 100%; padding: 14px 20px; font-size: 16px; }
+  .copy .done { display: none; }
+  .copy.copied .idle { display: none; } .copy.copied .done { display: inline-flex; align-items: center; gap: 8px; }
+  .copy .idle { display: inline-flex; align-items: center; gap: 8px; }
+  .copy.copied { background: var(--green); color: #11111b; box-shadow: 0 10px 30px -10px var(--green); }
+  .status { font-size: 13px; color: var(--green); text-align: center; margin: -8px 0 0; }
+  .status:empty { display: none; }
+  .status.bad { color: var(--red); }
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; counter-reset: s; }
+  .steps li { counter-increment: s; display: grid; grid-template-columns: 28px 1fr; gap: 12px; font-size: 14px; color: var(--sub); line-height: 1.5; }
+  .steps li::before { content: counter(s); display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; font: 700 13px var(--mono); color: var(--mauve);
+                      background: color-mix(in srgb, var(--mauve) 14%, transparent); border: 1px solid color-mix(in srgb, var(--mauve) 30%, transparent); }
+  .steps strong { color: var(--text); }
+  .note { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--faint); margin: 0; padding-top: 14px; border-top: 1px solid var(--glass-line); }
+  .note svg { width: 16px; height: 16px; flex: none; margin-top: 2px; color: var(--green); }
 
-  /* The installer panel */
-  .panel { position: sticky; top: max(16px, env(safe-area-inset-top, 0px)); border: 1px solid var(--line); border-radius: 14px;
-           background: var(--panel); padding: 18px; display: grid; gap: 14px; scroll-margin-top: 16px; }
-  @media (min-width: 961px) { .panel { max-height: calc(100vh - 32px); overflow: auto; } }
-  @media (max-width: 960px) { .panel { position: static; } }
-  .panel h2 { font-size: 20px; margin: 0; }
-  .sum { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 14px; color: var(--muted); }
-  .sum strong { color: var(--fg); font-variant-numeric: tabular-nums; }
-  .steps { margin: 0; padding-left: 20px; font-size: 14px; color: var(--muted); display: grid; gap: 4px; }
-  .steps strong { color: var(--fg); }
-  .term { border-radius: 10px; overflow: hidden; background: var(--term-bg); }
-  .term-bar { display: flex; align-items: center; gap: 6px; padding: 7px 10px; background: var(--term-bar); }
-  .term-bar i { width: 10px; height: 10px; border-radius: 50%; background: #45475a; }
-  .term-bar span { margin-left: 6px; font: 12px var(--mono); color: var(--term-dim); }
-  .term pre { margin: 0; padding: 12px 14px 14px; font: 13px/1.6 var(--mono); color: var(--term-fg);
-              white-space: pre-wrap; word-break: break-all; }
-  .term pre::before { content: "❯ "; color: var(--term-prompt); }
-  .actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .status { font-size: 13px; color: var(--ok); }
-  .status.bad { color: var(--bad); }
-  .note { font-size: 13px; color: var(--muted); margin: 0; }
+  /* Toast */
+  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); translate: -50% 20px; z-index: 40; opacity: 0; pointer-events: none;
+           display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-radius: 14px; font-weight: 600; font-size: 14px; transition: opacity .3s, translate .3s; max-width: calc(100vw - 32px); }
+  .toast.on { opacity: 1; translate: -50% 0; }
+  .toast svg { width: 18px; height: 18px; color: var(--green); flex: none; }
 
-  /* Phone: a bar that jumps to the installer */
+  /* Phones: a bar that jumps to the installer */
   .mbar { display: none; }
-  @media (max-width: 960px) {
-    .mbar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; align-items: center; justify-content: space-between; gap: 12px;
-            padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
-            background: var(--panel); border-top: 1px solid var(--line); font-size: 14px; }
-    .mbar[hidden] { display: none; }
-    .mbar a { background: var(--accent); color: var(--on-accent); text-decoration: none; font-weight: 600; padding: 8px 14px; border-radius: 8px; }
+  @media (max-width: 1020px) {
+    .mbar { display: flex; position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 30; align-items: center; justify-content: space-between;
+            gap: 12px; padding: 10px 10px 10px 16px; border-radius: 16px; font-size: 14px; font-weight: 600; }
+    .mbar a { background: var(--grad); color: var(--on-grad); text-decoration: none; font-weight: 700; padding: 9px 16px; border-radius: 11px; white-space: nowrap; }
+    .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   }
-  footer { color: var(--faint); font-size: 13px; margin-top: 40px; }
+
+  /* Rise into view while scrolling, in browsers with scroll-driven animations; elsewhere
+     everything is simply there. Nothing waits on a script, so nothing can stay hidden. */
+  @supports (animation-timeline: view()) {
+    .reveal { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 35%; }
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(28px) scale(.985); } }
+
+  footer { color: var(--faint); font-size: 13px; padding: 28px 0 calc(40px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--glass-line); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  footer a { color: var(--sub); }
+  @media (max-width: 1020px) { footer { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+    .hero .win { transform: none; }
+  }
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs><linearGradient id="ringgrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#cba6f7"/><stop offset=".55" stop-color="#89b4fa"/><stop offset="1" stop-color="#94e2d5"/></linearGradient></defs>
+</svg>
+<div class="backdrop" aria-hidden="true"></div>
+
 <div class="wrap">
-  <header class="top">
-    <a class="brand" href="https://github.com/ronaldo-kwan/dotfiles">ronaldo-kwan/<span>dotfiles</span></a>
-    <a class="gh" href="https://github.com/ronaldo-kwan/dotfiles">View on GitHub</a>
+  <header class="nav">
+    <div class="nav-in glass">
+      <a class="brand" href="#top"><i class="dot"></i>ronaldo-kwan/<span>dotfiles</span></a>
+      <nav class="nav-links" aria-label="Sections">
+        <a href="#build" data-spy="build">Build</a>
+        <a href="#sec-groups" data-spy="sec-groups">Setup</a>
+        <a href="#sec-apps" data-spy="sec-apps">Apps</a>
+        <a href="#installer" data-spy="installer">Install</a>
+      </nav>
+      <button class="icon-btn" id="theme" type="button" aria-label="Switch between light and dark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+      <a class="icon-btn" href="https://github.com/ronaldo-kwan/dotfiles" aria-label="The dotfiles on GitHub">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.550-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.170 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.7 5.38-5.26 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></svg>
+      </a>
+    </div>
   </header>
 
-  <section class="intro">
-    <h1>Set up a fresh Ubuntu your way</h1>
-    <p>Pick what you want from these dotfiles, then paste one command into a new Ubuntu.
-       Everything here happens in your browser.</p>
-    <ul class="facts"><li>Ubuntu 26.04</li><li>GNOME</li><li>Catppuccin Mocha</li><li>MIT licence</li></ul>
+  <section class="hero" id="top">
+    <div>
+      <span class="chip glass"><i></i>Ubuntu 26.04 · GNOME · Catppuccin</span>
+      <h1>Your Ubuntu, rebuilt in <span class="grad-text">one&nbsp;command.</span></h1>
+      <p class="lede">Pick the parts you want from these dotfiles: the terminal, the desktop look, the apps. Then paste one line into a fresh Ubuntu and walk away.</p>
+      <div class="cta">
+        <a class="btn primary" href="#build">Build your installer
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
+        <a class="btn" href="https://github.com/ronaldo-kwan/dotfiles#readme">Read the docs</a>
+      </div>
+      <div class="stats" aria-label="What's in it">
+        <div class="stat"><b data-count="items">0</b><span>things to pick</span></div>
+        <div class="stat"><b data-count="sources">3</b><span>app sources</span></div>
+        <div class="stat"><b>1</b><span>command</span></div>
+      </div>
+    </div>
+    <div class="win" aria-hidden="true">
+      <div class="win-bar"><i></i><i></i><i></i><span>~ — Ghostty</span></div>
+      <pre class="demo" id="demo"></pre>
+    </div>
   </section>
+
+  <div class="head reveal" id="build">
+    <div class="kicker">Build</div>
+    <h2>Make it yours</h2>
+    <p>Start from a preset, then click anything to add or remove it. Your installer updates as you go.</p>
+  </div>
 
   <div class="cols">
     <main id="choices">
-      <fieldset class="presets">
-        <legend>Start from</legend>
+      <fieldset class="presets reveal">
+        <legend class="sr">Start from</legend>
         <div class="seg" id="presets">
-          <label><input type="radio" name="preset" value="everything"><b>Everything</b><small>The full setup</small></label>
-          <label><input type="radio" name="preset" value="essentials"><b>Essentials</b><small>Terminal, desktop, main apps</small></label>
-          <label><input type="radio" name="preset" value="terminal"><b>Terminal only</b><small>Shell and prompt, no apps</small></label>
-          <label><input type="radio" name="preset" value="custom"><b>Custom</b><small>Your own picks below</small></label>
+          <label><input type="radio" name="preset" value="everything">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg>
+            <b>Everything</b><small>The full setup</small></label>
+          <label><input type="radio" name="preset" value="essentials">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            <b>Essentials</b><small>Terminal, desktop, main apps</small></label>
+          <label><input type="radio" name="preset" value="terminal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l5 5-5 5M12 19h8"/></svg>
+            <b>Terminal only</b><small>Shell and prompt, no apps</small></label>
+          <label><input type="radio" name="preset" value="custom">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+            <b>Custom</b><small>Your own picks</small></label>
         </div>
       </fieldset>
 
-      <details class="sec" open id="sec-groups">
-        <summary><span class="sec-title">Setup<small>What gets configured on the system</small></span><span class="badge" data-badge="groups"></span></summary>
+      <div class="finder glass reveal">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <label for="filter" class="sr">Find an app</label>
+          <input class="text" id="filter" type="search" placeholder="Find an app: vlc, steam, firefox…" autocomplete="off" spellcheck="false">
+          <kbd aria-hidden="true">/</kbd>
+        </div>
+        <nav class="jumps" aria-label="Jump to a section">
+          <a href="#sec-groups">Setup<b data-jump="groups"></b></a>
+          <a href="#sec-apps">Makers<b data-jump="apps"></b></a>
+          <a href="#sec-ubuntu">Ubuntu<b data-jump="ubuntu"></b></a>
+          <a href="#sec-flatpaks">Flathub<b data-jump="flatpaks"></b></a>
+        </nav>
+      </div>
+
+      <details class="sec glass reveal" open id="sec-groups">
+        <summary><span class="sec-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></span>
+          <span class="sec-title">Setup<small>What gets configured on the system</small></span><span class="badge" data-badge="groups"></span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
         <div class="sec-body"><div class="tools" data-tools="groups"></div><div class="list" id="groups"></div></div>
       </details>
 
-      <div class="filter field">
-        <label for="filter">Find an app</label>
-        <input class="text" id="filter" type="search" placeholder="e.g. vlc, steam, firefox" autocomplete="off" spellcheck="false">
-      </div>
-
-      <details class="sec" open id="sec-apps">
-        <summary><span class="sec-title">Apps from their makers<small>Official sources, kept up to date by apt</small></span><span class="badge" data-badge="apps"></span></summary>
+      <details class="sec glass reveal" open id="sec-apps">
+        <summary><span class="sec-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg></span>
+          <span class="sec-title">Apps from their makers<small>Official sources, kept up to date by apt</small></span><span class="badge" data-badge="apps"></span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
         <div class="sec-body"><div class="tools" data-tools="apps"></div><div class="list" id="apps"></div><p class="empty" hidden>No apps match.</p></div>
       </details>
-      <details class="sec" id="sec-ubuntu">
-        <summary><span class="sec-title">Apps from Ubuntu<small>Ubuntu's own packages</small></span><span class="badge" data-badge="ubuntu"></span></summary>
+      <details class="sec glass reveal" id="sec-ubuntu">
+        <summary><span class="sec-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><circle cx="20" cy="12" r="1.6"/><circle cx="8" cy="18.9" r="1.6"/><circle cx="8" cy="5.1" r="1.6"/></svg></span>
+          <span class="sec-title">Apps from Ubuntu<small>Ubuntu's own packages</small></span><span class="badge" data-badge="ubuntu"></span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
         <div class="sec-body"><div class="tools" data-tools="ubuntu"></div><div class="list" id="ubuntu"></div><p class="empty" hidden>No apps match.</p></div>
       </details>
-      <details class="sec" id="sec-flatpaks">
-        <summary><span class="sec-title">Apps from Flathub<small>Sandboxed Flatpak apps</small></span><span class="badge" data-badge="flatpaks"></span></summary>
+      <details class="sec glass reveal" id="sec-flatpaks">
+        <summary><span class="sec-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5Z"/><path d="M3 12l9 5 9-5M3 16l9 5 9-5"/></svg></span>
+          <span class="sec-title">Apps from Flathub<small>Sandboxed Flatpak apps</small></span><span class="badge" data-badge="flatpaks"></span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
         <div class="sec-body"><div class="tools" data-tools="flatpaks"></div><div class="list" id="flatpaks"></div><p class="empty" hidden>No apps match.</p></div>
       </details>
 
-      <details class="sec" id="sec-you">
-        <summary><span class="sec-title">Your name for git<small>Optional. Otherwise the install asks once.</small></span><span class="badge" id="you-badge">optional</span></summary>
+      <details class="sec glass reveal" id="sec-you">
+        <summary><span class="sec-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="8" r="2.5"/><path d="M6 8.5v7M18 10.5c0 4-6 3-10.5 6"/></svg></span>
+          <span class="sec-title">Your name for git<small>Optional. Otherwise the install asks once.</small></span><span class="badge" id="you-badge">optional</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
         <div class="sec-body">
           <div class="fields">
             <div class="field"><label for="gitname">Name</label><input class="text" id="gitname" autocomplete="name" placeholder="Ada Lovelace"><div class="err" id="gitname-err"></div></div>
@@ -214,23 +427,42 @@
       </details>
     </main>
 
-    <aside class="panel" id="installer" aria-labelledby="installer-h">
-      <h2 id="installer-h">Your installer</h2>
-      <div class="sum"><span id="count" aria-live="polite"></span><button class="link" id="reset" type="button">Reset</button></div>
-      <ol class="steps" style="margin-top:12px">
-        <li>Install <strong>Ubuntu 26.04</strong>, ticking third-party drivers.</li>
-        <li>Open a terminal (<kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>T</kbd>), paste this and press <strong>Enter</strong>.</li>
-        <li>Type your password once (and your name for git, if not filled in here). It runs by itself and restarts when done.</li>
+    <aside class="panel glass" id="installer" aria-labelledby="installer-h">
+      <div class="panel-head">
+        <div class="ring" aria-hidden="true">
+          <svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="42"/><circle class="bar" id="ring" cx="50" cy="50" r="42" stroke-dasharray="263.9" stroke-dashoffset="263.9"/></svg>
+          <div class="ring-num"><b id="ring-n">0</b><small id="ring-of">picked</small></div>
+        </div>
+        <div>
+          <h2 id="installer-h">Your installer</h2>
+          <div class="sum"><span id="count" aria-live="polite"></span><button class="link" id="reset" type="button">Reset</button></div>
+        </div>
+      </div>
+      <div class="split" id="split"></div>
+      <div class="win cmdwin"><div class="win-bar"><i></i><i></i><i></i><span>Terminal</span></div><pre id="cmd"></pre></div>
+      <button class="btn primary copy" id="copy-cmd" type="button">
+        <span class="idle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>Copy command</span>
+        <span class="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Copied</span>
+      </button>
+      <p class="status" id="cmd-status" role="status"></p>
+      <ol class="steps">
+        <li><span>Install <strong>Ubuntu 26.04</strong>, ticking third-party drivers.</span></li>
+        <li><span>Open a terminal (<kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>T</kbd>), paste the command and press <strong>Enter</strong>.</span></li>
+        <li><span>Type your password once (and your name for git, if not filled in here). It runs by itself and restarts when done.</span></li>
       </ol>
-      <div class="term" style="margin-top:12px"><div class="term-bar"><i></i><i></i><i></i><span>Terminal</span></div><pre id="cmd"></pre></div>
-      <div class="actions" style="margin-top:12px"><button class="primary" id="copy-cmd" type="button">Copy command</button><span class="status" id="cmd-status" role="status"></span></div>
-      <p class="note">No password goes into it. Nothing you pick or type leaves your browser.</p>
+      <p class="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+        <span>No password goes into it. Nothing you pick or type leaves your browser.</span></p>
     </aside>
   </div>
 
-  <footer>MIT licensed. The lists on this page are generated from the repo, so they match what the scripts install.</footer>
+  <footer>
+    <span>MIT licensed. The lists on this page are generated from the repo, so they match what the scripts install.</span>
+    <span>Wallpaper: <a href="https://github.com/zhichaoh/catppuccin-wallpapers">Catppuccin wallpapers</a> (MIT)</span>
+  </footer>
 </div>
-<div class="mbar"><span id="mcount"></span><a href="#installer">Get your installer</a></div>
+
+<div class="mbar glass"><span id="mcount"></span><a href="#installer">Get your installer</a></div>
+<div class="toast glass" id="toast" role="status" aria-live="polite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span></span></div>
 <script src="app.js"></script>
 </body>
 </html>
