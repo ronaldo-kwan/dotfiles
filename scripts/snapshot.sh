@@ -22,6 +22,7 @@ if have flatpak; then
     flatpak list --app --columns=application
     grep -v '^\s*$' "$d/flatpaks.txt" 2>/dev/null | while read -r a; do chosen "flatpak:$a" || echo "$a"; done
   } | sort -u > "$d/flatpaks.txt.new" && mv "$d/flatpaks.txt.new" "$d/flatpaks.txt"
+  rm -f "$d/flatpaks.txt.new"   # left over if flatpak failed
 fi
 
 if have dconf && chosen desktop; then
