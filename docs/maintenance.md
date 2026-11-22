@@ -239,12 +239,12 @@ The website ([ronaldo-kwan.github.io/dotfiles](https://ronaldo-kwan.github.io/do
 
 `bootstrap.sh` saves the choices in `~/.config/dotfiles/choices` (`-name` lines are skipped items), and every script follows them from then on, including `dot check`, which shows unchosen parts as "not chosen". Delete that file to go back to everything.
 
-The site's app lists come from the repo: `scripts/build-site.py` reads `install-apps.sh` and `setup/`, and the `website` workflow ([`.github/workflows/pages.yml`](../.github/workflows/pages.yml)) rebuilds and publishes it on every push to `main` that touches them. On a pull request it only builds the site, so a mistake shows up before merging and nothing is published.
+The site's app lists come from the repo: `scripts/build-site.py` reads `install-apps.sh` and `setup/`. So do its **Docs**: it turns `README.md` (from *What's inside* to *Use it yourself*) and the pages in `docs/` into HTML, and builds the `dot` page from the `COMMANDS` table and help in `dot` itself, so the site never says something the repo doesn't. The `website` workflow ([`.github/workflows/pages.yml`](../.github/workflows/pages.yml)) rebuilds and publishes it on every push to `main` that touches any of them. On a pull request it only builds the site, so a mistake shows up before merging and nothing is published.
 
 If a deploy fails, use **Re-run failed jobs** on the run: the build and the deploy are separate jobs, so only the deploy runs again, with the site the build already uploaded. Don't use **Re-run all jobs**: the build would upload the site a second time, and the deploy stops when it finds two. If the build itself failed, start a new run instead (**Run workflow** on the `website` workflow, or `gh workflow run pages.yml`).
 
 > [!NOTE]
-> A new app in `install-apps.sh` (an `APPS` entry whose choice starts with `app:`) needs a description in `APP_DESCRIPTIONS` in `scripts/build-site.py`. The build stops with a message if it's missing.
+> A new app in `install-apps.sh` (an `APPS` entry whose choice starts with `app:`) needs a description in `APP_DESCRIPTIONS` in `scripts/build-site.py`. The build stops with a message if it's missing. It also stops if a link in the docs points at a heading that doesn't exist, or a `dot` command has no help. A new page in `docs/` goes in `DOC_PAGES` there. To preview the site: `python3 scripts/build-site.py && python3 -m http.server -d site`, then open `localhost:8000`.
 
 ## The README screenshot
 

@@ -1,5 +1,6 @@
 // The dotfiles installer page: builds the option lists from options.json (generated from
-// the repo by scripts/build-site.py), and turns the picks into a one-line command. Runs
+// the repo by scripts/build-site.py), and turns the picks into a one-line command. Shows
+// the docs from docs.json (generated from README.md, docs/ and dot's own help). Runs
 // entirely in the browser.
 "use strict";
 
@@ -389,6 +390,99 @@ function demo() {
   setTimeout(type, 600);
 }
 
+// --- The docs: one page at a time, with links between pages and to their headings ---
+// An address like #doc-maintenance-health-check opens that page at that heading.
+function renderDocs(json) {
+  const body = $("doc-body"), tabs = $("doc-tabs");
+  const pages = json.pages;
+  body.replaceChildren(...pages.map((p, n) => {
+    const page = document.createElement("div");
+    page.className = "doc-page";
+    page.id = `doc-${p.id}`;
+    page.hidden = true;
+    page.dataset.toc = JSON.stringify(p.toc);
+    const h1 = Object.assign(document.createElement("h1"), { textContent: p.title });
+    const src = document.createElement("p");
+    src.className = "doc-src";
+    src.append("From ", Object.assign(document.createElement("a"), { href: p.source, textContent: p.source.split("/blob/main/")[1] }), " on GitHub");
+    const content = document.createElement("div");
+    content.innerHTML = p.html; // built by build-site.py from the repo's own files
+    const pager = document.createElement("nav");
+    pager.className = "doc-pager";
+    pager.setAttribute("aria-label", "Previous and next page");
+    for (const [q, cls, word] of [[pages[n - 1], "prev", "Previous"], [pages[n + 1], "next", "Next"]]) {
+      if (!q) continue;
+      const a = Object.assign(document.createElement("a"), { href: `#doc-${q.id}`, className: cls });
+      a.append(Object.assign(document.createElement("small"), { textContent: word }), Object.assign(document.createElement("b"), { textContent: q.title }));
+      pager.append(a);
+    }
+    page.append(h1, src, content, pager);
+    return page;
+  }));
+  tabs.replaceChildren(...pages.map((p) => Object.assign(document.createElement("a"), { href: `#doc-${p.id}`, textContent: p.tab })));
+
+  // A copy button on each command block
+  body.querySelectorAll("pre.lang-bash").forEach((pre) => {
+    const btn = Object.assign(document.createElement("button"), { type: "button", className: "copy-code", textContent: "Copy" });
+    btn.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(pre.querySelector("code").textContent); toast("Copied."); }
+      catch { getSelection().selectAllChildren(pre.querySelector("code")); toast("Selected: press Ctrl+C to copy."); }
+    });
+    pre.append(btn);
+  });
+
+  // Links to a page or heading: open that page, and remember it in the address (Back works).
+  $("docs").addEventListener("click", (e) => {
+    const a = e.target.closest('a[href^="#doc-"]');
+    if (!a || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    e.preventDefault();
+    const id = a.getAttribute("href").slice(1);
+    if (showDoc(id, true)) history.pushState(null, "", "#" + id);
+  });
+  addEventListener("popstate", () => {
+    const id = location.hash.slice(1);
+    if (id.startsWith("doc-")) showDoc(id, true);
+  });
+  showDoc(`doc-${pages[0].id}`, false);
+}
+
+// showDoc <id> <scroll>: show the page holding that id, and scroll to it if asked.
+function showDoc(id, scroll) {
+  const target = document.getElementById(id);
+  const page = target?.closest(".doc-page");
+  if (!page) return false;
+  document.querySelectorAll(".doc-page").forEach((p) => { p.hidden = p !== page; });
+  $("doc-tabs").querySelectorAll("a").forEach((a) => {
+    if (a.getAttribute("href") === "#" + page.id) {
+      a.setAttribute("aria-current", "page");
+      const strip = $("doc-tabs"); // on phones the tabs scroll sideways: bring this one into view
+      strip.scrollTo({ left: a.offsetLeft - strip.offsetLeft - 8 });
+    }
+    else a.removeAttribute("aria-current");
+  });
+  const toc = JSON.parse(page.dataset.toc);
+  $("doc-toc").replaceChildren(...(toc.length ? [Object.assign(document.createElement("b"), { textContent: "On this page" })] : []),
+    ...toc.map((t) => Object.assign(document.createElement("a"), { href: "#" + t.id, innerHTML: t.text })));
+  // Instant: the page under you has just changed, and a smooth scroll across it takes seconds.
+  if (scroll) {
+    (target === page ? $("docs-cols") : target).scrollIntoView({ behavior: "instant" });
+    // The top bar's marker may not see a jump this big as crossing into the docs
+    document.querySelectorAll("[data-spy]").forEach((a) => a.classList.toggle("on", a.dataset.spy === "docs"));
+  }
+  return true;
+}
+
+const docsReady = fetch("docs.json")
+  .then((r) => r.json())
+  .then(renderDocs)
+  .catch(() => {
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.append("Couldn't load the docs. Reload the page, or read them ",
+      Object.assign(document.createElement("a"), { href: "https://github.com/ronaldo-kwan/dotfiles#readme", textContent: "on GitHub" }), ".");
+    $("doc-body").replaceChildren(p);
+  });
+
 setupTheme();
 setupKeys();
 setupScroll();
@@ -403,9 +497,13 @@ fetch("options.json")
     update();
     countUp();
     demo();
-    // A link to a section (#sec-apps): jump again now the lists are filled in and the page is its full height.
-    const target = location.hash && document.getElementById(location.hash.slice(1));
-    if (target) target.scrollIntoView();
+    // A link to a section (#sec-apps) or a doc (#doc-apps-steam): jump again now the lists
+    // and the docs are filled in and the page is its full height.
+    docsReady.then(() => {
+      const id = location.hash.slice(1);
+      if (id.startsWith("doc-")) showDoc(id, true);
+      else if (id && document.getElementById(id)) document.getElementById(id).scrollIntoView();
+    });
   })
   .catch(() => {
     paint($("cmd"), [["Couldn't load the options. Reload the page.", "t-err"]]);

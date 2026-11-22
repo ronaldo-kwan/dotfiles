@@ -1,7 +1,7 @@
 # Publishes the installer website (site/) to GitHub Pages:
 #   https://ronaldo-kwan.github.io/dotfiles/
 # site/options.json is generated from the repo's own lists, so the site always offers
-# exactly what the scripts install.
+# exactly what the scripts install; site/docs.json from README.md, docs/ and dot's own help.
 name: website
 
 on:
@@ -11,6 +11,9 @@ on:
       - site/**
       - setup/**
       - install-apps.sh
+      - dot
+      - README.md
+      - docs/**
       - scripts/build-site.py
       - .github/workflows/pages.yml
   # Pull requests only build: the deploy job is skipped, so nothing
@@ -20,6 +23,9 @@ on:
       - site/**
       - setup/**
       - install-apps.sh
+      - dot
+      - README.md
+      - docs/**
       - scripts/build-site.py
       - .github/workflows/pages.yml
   workflow_dispatch:

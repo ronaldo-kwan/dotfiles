@@ -377,6 +377,32 @@ m.ROOT = pathlib.Path(sys.argv[2]); print(m.latest_release())
 PY
 )"
 t "build-site.py finds the latest release" same "$newest" v1.10.0
+# The site's docs: built from the repo's Markdown and dot's own help (build_docs stops on a
+# link to a heading that doesn't exist), and the Markdown comes out as the site shows it.
+site_py() {
+  python3 -I -B - "$ROOT/scripts/build-site.py" "$@" <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("build_site", sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+what = sys.argv[2]
+if what == "pages":      # the pages' ids
+    print(" ".join(p["id"] for p in m.build_docs()))
+elif what == "commands": # the commands in dot's table that the dot page shows
+    page = next(p for p in m.build_docs() if p["id"] == "dot")
+    print(" ".join(c["name"] for c in m.dot_commands()[0] if f'<code>dot {c["name"]}' in page["html"]))
+else:                    # Markdown, as a page in docs/ called t.md
+    page = m.Page("t", "docs/t.md")
+    print(m.blocks(what.split("\n"), page, {"docs/t.md": {"id": "t", "readme_slugs": set()}}))
+PY
+}
+t "build-site.py builds every docs page, with no broken links" same "$(site_py pages 2>&1)" "start dot new-computer apps maintenance files"
+t "... and the dot page has every command in dot's table" same "$(site_py commands)" \
+  "$(sed -n 's/^  "\([a-z]\{1,\}\)|.*/\1/p' "$ROOT/dot" | tr '\n' ' ' | sed 's/ $//')"
+t "... and turns Markdown into the site's HTML" same "$(site_py $'## The `dot` menu\n\n- [ ] Run **dot ssh** ([how](#signed-commits))\n\n> [!TIP]\n> Use <kbd>Tab</kbd>.\n\n| A | B |\n|---|---|\n| `x` | [y](../setup/) |')" \
+  '<h2 id="doc-t-the-dot-menu">The <code>dot</code> menu</h2>
+<ul><li class=task><input type="checkbox" disabled> Run <strong>dot ssh</strong> (<a href="#doc-t-signed-commits">how</a>)</li></ul>
+<div class="alert tip"><p class="alert-title">Tip</p><p>Use <kbd>Tab</kbd>.</p></div>
+<div class="tbl"><table><thead><tr><th>A</th><th>B</th></tr></thead><tbody><tr><td><code>x</code></td><td><a href="https://github.com/ronaldo-kwan/dotfiles/tree/main/setup">y</a></td></tr></tbody></table></div>'
 
 echo "dot check: the record and backups"
 load_fn check.sh adopt_record
