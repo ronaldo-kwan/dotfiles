@@ -4,7 +4,7 @@ settings-version=10
 
 [blur-my-shell/applications]
 blur=true
-corner-radius=15
+corner-radius=10
 corner-when-maximized=false
 dynamic-opacity=false
 opacity=255
