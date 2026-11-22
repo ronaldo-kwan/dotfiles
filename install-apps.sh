@@ -199,6 +199,40 @@ check_no_snap_firefox() {
 }
 is_done() { if [[ "$1" == check_* ]]; then "$1"; else installed "$1"; fi; }
 
+# added_candidates: "item|label" for each thing on this computer the dotfiles may have added
+# (what dot uninstall --apps can offer), with the item as the record writes it (lib.sh:
+# ADDED_FILE). For a computer set up before the record was kept: dot check --fix asks you
+# which of these the dotfiles added.
+added_candidates() {
+  local entry choice name p pkgs desk uuid id
+  for entry in "${APPS[@]}"; do
+    IFS='|' read -r choice name _ <<< "$entry"
+    [[ -n "${APP_PARTS[$choice]:-}" ]] || continue
+    pkgs="${APP_PARTS[$choice]%%|*}"
+    for p in $pkgs; do installed "$p" && { echo "$choice|${name%% (*}"; break; }; done
+  done
+  # Not the ones Ubuntu's own desktop includes (like Backups), as in uninstall.sh
+  desk="$(apt-cache depends ubuntu-desktop ubuntu-desktop-minimal 2>/dev/null | awk '/(Depends|Recommends):/ {print $2}')"
+  for p in $(list_of apt-packages.txt); do
+    installed "$p" && ! grep -qxF "$p" <<< "$desk" && echo "pkg:$p|$p (Ubuntu app)"
+  done
+  for p in "${TOOLS[@]}"; do
+    case "$p" in git|curl|gum|gh|stow|flatpak) continue ;; esac   # general tools stay anyway
+    installed "$p" && echo "pkg:$p|$p (terminal tool)"
+  done
+  if have flatpak; then
+    while IFS=$'\t' read -r id name; do
+      grep -qxF "$id" "$SETUP/flatpaks.txt" && echo "flatpak:$id|$name (Flatpak)"
+    done < <(flatpak list --app --columns=application,name 2>/dev/null)
+  fi
+  for uuid in $(list_of gnome-extensions.txt); do
+    [[ -d "$HOME/.local/share/gnome-shell/extensions/$uuid" ]] && echo "extension:$uuid|$uuid (GNOME extension)"
+  done
+  grep -qx 'ENABLED=yes' /etc/ufw/ufw.conf 2>/dev/null && echo "firewall|the firewall (switched on)"
+  if have snap && ! snap list firefox >/dev/null 2>&1; then echo "snapfirefox|Ubuntu's Snap Firefox (removed)"; fi
+  return 0
+}
+
 # check.sh and uninstall.sh load this file only for APPS, APP_PARTS and the checks above.
 [[ "${BASH_SOURCE[0]}" != "$0" ]] && return 0
 

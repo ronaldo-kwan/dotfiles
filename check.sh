@@ -48,6 +48,7 @@ fix_hint() {
       if [[ -n "$NV_READY" ]]; then echo "Ubuntu has it now: sudo apt update && sudo apt full-upgrade, then restart"
       else echo "Ubuntu hasn't published it yet; meanwhile start ${NV_OLD:-the previous kernel} (boot menu: Advanced options for Ubuntu), later run sudo apt update && sudo apt full-upgrade"; fi ;;
     ghkeys)  echo "gh auth refresh -h github.com --remove-scopes $GH_KEY_SCOPES" ;;
+    record)  echo "dot check --fix asks which ones the dotfiles installed" ;;
   esac
 }
 # Backups (Déjà Dup): is "Back Up Automatically" on?
@@ -166,6 +167,27 @@ while IFS= read -r -d '' f; do
   [[ "$(readlink -f "$HOME/${f#*/}")" == "$(readlink -f "$DOTFILES/$f")" ]] || broken+=("~/${f#*/}")
 done < <(config_files "${pkgs[@]}")
 list_missing "all config files linked (${pkgs[*]})" install "${broken[@]}"
+# Backups install.sh made when it replaced a file: <name>.orig (yours from before the
+# dotfiles), <name>.orig.<date> and <name>.prev (replaced later). Not a problem, just
+# listed so they don't pile up unseen. dot uninstall puts the .orig ones back.
+dotfiles_backups() {   # prints each backup's path
+  local f b
+  while IFS= read -r -d '' f; do
+    for b in "$HOME/${f#*/}".orig "$HOME/${f#*/}".orig.*; do [[ -e "$b" ]] && echo "$b"; done
+  done < <(config_files "${PACKAGES[@]}")
+  for b in "$HOME"/.config/{mimeapps.list,monitors.xml}.{orig,prev} \
+           "$HOME"/.config/qBittorrent/qBittorrent.conf.{orig,prev} "$HOME"/.config/qBittorrent/themes/*.{orig,prev} \
+           "$HOME"/.config/autostart/*.desktop.{orig,prev} "$HOME"/.var/app/*/config/fontconfig/fonts.conf.{orig,prev}; do
+    [[ -e "$b" ]] && echo "$b"
+  done
+  return 0
+}
+mapfile -t backups < <(dotfiles_backups)
+if (( ${#backups[@]} )); then
+  info "${#backups[@]} backup(s) of files the dotfiles replaced; look through them and delete what you don't need:"
+  for b in "${backups[@]:0:10}"; do printf '      %s\n' "${b/#$HOME/\~}"; done
+  (( ${#backups[@]} > 10 )) && printf '      … and %s more\n' $(( ${#backups[@]} - 10 ))
+fi
 
 section "Terminal tools"
 for t in "${TOOLS[@]}"; do installed "$t" || MISSING_TOOLS+=("$t"); done
@@ -269,6 +291,12 @@ if have systemctl && chosen safety; then
     || bad "weekly reminder not switched on" install
 fi
 
+# Set up before install.sh kept a record of what it added: dot uninstall --apps can't tell
+# your own apps from the dotfiles' ones, so it would offer to remove them all.
+if added_is_legacy; then
+  bad "dot uninstall can't tell which apps you had before the dotfiles (set up before it kept track)" record
+fi
+
 section "Saved settings"
 find_unsaved
 if (( ${#unsaved_other[@]} )); then
@@ -286,6 +314,9 @@ for d in "$DOTFILES" "$VAULT"; do
   s="$(repo_state "$d")"
   [[ -z "$s" ]] && ok "${d/#$HOME/\~}: everything committed and pushed" \
     || bad "${d/#$HOME/\~}: $s changes" "$([[ "$d" == "$DOTFILES" ]] && echo push || echo notes)"
+  # Set up from a release: it stays on it on purpose, so GitHub's newer commits aren't a problem.
+  rel="$(repo_release "$d")"
+  if [[ -n "$rel" ]]; then info "${d/#$HOME/\~}: on release $rel (dot pull moves it to main, the newest version)"; continue; fi
   n="$(repo_behind "$d")"
   if (( n > 0 )); then bad "${d/#$HOME/\~}: GitHub has $n new commit$( ((n > 1)) && echo s) from another computer" pull
   else ok "${d/#$HOME/\~}: nothing new on GitHub"; fi
@@ -320,6 +351,27 @@ add_unsaved() {
   { printf '\n# Added by dot check --fix on %s\n' "$(date +%F)"; printf '%s\n' "${unsaved[@]}"; } >> "$SETUP/apt-packages.txt"
   note "added: ${unsaved[*]} (edit setup/apt-packages.txt to add comments, or -name to keep one off new computers)"
 }
+# adopt_record: you say which apps, packages, extensions and changes the dotfiles made, so
+# dot uninstall --apps offers only those (the record replaces "legacy").
+adopt_record() {
+  local items=() keep=() picked i opts=()
+  mapfile -t items < <(added_candidates)
+  if (( ${#items[@]} == 0 )); then added_write; note "nothing from the dotfiles found; recorded as none"; return 0; fi
+  if ui_gum; then
+    for i in "${!items[@]}"; do opts+=("${items[i]#*|}|$i"); done
+    picked="$(gum choose --no-limit --selected='*' --label-delimiter='|' --height $(( ${#opts[@]} + 4 )) \
+      --header $'Which of these did the dotfiles install or change? Space unticks what you had before them.\n(dot uninstall --apps then offers only the ticked ones.)' \
+      "${opts[@]}")" || return 1
+    for i in $picked; do keep+=("${items[i]%%|*}"); done
+  else
+    note "For each: Enter = the dotfiles added it, n = you had it before them"
+    for i in "${!items[@]}"; do
+      ask "Did the dotfiles add ${items[i]#*|}?" && keep+=("${items[i]%%|*}")
+    done
+  fi
+  added_write ${keep[@]+"${keep[@]}"}
+  note "recorded ${#keep[@]} of ${#items[@]}: dot uninstall --apps offers only those"
+}
 open_backups() {
   setsid deja-dup >/dev/null 2>&1 < /dev/null &
   note "Backups is opening: connect Google Drive if asked, turn on Back Up Automatically, then run dot save"
@@ -336,6 +388,7 @@ has_fix ssh     && fix_step "SSH key and signed commits" "Run dot ssh?" "$DOTFIL
 has_fix addapt  && fix_step "Ubuntu apps not saved" "Add ${unsaved[*]} to setup/apt-packages.txt?" add_unsaved
 # Apps from other sources can't go in apt-packages.txt (a new computer lacks their source).
 has_fix addother && warn "Not added: ${unsaved_other[*]} only come from their makers' own sources. Add each to install-apps.sh with its source (docs/apps.md), or write -name in setup/apt-packages.txt."
+has_fix record  && fix_step "What the dotfiles added" "Say which apps the dotfiles installed (so uninstall keeps yours)?" adopt_record
 has_fix backups && fix_step "Automatic backups" "Open Backups to turn them on?" open_backups
 has_fix ghkeys  && fix_step "GitHub CLI permissions" "Remove its permission to add SSH keys (approve in the browser)?" \
                      gh auth refresh -h github.com --remove-scopes "$GH_KEY_SCOPES"

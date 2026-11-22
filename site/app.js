@@ -123,6 +123,14 @@ function build(saved) {
   }
   if (saved.gitname || saved.gitemail) $("sec-you").open = true;
 
+  // "The latest release" switch, only when there is one (off unless you ticked it before).
+  if (data.release) {
+    $("release-name").textContent = `The latest release (${data.release})`;
+    $("release").checked = saved.release === true;
+    $("release-row").hidden = false;
+    $("release").addEventListener("change", update);
+  }
+
   $("filter").addEventListener("input", filter);
 }
 
@@ -177,6 +185,8 @@ function settings(on, total, off) {
   else if (off.length) vars.push(["DOTFILES_CHOICES", on.join(" ")]);
   const name = $("gitname").value.trim(), email = $("gitemail").value.trim();
   if (name && email) vars.push(["DOTFILES_GIT_NAME", name], ["DOTFILES_GIT_EMAIL", email]);
+  // Set up from the latest release instead of main (bootstrap.sh switches to it).
+  if (data.release && $("release").checked) vars.push(["DOTFILES_REF", data.release]);
   return vars;
 }
 
@@ -246,7 +256,7 @@ function update() {
   const preset = matchingPreset(on);
   document.querySelectorAll('input[name="preset"]').forEach((r) => { r.checked = r.value === preset; });
 
-  const state = { picked: on };
+  const state = { picked: on, release: $("release").checked };
   for (const id of FIELDS) state[id] = $(id).value;
   save(state);
 }

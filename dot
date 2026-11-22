@@ -43,7 +43,13 @@ EOF
 # push_repo <folder> <default message> [message...]
 push_repo() {
   local dir="$1" default="$2"; shift 2
-  local msg="${*:-$default}"
+  local msg="${*:-$default}" rel
+  rel="$(repo_release "$dir")"
+  if [[ -n "$rel" ]]; then
+    printf '%s✘%s %s is on release %s, which can'"'"'t take new commits.\n' "$C_ERR" "$C_N" "${dir/#$HOME/\~}" "$rel"
+    printf '  %sMove it to main (the newest version) first: dot pull, then dot push%s\n' "$C_DIM" "$C_N"
+    return 1
+  fi
   case "$(repo_state "$dir")" in
     "")       printf '%s✔%s nothing to save in %s\n' "$C_OK" "$C_N" "${dir/#$HOME/\~}"; return ;;
     unpushed) git -C "$dir" push && printf '%s✔%s pushed\n' "$C_OK" "$C_N"; return ;;
@@ -136,6 +142,8 @@ case "$cmd" in
       printf '%s✔%s snapshots refreshed. Changed:\n' "$C_OK" "$C_N"
       git -C "$DOTFILES" status --short
       printf '%sTo save them to GitHub: dot push%s\n' "$C_DIM" "$C_N"
+      rel="$(repo_release "$DOTFILES")"
+      [[ -z "$rel" ]] || printf '%s(~/dotfiles is on release %s: dot push needs main first, so dot pull before it)%s\n' "$C_DIM" "$rel" "$C_N"
     fi ;;
   check)   exec "$DOTFILES/check.sh" "$@" ;;
   status)
@@ -143,7 +151,18 @@ case "$cmd" in
     git -C "$DOTFILES" --no-pager diff --stat ;;
   push)    push_repo "$DOTFILES" "Update settings" "$@" ;;
   pull)
+    # Set up from a release (bootstrap.sh's DOTFILES_REF): getting changes means moving to main.
+    rel="$(repo_release "$DOTFILES")"
+    if [[ -n "$rel" ]]; then
+      echo "~/dotfiles is on release $rel, so it doesn't change when main does."
+      ask "Move it to main (the newest version) and get the changes?" || { echo "Nothing changed."; exit 0; }
+      git -C "$DOTFILES" checkout --quiet main || exit 1
+    fi
     pull_repo "$DOTFILES"; rc=$?
+    # Coming from a release counts as new commits even if main itself had nothing new.
+    if [[ -n "$rel" && "$rc" == 1 && "$(git -C "$DOTFILES" rev-parse "$rel^{commit}" 2>/dev/null)" != "$(git -C "$DOTFILES" rev-parse HEAD)" ]]; then
+      PULLED_FROM="$(git -C "$DOTFILES" rev-parse "$rel^{commit}")"; rc=0
+    fi
     from="$PULLED_FROM"
     [[ -d "$VAULT/.git" ]] && pull_repo "$VAULT"
     (( rc == 0 )) || exit $((rc == 2))

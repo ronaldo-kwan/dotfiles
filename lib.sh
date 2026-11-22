@@ -483,6 +483,14 @@ check_system() {
   [[ "$a" =~ ^[Yy] ]] || { echo "Nothing was changed."; exit 0; }
 }
 
+# repo_release <dir>: the release it's on (v1.1.0, or a commit) when it was set up from one
+# (bootstrap.sh's DOTFILES_REF), not from a branch; nothing when it's on a branch like main.
+repo_release() {
+  git -C "$1" rev-parse --git-dir >/dev/null 2>&1 || return 0
+  git -C "$1" symbolic-ref -q HEAD >/dev/null 2>&1 && return 0
+  git -C "$1" describe --tags --exact-match 2>/dev/null || git -C "$1" rev-parse --short HEAD
+}
+
 # repo_behind <dir>: how many commits GitHub has that this computer doesn't. Fetches first
 # (quietly, 10 seconds at most); prints 0 when offline or without an upstream.
 repo_behind() {
@@ -564,9 +572,13 @@ ui_plan() {
   printf '\e[H\e[2J\e[%d;%dr\e[%d;1H' $((UI_PANEL_ROWS + 1)) "$rows" $((UI_PANEL_ROWS + 1))
   ui_panel_draw
   trap 'ui_panel_resize' WINCH
-  prev="$(trap -p EXIT)"; prev="${prev#trap -- \'}"; prev="${prev%\' EXIT}"
-  # shellcheck disable=SC2064  # $prev is meant to be expanded now
-  trap "ui_panel_stop; $prev" EXIT
+  # The script's own EXIT trap (install-apps.sh's clean-up) still runs, after the panel
+  # stops, with the exit code it would have seen. trap -p prints it shell-quoted
+  # (trap -- '...' EXIT); `set --` undoes that quoting exactly, where cutting the quotes
+  # off by hand broke on a trap with a ' in it.
+  prev="$(trap -p EXIT)" UI_PREV_EXIT=''
+  if [[ -n "$prev" ]]; then eval "set -- $prev"; UI_PREV_EXIT="$3"; fi
+  trap 'UI_RC=$?; ui_panel_stop; (exit "$UI_RC"); eval "$UI_PREV_EXIT"' EXIT
   trap 'ui_panel_stop; exit 130' INT TERM
 }
 
@@ -767,6 +779,16 @@ mark_added() {
   [[ "$DRY_RUN" == 1 ]] && return 0
   [[ -f "$ADDED_FILE" ]] || added_init
   grep -qxF -- "$1" "$ADDED_FILE" 2>/dev/null || echo "$1" >> "$ADDED_FILE"
+}
+# added_is_legacy: was this computer set up before the record was kept?
+added_is_legacy() { [[ -f "$ADDED_FILE" ]] && grep -qx legacy "$ADDED_FILE"; }
+# added_write <item>...: replace the record with exactly these (dot check --fix, after you
+# said which ones the dotfiles added): no longer legacy.
+added_write() {
+  mkdir -p "$(dirname "$ADDED_FILE")"
+  { echo "# What the dotfiles added to this computer (dot uninstall removes only these)."
+    echo "# Written by dot check --fix on $(date +%F), from your answers."
+    if (( $# )); then printf '%s\n' "$@"; fi; } > "$ADDED_FILE"
 }
 # was_added <item>: did the dotfiles add it? (Yes for everything without a record, or a legacy one.)
 was_added() {

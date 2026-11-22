@@ -10,11 +10,15 @@ set -uo pipefail
 found=0
 flag() { printf '  \033[31m✘\033[0m %s\n' "$*"; found=1; }
 
-# 1. Files that should never be in a repo
+# 1. Files that should never be in a repo. Also the sign-in files of tools this setup
+# uses: rclone.conf (Backups reaches Google Drive through rclone, and this holds that
+# sign-in), credentials.json (Google and others), .npmrc/.pypirc/.pgpass (package and
+# database sign-ins) and .ovpn (VPN configs, often with their keys inside).
 while IFS= read -r -d '' f; do
   case "${f##*/}" in
     .env|.env.*|*.pem|*.key|*.p12|*.pfx|*.kdbx|id_rsa*|id_ed25519*|id_ecdsa*|.netrc|.git-credentials|\
-    Cookies|cookies.sqlite|Login\ Data|logins.json|key4.db|hosts.yml)
+    Cookies|cookies.sqlite|Login\ Data|logins.json|key4.db|hosts.yml|\
+    rclone.conf|credentials.json|.npmrc|.pypirc|.pgpass|*.ovpn)
       flag "$f: this kind of file holds keys or sign-ins" ;;
   esac
 # --no-renames: a renamed file counts as new, so its contents are checked too.
@@ -28,8 +32,11 @@ done < <(git diff --cached --no-renames --name-only --diff-filter=AMT -z)
 # of ignore_values (checked against that setting only, not the rest of the line, so
 # `"token": "<real token>", "debug": false` is still caught).
 # OpenAI keys: sk-<letters> (old), sk-proj-/sk-svcacct-/sk-admin- (with - and _ inside).
+# Google sign-ins (rclone's Google Drive one, for example): access tokens ya29.…, and
+# refresh tokens 1//…, which keep working until they're revoked.
 tokens='(^|[^A-Za-z0-9+/_-])(gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|sk-ant-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{32,}'
 tokens+='|sk-(proj|svcacct|admin)-[A-Za-z0-9_-]{20,}'
+tokens+='|ya29\.[A-Za-z0-9_-]{20,}|1//[A-Za-z0-9_-]{30,}'
 tokens+='|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[abprs]-[A-Za-z0-9-]{10,}|glpat-[A-Za-z0-9_-]{20})([^A-Za-z0-9_-]|$)'
 tokens+='|-----BEGIN [A-Z ]*PRIVATE KEY-----'
 settings='(password|passwd|secret|token|api[_-]?key|stream[_-]?key|auth[_-]?key)["'"'"']?[[:space:]]*[:=][[:space:]]*["'"'"']?[^"'"'"'[:space:],}]{6,}'

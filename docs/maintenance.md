@@ -291,4 +291,12 @@ To make one, after a setup has worked:
    gh release create v1.1.0 --verify-tag --title v1.1.0 --notes-file notes.md
    ```
 
-To set up a computer from a release instead of `main`, run `git checkout v1.1.0` in `~/dotfiles` before `dot install`. Run `git checkout main` afterwards, before `dot pull`, `dot save` or `dot push`.
+4. Rebuild the website, so its **The latest release** switch offers the new one (it reads the newest `v*` tag when it's built):
+
+   ```bash
+   gh workflow run pages.yml --repo ronaldo-kwan/dotfiles
+   ```
+
+To set up a new computer from a release instead of `main`, tick **The latest release** on the website. That adds `DOTFILES_REF=v1.1.0` to the command, and `bootstrap.sh` sets up from that release. Or, on a computer that already has `~/dotfiles`, run `git checkout v1.1.0` there before `dot install`.
+
+A computer set up from a release stays on it (`dot check` says so), so it doesn't change when `main` does. `dot pull` offers to move it to `main`, the newest version. `dot push` waits until you do, since a release can't take new commits.

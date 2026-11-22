@@ -6,6 +6,7 @@ site always offers exactly what the scripts install. Run by the GitHub Pages wor
 import json
 import pathlib
 import re
+import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -85,10 +86,24 @@ def flatpaks():
     return apps
 
 
+def latest_release():
+    """The newest release tag (v1.2.3), for "set up from the latest release"; None without
+    one (or outside a git checkout). The website workflow fetches the tags for this."""
+    try:
+        out = subprocess.run(["git", "-C", str(ROOT), "tag", "--list", "v*", "--sort=-v:refname"],
+                             capture_output=True, text=True, check=True).stdout.split()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return next((t for t in out if re.fullmatch(r"v\d+\.\d+\.\d+", t)), None)
+
+
 def main():
     data = {
         "repo": "https://github.com/ronaldo-kwan/dotfiles",
+        # bootstrap.sh always comes from main (older releases' copies don't know DOTFILES_REF);
+        # with "latest release" ticked, it then sets up from that release.
         "raw": "https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main",
+        "release": latest_release(),
         "groups": [{"token": t, "name": n, "desc": d, "default": t not in GROUP_DEFAULT_OFF} for t, n, d in GROUPS],
         "apps": outside_apps(),
         "ubuntu": ubuntu_apps(),
@@ -98,7 +113,8 @@ def main():
     out.parent.mkdir(exist_ok=True)
     out.write_text(json.dumps(data, indent=1) + "\n")
     print(f"wrote {out.relative_to(ROOT)}: {len(data['groups'])} groups, {len(data['apps'])} apps, "
-          f"{len(data['ubuntu'])} Ubuntu apps, {len(data['flatpaks'])} Flatpaks")
+          f"{len(data['ubuntu'])} Ubuntu apps, {len(data['flatpaks'])} Flatpaks, "
+          f"latest release {data['release'] or '(none)'}")
 
 
 if __name__ == "__main__":

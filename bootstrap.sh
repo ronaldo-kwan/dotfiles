@@ -11,6 +11,7 @@
 #   DOTFILES_CHOICES='terminal desktop app:chrome ...'   what to set up (default: everything)
 #   DOTFILES_SKIP='claude-md app:steam'                  or: everything except these
 #   DOTFILES_GIT_NAME='...' DOTFILES_GIT_EMAIL='...'      your name and email for git
+#   DOTFILES_REF='v1.1.0'                                set up from that release, not main
 #
 # Using your own fork? Point it there:
 #   DOTFILES_REPO=https://github.com/YOU/dotfiles.git bash <(wget -qO- https://raw.githubusercontent.com/YOU/dotfiles/main/bootstrap.sh)
@@ -72,11 +73,26 @@ elif [[ -f "$HOME/.config/dotfiles/choices" ]]; then
   echo "Choices from an earlier run removed: this run sets up everything"
 fi
 
+# DOTFILES_REF: set up from a release (the website's "The latest release": v1.1.0) instead
+# of main, the newest version. The computer then stays on it until dot pull moves it to main.
+REF="${DOTFILES_REF:-}"
+[[ "$REF" != -* ]] || { echo "DOTFILES_REF can't start with -: $REF"; exit 1; }
 if [[ -d "$DIR/.git" ]]; then
   echo "Updating $DIR"
-  git -C "$DIR" pull --ff-only
+  if [[ -n "$REF" ]]; then
+    git -C "$DIR" fetch --quiet --tags origin
+  elif git -C "$DIR" symbolic-ref -q HEAD >/dev/null; then
+    git -C "$DIR" pull --ff-only
+  else   # on a release from an earlier run: back to the newest version
+    git -C "$DIR" checkout --quiet main
+    git -C "$DIR" pull --ff-only
+  fi
 else
   echo "Downloading the dotfiles to $DIR"
   git clone --quiet "$REPO" "$DIR"
+fi
+if [[ -n "$REF" ]]; then
+  git -C "$DIR" -c advice.detachedHead=false checkout --quiet "$REF" --
+  echo "Setting up from $REF (not main)"
 fi
 exec "$DIR/fresh-install.sh" "$@"

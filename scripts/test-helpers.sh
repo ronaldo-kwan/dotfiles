@@ -111,6 +111,12 @@ EOF
   panel="$(script -qc "stty rows 40 cols 100; env -u NO_COLOR -u DOT_PLAIN -u UI_LOG -u UI_DEPTH TERM=xterm-256color bash '$T/panel.sh'" /dev/null 2>&1 | tr -d '\r')"
   t "the panel shows (its · marks a step still to come)" grep -q '· Step with a spinner' <<< "$panel"
   t "a spinner step after a quick step finishes" grep -q 'SPINNER-STEP-FINISHED' <<< "$panel"
+  # The script's own EXIT trap still runs after the panel's, even with a ' in it.
+  printf '%s\n' 'set -uo pipefail' "source \"$ROOT/lib.sh\"" \
+    "trap 'echo \"OWN-TRAP: it'\\''s here, code \$?\"' EXIT" \
+    'fast() { :; }; run_steps "One step|fast"; summary; exit 3' > "$T/trap.sh"
+  traps="$(script -qc "stty rows 40 cols 100; env -u NO_COLOR -u DOT_PLAIN -u UI_LOG -u UI_DEPTH TERM=xterm-256color bash '$T/trap.sh'" /dev/null 2>&1 | tr -d '\r')"
+  t "the script's own EXIT trap runs too (with a ' in it, and its exit code)" grep -q "OWN-TRAP: it's here, code 3" <<< "$traps"
   # In a narrow window the spinner line must still fit on one line (a longer one wraps,
   # leaving a copy at every redraw): its label is cut to the width.
   printf 'source "%s/lib.sh"\nquiet "Installing 9 Flatpak apps (already installed ones are skipped)" sleep 0.3\n' "$ROOT" > "$T/narrow.sh"
@@ -186,6 +192,22 @@ t "lets <placeholder> through" hook_on 'api_key=<your-api-key>'
 t "lets @HOME@ through" hook_on 'password: @HOME@'
 t "lets true/false settings through" hook_on '"token": true, "debug": false'
 t "lets sk- inside a word through" hook_on "risk-management-of-the-whole-project-today"
+g30="$(printf 'Ab1_-%.0s' {1..7})"
+t "stops a Google access token (rclone's, say)" not hook_on "x {\"access\":\"ya29.$g30\"}"
+t "stops a Google refresh token" not hook_on "refresh: 1//0$g30"
+t "lets a URL with 1// in it through" hook_on "see https://example.com/v1//$g30"
+# hook_file <name>: does the secret check stop a commit that adds a file with this name?
+hook_file() {
+  mkdir -p "$T/secrets/$(dirname "$1")"; echo "harmless" > "$T/secrets/$1"
+  git -C "$T/secrets" add "$1"
+  local rc=0; (cd "$T/secrets" && bash "$ROOT/.githooks/pre-commit" >/dev/null 2>&1) || rc=$?
+  git -C "$T/secrets" rm -q --cached "$1"
+  return "$rc"
+}
+for f in rclone.conf sub/credentials.json .npmrc .pypirc .pgpass work.ovpn; do
+  t "stops a file named $f" not hook_file "$f"
+done
+t "lets an ordinary file through" hook_file notes/rclone.md
 
 echo "Saved files put back (install.sh put_file)"
 load_fn install.sh put_file
@@ -287,6 +309,56 @@ t "dotfiles elsewhere: the reminder's drop-in runs them there" \
   grep -qxF "ExecStart=\"$T/my 100%% code/dotfiles/check.sh\" --notify" "$REMINDER_DROPIN"
 reminder_in "$HOME/dotfiles"
 t "back in ~/dotfiles: the drop-in is removed" not test -e "$REMINDER_DROPIN"
+
+echo "Setting up from a release"
+# A stand-in GitHub repo with a release tag, and bootstrap.sh's part that downloads it.
+git init -q -b main "$T/origin" && git -C "$T/origin" -c user.name=t -c user.email=t@e commit -q --allow-empty -m one
+git -C "$T/origin" tag v0.1.0 && git -C "$T/origin" -c user.name=t -c user.email=t@e commit -q --allow-empty -m two
+sed -n '/^# DOTFILES_REF: set up from/,/^exec /p' "$ROOT/bootstrap.sh" | sed '$d' > "$T/get.sh"
+get() { REPO="file://$T/origin" DIR="$T/clone" DOTFILES_REF="${1:-}" bash -e "$T/get.sh" >/dev/null 2>&1; }
+get v0.1.0
+t "DOTFILES_REF sets up from that release" same "$(repo_release "$T/clone")" v0.1.0
+get v0.1.0
+t "... again on a computer that already has it" same "$(repo_release "$T/clone")" v0.1.0
+get
+t "without DOTFILES_REF: back on main, up to date" \
+  same "$(repo_release "$T/clone")|$(git -C "$T/clone" log -1 --format=%s)" "|two"
+t "DOTFILES_REF can't be an option" not bash -c 'REPO=x DIR=x DOTFILES_REF=--help bash -e "$1" >/dev/null' _ "$T/get.sh"
+git -C "$T/clone" -c advice.detachedHead=false checkout -q v0.1.0
+load_fn dot push_repo
+pushed() { push_repo "$T/clone" "message" >/dev/null; }
+t "dot push won't commit on a release" not pushed
+git -C "$T/clone" checkout -q main
+t "repo_release on a branch is empty" same "$(repo_release "$T/clone")" ""
+# The website offers the newest v1.2.3 tag (by version, not by name: v1.10.0 > v1.9.0).
+for v in v1.2.0 v1.10.0 v1.9.0 test-tag; do git -C "$T/origin" tag "$v"; done
+newest="$(python3 -I -B - "$ROOT/scripts/build-site.py" "$T/origin" <<'PY'
+import importlib.util, pathlib, sys
+spec = importlib.util.spec_from_file_location("build_site", sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+m.ROOT = pathlib.Path(sys.argv[2]); print(m.latest_release())
+PY
+)"
+t "build-site.py finds the latest release" same "$newest" v1.10.0
+
+echo "dot check: the record and backups"
+load_fn check.sh adopt_record
+ADDED_FILE="$T/state/adopt"; printf 'legacy\n' > "$ADDED_FILE"
+t "a legacy record is noticed" added_is_legacy
+adopted() (   # ( ): the stand-ins below stay in here
+  added_candidates() { printf 'app:chrome|Google Chrome\npkg:vlc|vlc (Ubuntu app)\n'; }
+  ui_gum() { false; }; ask() { [[ "$1" != *vlc* ]]; }   # "you had VLC before"
+  adopt_record >/dev/null
+)
+adopted
+t "your answers replace it: only what the dotfiles added" same "$(grep -v '^#' "$ADDED_FILE")" app:chrome
+t "... and it's no longer legacy" not added_is_legacy
+t "added_candidates runs on this computer" eval 'added_candidates >/dev/null'
+load_fn check.sh dotfiles_backups
+mkdir -p "$HOME/.config/qBittorrent"
+touch "$HOME/.bashrc.orig" "$HOME/.bashrc.orig.20261122-101010" "$HOME/.config/qBittorrent/qBittorrent.conf.prev"
+t "dot check lists the backups install.sh made" same "$(dotfiles_backups | sed "s|$HOME/||" | sort | tr '\n' ' ')" \
+  ".bashrc.orig .bashrc.orig.20261122-101010 .config/qBittorrent/qBittorrent.conf.prev "
 
 echo "App table (install-apps.sh)"
 t "every app: entry has its APP_PARTS" bash -c '
