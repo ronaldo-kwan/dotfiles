@@ -9,7 +9,7 @@ Day-to-day use after the setup: saving changes, checking the computer, and what 
 - Everyday: [Saving changes](#saving-changes) · [More than one computer](#more-than-one-computer) · [The `dot` menu](#the-dot-menu) · [Health check](#health-check)
 - Runs by itself: [Weekly reminder](#weekly-reminder) · [Weekly updates and monthly clean-up](#weekly-updates-and-monthly-clean-up) · [Secret check before commits](#secret-check-before-commits)
 - Once in a while: [Signed commits](#signed-commits) · [After upgrading Ubuntu](#after-upgrading-ubuntu)
-- The repo: [GitHub checks](#github-checks) · [The website and choices](#the-website-and-choices) · [The README screenshot](#the-readme-screenshot)
+- The repo: [GitHub checks](#github-checks) · [The website and choices](#the-website-and-choices) · [The README screenshot](#the-readme-screenshot) · [Releases](#releases)
 
 ## Saving changes
 
@@ -265,3 +265,30 @@ If a deploy fails, use **Re-run failed jobs** on the run: the build and the depl
 > Don't skip the swap. The screenshot comes out with red and blue the wrong way round: the night sky shows orange. Afterwards the terminal's background should be close to Catppuccin Mocha's `#1e1e2e`.
 
 If the picture shows something new, update the `alt` text and caption under it in `README.md`.
+
+## Releases
+
+A release marks a version that set up a real computer properly, so there's a known-good one to go back to. Installs still come from `main`; a release changes nothing for them. They're numbered `vMAJOR.MINOR.PATCH`:
+
+| Bump | When | Example |
+|---|---|---|
+| Major (`v2.0.0`) | A setup from scratch works differently: a new Ubuntu release, or something removed or replaced | Moving to Ubuntu 28.04 |
+| Minor (`v1.1.0`) | Something new: an app, a setting, a `dot` command | Adding an app |
+| Patch (`v1.0.1`) | Fixes only | A changed download address |
+
+To make one, after a setup has worked:
+
+1. Run the checks (`gh workflow run check.yml --repo ronaldo-kwan/dotfiles`) and wait for them to pass.
+2. Tag `main`, signed like the commits, and push the tag:
+
+   ```bash
+   git tag -s v1.1.0 -m "v1.1.0: <one line on what's new>" && git push origin v1.1.0
+   ```
+
+3. Publish it with notes grouped as **Features**, **Fixes**, **CI** and **Docs** (see [v1.0.0](https://github.com/ronaldo-kwan/dotfiles/releases/tag/v1.0.0)). `git log --oneline v1.0.0..v1.1.0` lists what went in:
+
+   ```bash
+   gh release create v1.1.0 --verify-tag --title v1.1.0 --notes-file notes.md
+   ```
+
+To set up a computer from a release instead of `main`, run `git checkout v1.1.0` in `~/dotfiles` before `dot install`. Run `git checkout main` afterwards, before `dot pull`, `dot save` or `dot push`.
