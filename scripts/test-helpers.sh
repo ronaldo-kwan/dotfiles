@@ -244,7 +244,7 @@ screens "(('eDP-2', 'EDO', 'LEN151WQXGA', 'S1'), [()]), (('HDMI-1', 'MSI', 'MSI 
 t "a screen on another connector, the only one of its model, still matches" \
   same "$(serials "$SETUP/apps/monitors.xml")" "S1 S2 S1 "
 
-echo "Snapshots (dot save)"
+echo "Snapshots (dot save, dot push)"
 # A stand-in dconf: `dump` prints one setting, except for a folder with nothing set.
 printf '#!/bin/sh\n[ "$1" = dump ] && [ "$2" = /org/gnome/desktop/wm/keybindings/ ] && exit 0\n[ "$1" = dump ] && printf "[/]\\nk=1\\n"\nexit 0\n' > "$T/bin/dconf"
 chmod +x "$T/bin/dconf"
@@ -295,7 +295,7 @@ fix_fails() {
     half() { false; echo "    KEPT-GOING"; }
     fix_step "A fix" "Fix it?" half; [[ "${FAILED[*]}" == "A fix" ]]' _ "$ROOT" | not grep -q KEPT-GOING
 }
-t "dot check --fix stops a fix at its first error and marks it failed" fix_fails
+t "a dot check fix stops at its first error and is marked failed" fix_fails
 # SUDO=false: the edit of the source file fails (for any user, root too).
 mkdir -p "$T/src"; printf 'Types: deb\nEnabled: no\n' > "$T/src/app.sources"
 src_rc=0; (cd "$ROOT" && SOURCES_DIR="$T/src" SUDO=false ./post-upgrade.sh --sources-only >/dev/null 2>&1) || src_rc=$?
@@ -319,20 +319,25 @@ git init -q -b main "$T/origin" && git -C "$T/origin" -c user.name=t -c user.ema
 git -C "$T/origin" tag v0.1.0 && git -C "$T/origin" -c user.name=t -c user.email=t@e commit -q --allow-empty -m two
 sed -n '/^# DOTFILES_REF: set up from/,/^exec /p' "$ROOT/bootstrap.sh" | sed '$d' > "$T/get.sh"
 get() { REPO="file://$T/origin" DIR="$T/clone" DOTFILES_REF="${1:-}" bash -e "$T/get.sh" >/dev/null 2>&1; }
+on() { echo "$(git -C "$T/clone" symbolic-ref -q --short HEAD)|$(git -C "$T/clone" log -1 --format=%s)"; }
 get v0.1.0
-t "DOTFILES_REF sets up from that release" same "$(repo_release "$T/clone")" v0.1.0
+t "DOTFILES_REF sets up from that release, on main" same "$(on)" "main|one"
 get v0.1.0
-t "... again on a computer that already has it" same "$(repo_release "$T/clone")" v0.1.0
-get
-t "without DOTFILES_REF: back on main, up to date" \
-  same "$(repo_release "$T/clone")|$(git -C "$T/clone" log -1 --format=%s)" "|two"
-t "DOTFILES_REF can't be an option" not bash -c 'REPO=x DIR=x DOTFILES_REF=--help bash -e "$1" >/dev/null' _ "$T/get.sh"
-git -C "$T/clone" -c advice.detachedHead=false checkout -q v0.1.0
+t "... again on a computer that already has it" same "$(on)" "main|one"
 load_fn dot push_repo
 pushed() { push_repo "$T/clone" "message" >/dev/null; }
-t "dot push won't commit on a release" not pushed
+t "dot push waits for dot pull while GitHub has newer commits" not pushed
+get
+t "without DOTFILES_REF: main, up to date" same "$(on)" "main|two"
+git -C "$T/clone" -c advice.detachedHead=false checkout -q v0.1.0
+get
+t "a release from an older bootstrap.sh (not on a branch) goes back to main" same "$(on)" "main|two"
+git -C "$T/clone" -c advice.detachedHead=false checkout -q v0.1.0
+t "dot push won't commit when not on a branch" not pushed
 git -C "$T/clone" checkout -q main
-t "repo_release on a branch is empty" same "$(repo_release "$T/clone")" ""
+git -C "$T/clone" -c user.name=t -c user.email=t@e commit -q --allow-empty -m mine
+t "DOTFILES_REF stops when main has commits not on GitHub" not get v0.1.0
+t "... and leaves them" same "$(on)" "main|mine"
 # The website offers the newest v1.2.3 tag (by version, not by name: v1.10.0 > v1.9.0).
 for v in v1.2.0 v1.10.0 v1.9.0 test-tag; do git -C "$T/origin" tag "$v"; done
 newest="$(python3 -I -B - "$ROOT/scripts/build-site.py" "$T/origin" <<'PY'
@@ -370,12 +375,12 @@ remind() { PATH="$T/bin:$PATH" ADDED_FILE="$1" timeout 120 bash "$ROOT/check.sh"
 mkdir -p "$T/state" && printf 'legacy\n' > "$T/state/remind-legacy"
 for day in 1 2 3; do touch "$HOME/.bashrc.orig.2026010$day-000000"; done   # 6, with the 3 from above
 reminder="$(remind "$T/state/remind-legacy")"
-t "it mentions a legacy record" grep -q "dot check --fix" <<< "$reminder"
+t "it mentions a legacy record" grep -q "which apps you had before" <<< "$reminder"
 t "it mentions backups once they pile up (6)" grep -q "6 backups of files the dotfiles replaced" <<< "$reminder"
 rm -f "$HOME"/.bashrc.orig.2026010?-000000
 printf '# answered\n' > "$T/state/remind-answered"
 reminder="$(remind "$T/state/remind-answered")"
-t "... but not once the record is answered" not grep -q "dot check --fix" <<< "$reminder"
+t "... but not once the record is answered" not grep -q "which apps you had before" <<< "$reminder"
 t "... nor for a few backups (3)" not grep -q "backups of files the dotfiles replaced" <<< "$reminder"
 
 echo "App table (install-apps.sh)"

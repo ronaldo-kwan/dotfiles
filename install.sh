@@ -277,7 +277,7 @@ set_wallpaper() {
 }
 
 # 8. App settings -------------------------------------------------------------------
-# Apps that start at login, default apps, qBittorrent (saved by `dotsave` in setup/apps/).
+# Apps that start at login, default apps, qBittorrent (saved by `dot save` in setup/apps/).
 # Existing files that differ are kept as <name>.orig (the first time) or <name>.prev.
 put_file() { # put_file <saved file> <destination>: copy, turning @HOME@ into this home folder
   local src="$1" dst="$2"
@@ -441,7 +441,7 @@ json.dump(data, open(path, "w"))
 
 # 10. Safety checks ---------------------------------------------------------------------
 # Secret check before commits (in ~/dotfiles and the vault), and a weekly reminder
-# (Sunday evening, or the next login) when settings changed since the last dotsave or
+# (Sunday evening, or the next login) when settings changed since the last dot save or
 # changes aren't committed. The reminder only notifies; it never commits.
 # The reminder's unit runs ~/dotfiles/check.sh. Dotfiles kept somewhere else (DOTFILES_DIR
 # in bootstrap.sh) get a drop-in next to it that points it at the real folder.

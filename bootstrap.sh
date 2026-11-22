@@ -74,25 +74,25 @@ elif [[ -f "$HOME/.config/dotfiles/choices" ]]; then
 fi
 
 # DOTFILES_REF: set up from a release (the website's "The latest release": v1.1.0) instead
-# of main, the newest version. The computer then stays on it until dot pull moves it to main.
+# of the newest version. main is put back to that release, so it's an ordinary branch that's
+# just behind GitHub: dot pull later brings it up to date like on any other computer.
 REF="${DOTFILES_REF:-}"
 [[ "$REF" != -* ]] || { echo "DOTFILES_REF can't start with -: $REF"; exit 1; }
 if [[ -d "$DIR/.git" ]]; then
   echo "Updating $DIR"
-  if [[ -n "$REF" ]]; then
-    git -C "$DIR" fetch --quiet --tags origin
-  elif git -C "$DIR" symbolic-ref -q HEAD >/dev/null; then
-    git -C "$DIR" pull --ff-only
-  else   # on a release from an earlier run: back to the newest version
-    git -C "$DIR" checkout --quiet main
-    git -C "$DIR" pull --ff-only
-  fi
+  # On a release from an older bootstrap.sh (not on a branch): back to main first.
+  git -C "$DIR" symbolic-ref -q HEAD >/dev/null || git -C "$DIR" checkout --quiet main
+  if [[ -n "$REF" ]]; then git -C "$DIR" fetch --quiet --tags origin; else git -C "$DIR" pull --ff-only; fi
 else
   echo "Downloading the dotfiles to $DIR"
   git clone --quiet "$REPO" "$DIR"
 fi
 if [[ -n "$REF" ]]; then
-  git -C "$DIR" -c advice.detachedHead=false checkout --quiet "$REF" --
-  echo "Setting up from $REF (not main)"
+  if [[ -n "$(git -C "$DIR" log --oneline '@{u}..' 2>/dev/null)" ]]; then
+    echo "$DIR has commits that aren't on GitHub yet; save them first (dot push), then run this again."
+    exit 1
+  fi
+  git -C "$DIR" checkout --quiet -B main "$REF^{commit}" --
+  echo "Setting up from $REF (dot pull later brings it up to date)"
 fi
 exec "$DIR/fresh-install.sh" "$@"

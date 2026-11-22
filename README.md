@@ -55,13 +55,11 @@ Everything goes through one command, `dot`. On its own, **`dot` opens a menu**: 
 
 | Command | What it does |
 |---|---|
-| `dot save` | Refreshes the snapshots in `setup/` (apps, extensions, dock, desktop settings) and shows what changed |
-| `dot push "message"` | Commits everything and pushes to GitHub (the secret check runs first) |
+| `dot push "message"` | Refreshes the snapshots in `setup/` (apps, extensions, dock, desktop settings), then commits everything and pushes to GitHub, your Obsidian notes too (the secret check runs first) |
 | `dot pull` | Gets changes you saved on another computer, then offers to apply them |
-| `dot notes` | The same for your Obsidian notes |
-| `dot check` | Health check: links, tools, apps, extensions, firewall, signing, backups, unsaved changes. Changes nothing |
-| `dot check --fix` | The same, then offers to fix each problem in order (asks first) |
-| `dot status` · `dot cd` · `dot edit` | What changed · go to `~/dotfiles` · open it in VS Code |
+| `dot check` | Health check: links, tools, apps, extensions, firewall, signing, backups, unsaved changes. If something's wrong, offers to fix each problem in order (asks first) |
+| `dot save` | Only refreshes the snapshots and shows what changed, without committing |
+| `dot cd` · `dot edit` | Go to `~/dotfiles` · open it in VS Code |
 | `dot install` · `dot apps` · `dot fresh` | Run the setup scripts again (each is safe to rerun) |
 | `dot uninstall` | Undo it: your own config files back, Ubuntu's desktop look, extensions and fonts removed. `--apps` also removes the apps you pick ([details](docs/new-computer.md#undoing-it)) |
 | `update` | Update Ubuntu packages now (it also happens weekly by itself) |
@@ -73,16 +71,16 @@ Everything goes through one command, `dot`. On its own, **`dot` opens a menu**: 
 
 | When | Run |
 |---|---|
-| You changed settings, apps, extensions or the dock | `dot save`, then `dot push "Describe the change"` |
+| You changed settings, apps, extensions, the dock or your notes | `dot push "Describe the change"` |
 | You saved changes on another computer | `dot pull` |
-| Something seems off or missing | `dot check --fix` |
+| Something seems off or missing | `dot check` |
 | First time on a computer, for **Verified** commits | `dot ssh` (one approval in the browser) |
 | After upgrading Ubuntu to a new release | `dot upgrade` ([why](docs/maintenance.md#after-upgrading-ubuntu)) |
 
 ### What runs by itself
 
 - **Weekly updates** for Ubuntu and Flatpak apps, and a **monthly clean-up** of unused packages.
-- **A weekly reminder** (Sunday evening, or your next login) if settings changed since the last `dot save`, Ubuntu apps aren't saved, backups are off, changes aren't pushed, or GitHub has changes from another computer. It never commits anything.
+- **A weekly reminder** (Sunday evening, or your next login) if settings changed since the last `dot push`, Ubuntu apps aren't saved, backups are off, changes aren't pushed, or GitHub has changes from another computer. It never commits anything.
 - **A secret check** before every commit here and in your notes repo. It stops the commit if something looks like a password, token or key.
 
 ## Use it yourself
@@ -100,7 +98,7 @@ You're welcome to use or adapt this. The scripts install *my* apps and settings,
    DOTFILES_REPO=https://github.com/YOU/dotfiles.git bash <(wget -qO- https://raw.githubusercontent.com/YOU/dotfiles/main/bootstrap.sh)
    ```
 
-3. On your current computer, run `dot save` to save your own desktop settings into `setup/`.
+3. On your current computer, run `dot push` to save your own desktop settings into `setup/`.
 
 Notes aren't part of it: `install.sh` looks for a private repo of yours called `obsidian-vault` and skips it if there's none.
 
@@ -112,7 +110,7 @@ Changed your mind? `dot uninstall` puts your own config files back and returns t
 |---|---|
 | [Setting up a new computer](docs/new-computer.md) | Before installing, both install options, what the setup does, after the restart, disk encryption, the RTX 5060, manual setup |
 | [Apps](docs/apps.md) | `install-apps.sh`, where each app comes from, Steam, Obsidian, GNOME extensions |
-| [Keeping things up to date](docs/maintenance.md) | `dot save`, `dot pull`, `dot check`, `dot ssh`, the reminder, the secret check, updates, upgrading Ubuntu, GitHub checks, the website |
+| [Keeping things up to date](docs/maintenance.md) | `dot push`, `dot pull`, `dot check`, `dot ssh`, the reminder, the secret check, updates, upgrading Ubuntu, GitHub checks, the website |
 | [What's in this repo](docs/files.md) | Every file and folder |
 
 ## Credits

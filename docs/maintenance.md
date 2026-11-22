@@ -16,14 +16,16 @@ Day-to-day use after the setup: saving changes, checking the computer, and what 
 Edit files at their usual place (for example `~/.bashrc`) or in `~/dotfiles`; both are the same file. Then save the change to GitHub:
 
 ```bash
-dot push "Describe the change"     # = cd ~/dotfiles && git add -A && git commit && git push
+dot push "Describe the change"
 ```
 
-**Snapshots need a refresh first.** The files in `setup/` are snapshots, so they don't update themselves. After changing extensions, apps, shortcuts, the dock or desktop settings like the theme, run `dot save` (or the old name `dotsave`). It refreshes all of them with `scripts/snapshot.sh` and shows what changed, without committing.
+It refreshes the snapshots, commits everything (`git add -A`) and pushes, and does the same for your Obsidian notes (message "Update notes"). It lists the files before committing, and the [secret check](#secret-check-before-commits) runs first. If GitHub has commits this computer doesn't, it stops and asks you to `dot pull` first.
+
+**The snapshots.** The files in `setup/` are snapshots of extensions, apps, shortcuts, the dock and desktop settings like the theme, so they don't update themselves: `dot push` refreshes them with `scripts/snapshot.sh` first. To see what changed without committing anything, run `dot save`.
 
 - `setup/apt-packages.txt` is the exception: edit it by hand when you install or remove an Ubuntu app you want on every computer.
 - Things GNOME remembers by itself (window sizes, last-used folders, timestamps) are left out of the snapshots on purpose.
-- On a computer set up with only some parts chosen on the website, `dot save` refreshes only those parts; the rest stays as saved, so a partial setup never overwrites the full one.
+- On a computer set up with only some parts chosen on the website, only those parts are refreshed; the rest stays as saved, so a partial setup never overwrites the full one.
 
 ## More than one computer
 
@@ -38,7 +40,7 @@ dot pull
 3. **Offers `dot apps`** if the app lists changed (`install-apps.sh` or `setup/apt-packages.txt`).
 
 > [!TIP]
-> If you also changed settings on this computer, run `dot save` and `dot push` first. Applying the pulled settings replaces this computer's desktop settings with the ones in the repo.
+> If you also changed settings on this computer, run `dot push` first. Applying the pulled settings replaces this computer's desktop settings with the ones in the repo.
 
 If both computers have new commits, `dot pull` stops and tells you what to run (`git -C ~/dotfiles pull --rebase`, then `dot push`). `dot check` and the [weekly reminder](#weekly-reminder) tell you when GitHub has commits this computer doesn't.
 
@@ -54,7 +56,7 @@ DOT_PLAIN=1 dot apps
 
 ## Health check
 
-`dot check` (or `dotcheck`, or `~/dotfiles/check.sh`) checks that this computer still matches the repo. It changes nothing, and each ✘ line ends with what fixes it (→ `dot apps`, → `dot save`, ...).
+`dot check` (or `~/dotfiles/check.sh`) checks that this computer still matches the repo. Each ✘ line ends with what fixes it (→ `dot apps`, → `dot push`, ...), and if anything is wrong it offers to [fix it](#fixing-problems). It changes nothing unless you say yes.
 
 <details>
 <summary>Everything it checks</summary>
@@ -76,21 +78,20 @@ DOT_PLAIN=1 dot apps
 -cowsay   # just trying it
 ```
 
-Apps that only come from their maker's own update source, a PPA or a downloaded `.deb` are listed separately: `setup/apt-packages.txt` can't install them, because a new computer doesn't have that source. To keep one, add it to `install-apps.sh` with its source (see how ChatGPT is done: an `APPS` entry, its `APP_PARTS` line and its install function); otherwise write it as `-name`. `dot check --fix` never adds these to the list.
+Apps that only come from their maker's own update source, a PPA or a downloaded `.deb` are listed separately: `setup/apt-packages.txt` can't install them, because a new computer doesn't have that source. To keep one, add it to `install-apps.sh` with its source (see how ChatGPT is done: an `APPS` entry, its `APP_PARTS` line and its install function); otherwise write it as `-name`. `dot check` never adds these to the list.
 
-**Automatic backups** count as part of the setup: `dot check` shows ✘ while Backups' "Back Up Automatically" is off. Turn it on (and connect Google Drive), then run `dot save`, so new computers get it switched on too.
+**Automatic backups** count as part of the setup: `dot check` shows ✘ while Backups' "Back Up Automatically" is off. Turn it on (and connect Google Drive), then run `dot push`, so new computers get it switched on too.
 
 ### Fixing problems
 
-`dot check --fix` runs the same check, then offers each fix in a sensible order, asking first (<kbd>Enter</kbd> = yes, <kbd>n</kbd> = skip):
+When `dot check` finds problems, it asks whether to fix them (`dot check --fix` skips that question). Then it offers each fix in a sensible order, asking first (<kbd>Enter</kbd> = yes, <kbd>n</kbd> = skip):
 
 1. `dot pull`, if GitHub has new commits
 2. Missing tools
 3. `dot apps`, `dot install`, `dot ssh`
 4. Adding unsaved Ubuntu apps to `setup/apt-packages.txt`
 5. Opening Backups
-6. `dot save`
-7. `dot push` and `dot notes` for anything those changed
+6. `dot push`, for the snapshots and anything not saved to GitHub
 
 A summary shows what was fixed. Run `dot check` again to confirm.
 
@@ -98,7 +99,7 @@ A summary shows what was fixed. Run `dot check` again to confirm.
 
 A systemd user timer runs `check.sh --notify` on Sunday at 19:00, or at your next login if the computer was off. It shows a notification only if:
 
-- settings changed since your last `dot save`,
+- settings changed since your last `dot push`,
 - you installed Ubuntu apps that aren't in `setup/apt-packages.txt`,
 - automatic backups are off,
 - `~/dotfiles` or your notes have changes that aren't committed or pushed, or
@@ -297,6 +298,6 @@ To make one, after a setup has worked:
    gh workflow run pages.yml --repo ronaldo-kwan/dotfiles
    ```
 
-To set up a new computer from a release instead of `main`, tick **The latest release** on the website. That adds `DOTFILES_REF=v1.1.0` to the command, and `bootstrap.sh` sets up from that release. Or, on a computer that already has `~/dotfiles`, run `git checkout v1.1.0` there before `dot install`.
+To set up a new computer from a release instead of `main`, tick **The latest release** on the website. That adds `DOTFILES_REF=v1.1.0` to the command, and `bootstrap.sh` sets up from that release: it puts the computer's `main` back to that version.
 
-A computer set up from a release stays on it (`dot check` says so), so it doesn't change when `main` does. `dot pull` offers to move it to `main`, the newest version. `dot push` waits until you do, since a release can't take new commits.
+From then on it's like any computer that's behind GitHub: `dot check` and the weekly reminder say GitHub has new commits, and `dot pull` brings it up to the newest version. `dot push` waits until you've pulled.

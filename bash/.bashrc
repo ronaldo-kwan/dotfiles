@@ -134,8 +134,13 @@ dot() {
   if [ "${1:-}" = cd ]; then cd "${DOTFILES:-$__dotfiles_dir}" || return
   else "${DOTFILES:-$__dotfiles_dir}/dot" "$@"; fi
 }
-complete -W "menu save check status push pull notes install apps fresh upgrade ssh uninstall cd edit help" dot
-alias dotsave='dot save' dotcheck='dot check'   # the old names still work
+# Tab completes the commands in dot's own list (dot help), read when you press Tab.
+_dot() {
+  [ "$COMP_CWORD" = 1 ] || return 0
+  local cmds; cmds="$(sed -n 's/^dot \([a-z]\{1,\}\).*|.*/\1/p' "${DOTFILES:-$__dotfiles_dir}/dot")"
+  mapfile -t COMPREPLY < <(compgen -W "$cmds" -- "${COMP_WORDS[1]}")
+}
+complete -F _dot dot
 
 # --- Terminal customization ---
 # Everything in Catppuccin Mocha, like Ghostty: fzf's colours and layout are in

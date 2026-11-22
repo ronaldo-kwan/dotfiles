@@ -133,7 +133,10 @@ jobs:
           grep -q '✔ RobotoMono Nerd Font' check.txt
           test "$(git config core.hooksPath)" = "$PWD/.githooks"
       - name: dot command works
-        run: ./dot help && ./dot status
+        run: |
+          ./dot help
+          ./dot help | grep -q 'dot push'
+          ! ./dot status   # gone: an unknown command fails
       - name: install-apps.sh dry run (checks every download source, installs nothing)
         run: DRY_RUN=1 ./install-apps.sh
       - name: post-upgrade.sh on a copy of apt sources made to look upgraded

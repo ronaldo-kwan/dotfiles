@@ -77,10 +77,10 @@ On a new computer, install Steam, sign in, and reinstall your games. Steam Cloud
 
 ## Obsidian
 
-Your **notes** aren't in this repo. They're in their own private repo, `obsidian-vault`, at `~/Documents/Obsidian Vault`. To save changes to your notes:
+Your **notes** aren't in this repo. They're in their own private repo, `obsidian-vault`, at `~/Documents/Obsidian Vault`. `dot push` saves changes to your notes along with `~/dotfiles` (with its own message, "Update notes"):
 
 ```bash
-dot notes "Describe the change"
+dot push
 ```
 
 What `install.sh` does for Obsidian:
@@ -90,7 +90,7 @@ What `install.sh` does for Obsidian:
 - Adds the vault to Obsidian's list, so Obsidian opens straight into it. Obsidian must be installed and closed for that; otherwise choose **Open folder as vault** once.
 
 > [!NOTE]
-> Community plugins themselves aren't saved here, only the list of them (`community-plugins.json`). Their program files can be megabytes, and their own settings (`data.json`) can hold API keys or sign-ins, while this repo is public. On a new computer, install them again from **Settings → Community plugins**. Your private notes repo can keep the whole `.obsidian` folder, plugins included: `dot notes` saves it there.
+> Community plugins themselves aren't saved here, only the list of them (`community-plugins.json`). Their program files can be megabytes, and their own settings (`data.json`) can hold API keys or sign-ins, while this repo is public. On a new computer, install them again from **Settings → Community plugins**. Your private notes repo can keep the whole `.obsidian` folder, plugins included: `dot push` saves it there.
 
 The [secret check](maintenance.md#secret-check-before-commits) also guards commits in the notes repo.
 

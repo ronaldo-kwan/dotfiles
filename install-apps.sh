@@ -201,7 +201,7 @@ is_done() { if [[ "$1" == check_* ]]; then "$1"; else installed "$1"; fi; }
 
 # added_candidates: "item|label" for each thing on this computer the dotfiles may have added
 # (what dot uninstall --apps can offer), with the item as the record writes it (lib.sh:
-# ADDED_FILE). For a computer set up before the record was kept: dot check --fix asks you
+# ADDED_FILE). For a computer set up before the record was kept: dot check's fixes ask you
 # which of these the dotfiles added.
 added_candidates() {
   local entry choice name p pkgs desk uuid id

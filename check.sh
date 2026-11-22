@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Health check: is this computer still set up the way ~/dotfiles describes?
-# On its own it changes nothing and never commits. Also: dot check / dotcheck.
+# It changes nothing unless you say yes to a fix, and never commits by itself.
 #
 #   dot check            full check (links, tools, apps, firewall, Flatpaks, extensions,
-#                        signing, backups, scheduled jobs, Obsidian, unsaved changes)
-#   dot check --fix      the same, then offers to fix each problem it found, in order
-#                        (asks before each fix; Enter = yes)
+#                        signing, backups, scheduled jobs, Obsidian, unsaved changes);
+#                        if anything is wrong, asks whether to fix it, then offers each
+#                        fix in order (asks before each one; Enter = yes)
+#   dot check --fix      the same, without the first question
 #   check.sh --notify    only "anything to save? backups off?", as a desktop
 #                        notification (used by the weekly reminder)
 #
@@ -23,7 +24,7 @@ PROBLEMS=0
 FIXES=" "          # fix keys collected by bad(), in no particular order
 MISSING_TOOLS=()
 ok()   { printf '  %s✔%s %s\n' "$C_OK" "$C_N" "$*"; }
-# bad "message" [fix]: a ✘ line; the fix (a key below) is shown and collected for --fix.
+# bad "message" [fix]: a ✘ line; the fix (a key below) is shown and collected for the fixes.
 bad() {
   local hint=''
   [[ -n "${2:-}" ]] && { hint="$(fix_hint "$2")"; FIXES+="$2 "; }
@@ -38,17 +39,16 @@ fix_hint() {
     ssh)     echo "dot ssh" ;;
     addapt)  echo "add them to setup/apt-packages.txt (or as -name to keep them off new computers)" ;;
     addother) echo "add each to install-apps.sh with its source, like ChatGPT (docs/apps.md); or write -name in setup/apt-packages.txt to keep it off new computers" ;;
-    backups) echo "open Backups, turn on Back Up Automatically, then dot save" ;;
-    save)    echo "dot save" ;;
+    backups) echo "open Backups, turn on Back Up Automatically, then dot push" ;;
+    save)    echo "dot push" ;;
     push)    echo "dot push" ;;
     pull)    echo "dot pull" ;;
-    notes)   echo "dot notes" ;;
     restart) echo "restart; with Secure Boot, enrol the key on the blue MOK screen" ;;
     nvidiakernel)
       if [[ -n "$NV_READY" ]]; then echo "Ubuntu has it now: sudo apt update && sudo apt full-upgrade, then restart"
       else echo "Ubuntu hasn't published it yet; meanwhile start ${NV_OLD:-the previous kernel} (boot menu: Advanced options for Ubuntu), later run sudo apt update && sudo apt full-upgrade"; fi ;;
     ghkeys)  echo "gh auth refresh -h github.com --remove-scopes $GH_KEY_SCOPES" ;;
-    record)  echo "dot check --fix asks which ones the dotfiles installed" ;;
+    record)  echo "the fixes ask which ones the dotfiles installed" ;;
   esac
 }
 # Backups (Déjà Dup): is "Back Up Automatically" on?
@@ -145,13 +145,13 @@ BACKUPS_PILED_UP=5   # the weekly reminder mentions backups from this many on
 if [[ "$MODE" == notify ]]; then
   msgs=()
   mapfile -t stale < <(stale_snapshots)
-  (( ${#stale[@]} )) && msgs+=("Settings changed since your last save (${#stale[@]} files). Run: dot save")
+  (( ${#stale[@]} )) && msgs+=("Settings changed since your last save (${#stale[@]} files). Run: dot push")
   find_unsaved
   (( ${#unsaved[@]} )) && msgs+=("Ubuntu apps not in apt-packages.txt: ${unsaved[*]}")
   (( ${#unsaved_other[@]} )) && msgs+=("Apps from other sources not saved: ${unsaved_other[*]} (add to install-apps.sh, or -name)")
   [[ "$(backups_state)" == off ]] && msgs+=("Automatic backups are off. Open Backups and turn on Back Up Automatically.")
   # Once, until answered: dot uninstall --apps can't tell your apps from the dotfiles' ones.
-  added_is_legacy && msgs+=("dot uninstall can't tell which apps you had before the dotfiles. Run: dot check --fix")
+  added_is_legacy && msgs+=("dot uninstall can't tell which apps you had before the dotfiles. Run: dot check")
   # Only once they've piled up: a few backups (your .orig from before) are expected.
   mapfile -t backups < <(dotfiles_backups)
   (( ${#backups[@]} >= BACKUPS_PILED_UP )) && msgs+=("${#backups[@]} backups of files the dotfiles replaced (.orig, .prev). See them: dot check")
@@ -179,7 +179,7 @@ fi
 if [[ "$MODE" == fix ]]; then
   header "Health check and fix" "Checks this computer against ~/dotfiles, then offers to fix what's wrong."
 else
-  header "Health check" "Is this computer still set up the way ~/dotfiles says? Changes nothing."
+  header "Health check" "Is this computer still set up the way ~/dotfiles says? Asks before fixing anything."
 fi
 section "Config links (stow)"
 broken=()
@@ -320,10 +320,7 @@ for d in "$DOTFILES" "$VAULT"; do
   [[ -d "$d/.git" ]] || continue
   s="$(repo_state "$d")"
   [[ -z "$s" ]] && ok "${d/#$HOME/\~}: everything committed and pushed" \
-    || bad "${d/#$HOME/\~}: $s changes" "$([[ "$d" == "$DOTFILES" ]] && echo push || echo notes)"
-  # Set up from a release: it stays on it on purpose, so GitHub's newer commits aren't a problem.
-  rel="$(repo_release "$d")"
-  if [[ -n "$rel" ]]; then info "${d/#$HOME/\~}: on release $rel (dot pull moves it to main, the newest version)"; continue; fi
+    || bad "${d/#$HOME/\~}: $s changes" push
   n="$(repo_behind "$d")"
   if (( n > 0 )); then bad "${d/#$HOME/\~}: GitHub has $n new commit$( ((n > 1)) && echo s) from another computer" pull
   else ok "${d/#$HOME/\~}: nothing new on GitHub"; fi
@@ -335,8 +332,12 @@ if (( PROBLEMS == 0 )); then
 fi
 things="things need"; (( PROBLEMS == 1 )) && things="thing needs"
 printf '%s%s✘ %s %s attention.%s\n' "$C_ERR" "$C_B" "$PROBLEMS" "$things" "$C_N"
+# Asks only with someone at the keyboard (the reminder and GitHub's checks just get exit 1),
+# and not after "yes to everything" in a script that ran this one (post-upgrade.sh --yes).
 if [[ "$MODE" != fix ]]; then
-  printf '  %sFix them one by one: dot check --fix%s\n' "$C_DIM" "$C_N"; exit 1
+  if [[ ! -t 0 || ! -t 1 || "$YES_ALL" == 1 ]] || ! ask "Fix them one by one (asks before each)?"; then
+    printf '  %sFix them later: dot check%s\n' "$C_DIM" "$C_N"; exit 1
+  fi
 fi
 
 # --- Fix ---------------------------------------------------------------------------------
@@ -355,7 +356,7 @@ fix_step() {
   if (( rc == 0 )); then step_end ok; else step_end fail "exit code $rc"; fi
 }
 add_unsaved() {
-  { printf '\n# Added by dot check --fix on %s\n' "$(date +%F)"; printf '%s\n' "${unsaved[@]}"; } >> "$SETUP/apt-packages.txt"
+  { printf '\n# Added by dot check on %s\n' "$(date +%F)"; printf '%s\n' "${unsaved[@]}"; } >> "$SETUP/apt-packages.txt"
   note "added: ${unsaved[*]} (edit setup/apt-packages.txt to add comments, or -name to keep one off new computers)"
 }
 # adopt_record: you say which apps, packages, extensions and changes the dotfiles made, so
@@ -381,7 +382,7 @@ adopt_record() {
 }
 open_backups() {
   setsid deja-dup >/dev/null 2>&1 < /dev/null &
-  note "Backups is opening: connect Google Drive if asked, turn on Back Up Automatically, then run dot save"
+  note "Backups is opening: connect Google Drive if asked, turn on Back Up Automatically, then run dot push"
 }
 export UI_DEPTH="$UI_NESTED"   # the scripts below get their full look
 
@@ -401,9 +402,10 @@ has_fix ghkeys  && fix_step "GitHub CLI permissions" "Remove its permission to a
                      gh auth refresh -h github.com --remove-scopes "$GH_KEY_SCOPES"
 has_fix restart && warn "The NVIDIA driver needs a restart (and with Secure Boot, the blue MOK screen)."
 has_fix nvidiakernel && warn "NVIDIA: $(fix_hint nvidiakernel)"
-# Save last, after anything above that changed files.
-has_fix save    && fix_step "Snapshots" "Refresh them (dot save)?" "$DOTFILES/dot" save
-[[ -n "$(repo_state "$DOTFILES")" ]] && fix_step "Save ~/dotfiles to GitHub" "Run dot push?" "$DOTFILES/dot" push
-[[ -d "$VAULT/.git" && -n "$(repo_state "$VAULT")" ]] && fix_step "Save your notes to GitHub" "Run dot notes?" "$DOTFILES/dot" notes
+# Save last, after anything above that changed files. dot push refreshes the snapshots
+# and saves your notes too.
+if has_fix save || [[ -n "$(repo_state "$DOTFILES")" ]] || [[ -d "$VAULT/.git" && -n "$(repo_state "$VAULT")" ]]; then
+  fix_step "Save to GitHub" "Refresh the snapshots and save to GitHub (dot push)?" "$DOTFILES/dot" push
+fi
 summary
 printf '\n  %sCheck again: dot check%s\n' "$C_DIM" "$C_N"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Write the snapshot files (what's installed and how the desktop is set up) into a
-# setup folder. Used by `dotsave` (into ~/dotfiles/setup) and by check.sh (into a
+# setup folder. Used by `dot save` and `dot push` (into ~/dotfiles/setup) and by check.sh (into a
 # temporary copy, to see whether the saved snapshots are out of date).
 #   scripts/snapshot.sh [setup-folder]     default: ~/dotfiles/setup
 # setup/apt-packages.txt is written by hand, so it's not touched here.
@@ -13,7 +13,7 @@ set -uo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib.sh"   # DOTFILES, have, chosen
 d="${1:-$DOTFILES/setup}"
 [[ -d "$d" ]] || { echo "snapshot.sh: $d not found" >&2; exit 1; }
-rc=0   # 1 if a snapshot couldn't be written (dot save then says so)
+rc=0   # 1 if a snapshot couldn't be written (dot then says so)
 
 have code && chosen app:code && code --list-extensions > "$d/vscode-extensions.txt"
 # Flatpaks: what's installed, plus the saved ones this computer didn't choose.
