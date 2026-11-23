@@ -1,5 +1,8 @@
 {
   "showRibbon": false,
   "cssTheme": "Catppuccin",
-  "theme": "obsidian"
+  "theme": "obsidian",
+  "textFontFamily": "Roboto",
+  "interfaceFontFamily": "Roboto",
+  "monospaceFontFamily": "Roboto Mono"
 }
