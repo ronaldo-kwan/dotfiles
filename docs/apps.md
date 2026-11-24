@@ -52,7 +52,7 @@ If a maker changes its download link, update the script; the table shows the man
 | Part | What it does |
 |---|---|
 | **NVIDIA graphics driver** | Only on computers with an NVIDIA card. Runs Ubuntu's `sudo ubuntu-drivers install`, which picks the right driver for the card and works with Secure Boot. Restart afterwards |
-| **Steam on the NVIDIA card** | Installs the 32-bit NVIDIA library that matches the driver (many games need it), and a copy of Steam's shortcut that asks for the NVIDIA card. Quit Steam fully first if it's open |
+| **Steam on the NVIDIA card** | Installs the 32-bit NVIDIA library that matches the driver (many games need it), and a copy of Steam's shortcut that asks for the NVIDIA card (and is named Steam, not Ubuntu's "Install Steam"). Quit Steam fully first if it's open |
 | **Codecs** | `ubuntu-restricted-extras` (in the Ubuntu apps list) includes Microsoft's fonts, whose licence normally stops the install with a full-screen prompt. The script asks about it as a normal question instead (Yes to everything accepts it) |
 | **Firewall** | Turns on Ubuntu's firewall (`ufw`) so other devices can't connect in. Everything you start yourself (browsing, Steam, updates) works as before, and qBittorrent's listening port stays open |
 | **Snap Firefox removal** | Removes the Snap Firefox and Ubuntu's `firefox` package (which would bring the Snap back), because this setup uses the Flathub Firefox. Only if the Flathub Firefox is installed |

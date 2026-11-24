@@ -173,7 +173,8 @@ check_steam_nvidia() {
   fi
   local major; major="$(nvidia_major)"
   [[ -n "$major" ]] && installed "libnvidia-gl-$major:i386" \
-    && grep -q '^PrefersNonDefaultGPU=true' "$STEAM_SHORTCUT" 2>/dev/null
+    && grep -q '^PrefersNonDefaultGPU=true' "$STEAM_SHORTCUT" 2>/dev/null \
+    && ! grep -q '^Name=Install Steam$' "$STEAM_SHORTCUT"
 }
 
 # Firewall: block connections from outside (nothing you start yourself is affected).
@@ -454,13 +455,19 @@ setup_steam_nvidia() {
   fi
   installed "libnvidia-gl-$major:i386" || apt_get install -y "libnvidia-gl-$major:i386"
   # 2. A copy of Steam's shortcut that asks for the NVIDIA card, so games run on it.
-  if ! grep -q '^PrefersNonDefaultGPU=true' "$STEAM_SHORTCUT" 2>/dev/null; then
+  # Ubuntu's steam-installer names its shortcut "Install Steam" even once Steam is
+  # installed, so the copy is renamed "Steam" (copies made before this are fixed too).
+  if ! grep -q '^PrefersNonDefaultGPU=true' "$STEAM_SHORTCUT" 2>/dev/null \
+     || grep -q '^Name=Install Steam$' "$STEAM_SHORTCUT"; then
     if [[ "$DRY_RUN" == 1 ]]; then
-      echo "    would make Steam's shortcut use the NVIDIA card: $STEAM_SHORTCUT"
+      echo "    would make Steam's shortcut use the NVIDIA card and name it Steam: $STEAM_SHORTCUT"
     else
       mkdir -p "$(dirname "$STEAM_SHORTCUT")"
-      cp /usr/share/applications/steam.desktop "$STEAM_SHORTCUT"
-      sed -i '/^\[Desktop Entry\]/a PrefersNonDefaultGPU=true' "$STEAM_SHORTCUT"
+      if ! grep -q '^PrefersNonDefaultGPU=true' "$STEAM_SHORTCUT" 2>/dev/null; then
+        cp /usr/share/applications/steam.desktop "$STEAM_SHORTCUT"
+        sed -i '/^\[Desktop Entry\]/a PrefersNonDefaultGPU=true' "$STEAM_SHORTCUT"
+      fi
+      sed -i 's/^Name=Install Steam$/Name=Steam/' "$STEAM_SHORTCUT"
       echo "    Steam now starts on the NVIDIA card (quit Steam fully first if it's open)"
     fi
   fi
