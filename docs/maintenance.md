@@ -140,7 +140,7 @@ sudo install -m 755 /tmp/system-update /etc/cron.weekly/system-update
 
 - **Files that hold keys or sign-ins:** `.env`, `*.pem`, `*.key`, SSH keys, `.git-credentials`, browser cookie and login files, password databases
 - **Token formats:** GitHub, Anthropic, OpenAI, AWS, Google, Slack, GitLab, and private keys
-- **Settings** like `password = …`, `token: …`, `stream_key = …` (values like `true`, `false`, empty or placeholders are fine)
+- **Settings** like `password = …`, `token: …`, `stream_key = …` (values like `true`, `false`, empty or placeholders are fine). Not in Obsidian plugins' own program code (`.obsidian/plugins/*/main.js`), which copies its settings around in lines that look like key settings; tokens are still looked for there, and plugin settings (`data.json`) are checked in full
 
 It shows only the file and line, never the value.
 

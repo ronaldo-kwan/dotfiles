@@ -42,26 +42,34 @@ tokens+='|-----BEGIN [A-Z ]*PRIVATE KEY-----'
 settings='(password|passwd|secret|token|api[_-]?key|stream[_-]?key|auth[_-]?key)["'"'"']?[[:space:]]*[:=][[:space:]]*["'"'"']?[^"'"'"'[:space:],}]{6,}'
 ignore_values='[:=][[:space:]]*["'"'"']?(true|false|none|null|nil|yes|no|0|1|\$\{?[A-Za-z_]+\}?|<[^>]*>|@[A-Z]+@|x{3,}|\*{3,}|\.{3})$'
 
-# secret_in <text>: prints what the line looks like ("a token or private key", "a
-# password setting"), or nothing if it looks fine.
+# secret_in <text> [tokens-only]: prints what the line looks like ("a token or private
+# key", "a password setting"), or nothing if it looks fine. With tokens-only, settings
+# aren't looked for.
 secret_in() {
   local m
   if grep -qiE -- "$tokens" <<< "$1"; then echo "a token or private key"; return; fi
+  [[ -n "${2:-}" ]] && return
   while IFS= read -r m; do
     grep -qiE -- "$ignore_values" <<< "$m" && continue
     echo "a ${m%%[[:space:]\"\':=]*} setting"; return
   done < <(grep -oiE -- "$settings" <<< "$1")
 }
 
-file='' line=0
+# Obsidian plugins' own program code (main.js, downloaded from Obsidian's plugin list)
+# copies its settings around in lines that look like key settings: only tokens and keys count
+# there. What you type into a plugin's settings goes to its data.json, checked in full.
+file='' line=0 tokens_only=''
 while IFS= read -r l; do
   case "$l" in
-    '+++ b/'*) file="${l#+++ b/}"; continue ;;
+    '+++ b/'*)
+      file="${l#+++ b/}"
+      case "$file" in .obsidian/plugins/*/main.js) tokens_only=1 ;; *) tokens_only='' ;; esac
+      continue ;;
     '+++ '*|'--- '*) continue ;;
     '@@ '*) line="$(sed -E 's/^@@ -[0-9,]+ \+([0-9]+).*/\1/' <<< "$l")"; continue ;;
     '+'*)
       text="${l:1}"
-      kind="$(secret_in "$text")"
+      kind="$(secret_in "$text" "$tokens_only")"
       [[ -n "$kind" ]] && flag "$file:$line looks like $kind"
       line=$((line + 1)) ;;
     ' '*) line=$((line + 1)) ;;
