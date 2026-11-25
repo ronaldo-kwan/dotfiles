@@ -75,6 +75,8 @@ audio/ogg=org.gnome.Decibels.desktop
 x-scheme-handler/mailto=org.mozilla.thunderbird_esr.desktop
 message/rfc822=org.mozilla.thunderbird_esr.desktop
 x-scheme-handler/codex=chatgpt.desktop
+application/json=com.microsoft.VSCode.desktop
+text/csv=onlyoffice-desktopeditors.desktop
 
 [Added Associations]
 x-scheme-handler/http=com.google.Chrome.desktop;google-chrome.desktop;
@@ -150,3 +152,5 @@ audio/x-wavpack=org.gnome.Decibels.desktop;
 audio/ogg=org.gnome.Decibels.desktop;
 x-scheme-handler/mailto=org.mozilla.thunderbird_esr.desktop;
 message/rfc822=org.mozilla.thunderbird_esr.desktop;
+application/json=com.microsoft.VSCode.desktop;
+text/csv=onlyoffice-desktopeditors.desktop;
