@@ -9,8 +9,8 @@
 
 set -uo pipefail
 
-# shellcheck source=../lib.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib.sh"   # DOTFILES, have, chosen
+# shellcheck source=../bin/lib.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/bin/lib.sh"   # DOTFILES, have, chosen
 d="${1:-$DOTFILES/setup}"
 [[ -d "$d" ]] || { echo "snapshot.sh: $d not found" >&2; exit 1; }
 rc=0   # 1 if a snapshot couldn't be written (dot then says so)

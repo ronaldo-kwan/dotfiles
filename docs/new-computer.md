@@ -63,7 +63,7 @@ A command from [the website](https://ronaldo-kwan.github.io/dotfiles/) ends with
 ```bash
 sudo apt install git gum
 git clone https://github.com/ronaldo-kwan/dotfiles ~/Documents/code/github/dotfiles
-~/Documents/code/github/dotfiles/fresh-install.sh
+~/Documents/code/github/dotfiles/bin/fresh-install.sh
 ```
 
 `gum` draws the menus. If it's missing, `fresh-install.sh` installs it first, asking for your password before the first question.
@@ -74,7 +74,7 @@ git clone https://github.com/ronaldo-kwan/dotfiles ~/Documents/code/github/dotfi
 
 - **Yes to everything** installs every app, updates the firmware if the charger is plugged in, accepts the Microsoft fonts licence the codecs need, and restarts at the end after a 15-second countdown (<kbd>Ctrl</kbd> + <kbd>C</kbd> to stay). The scripts it runs get the same answer and don't ask again.
 - **Let me choose** gives Yes/No buttons for each step, and one checklist of the apps: everything pre-ticked, <kbd>Space</kbd> unticks, <kbd>Enter</kbd> starts.
-- To skip even this question, run `~/Documents/code/github/dotfiles/fresh-install.sh --yes`.
+- To skip even this question, run `~/Documents/code/github/dotfiles/bin/fresh-install.sh --yes`.
 
 ### What it does
 
@@ -144,11 +144,11 @@ Each script can also run on its own, for example on a computer that's already se
 
 | Script | Needs sudo | What it does |
 |---|---|---|
-| `~/Documents/code/github/dotfiles/install.sh` (`dot install`) | No | Links the config files (keeping existing ones as `.orig`; later, saved app settings it replaces go to `.prev`, so the `.orig` from before the dotfiles is never overwritten), installs the Roboto Mono fonts, VS Code extensions, Flatpak apps and GNOME extensions for this GNOME version, and restores the desktop look, shortcuts, settings, dock, wallpaper, app settings and the Obsidian vault. Switches on the secret check and the weekly reminder. Extensions start after you log out and back in. `DRY_RUN=1 dot install --yes` only shows what it would change |
-| `~/Documents/code/github/dotfiles/install-apps.sh` (`dot apps`) | Yes | Apps and system parts; see [Apps](apps.md) |
-| `~/Documents/code/github/dotfiles/fresh-install.sh` (`dot fresh`) | Yes | All of the above, plus the system and firmware update. `DRY_RUN=1 dot fresh --yes` only shows what it would do |
-| `~/Documents/code/github/dotfiles/check.sh` (`dot check`) | No | Shows what's missing. Changes nothing |
-| `~/Documents/code/github/dotfiles/uninstall.sh` (`dot uninstall`) | No | Undoes `install.sh`; see [Undoing it](#undoing-it) |
+| `~/Documents/code/github/dotfiles/bin/install.sh` (`dot install`) | No | Links the config files (keeping existing ones as `.orig`; later, saved app settings it replaces go to `.prev`, so the `.orig` from before the dotfiles is never overwritten), installs the Roboto Mono fonts, VS Code extensions, Flatpak apps and GNOME extensions for this GNOME version, and restores the desktop look, shortcuts, settings, dock, wallpaper, app settings and the Obsidian vault. Switches on the secret check and the weekly reminder. Extensions start after you log out and back in. `DRY_RUN=1 dot install --yes` only shows what it would change |
+| `~/Documents/code/github/dotfiles/bin/install-apps.sh` (`dot apps`) | Yes | Apps and system parts; see [Apps](apps.md) |
+| `~/Documents/code/github/dotfiles/bin/fresh-install.sh` (`dot fresh`) | Yes | All of the above, plus the system and firmware update. `DRY_RUN=1 dot fresh --yes` only shows what it would do |
+| `~/Documents/code/github/dotfiles/bin/check.sh` (`dot check`) | No | Shows what's missing. Changes nothing |
+| `~/Documents/code/github/dotfiles/bin/uninstall.sh` (`dot uninstall`) | No | Undoes `install.sh`; see [Undoing it](#undoing-it) |
 
 ## Undoing it
 
@@ -223,8 +223,8 @@ Stow won't replace files that already exist, so move them aside first:
 ```bash
 mv ~/.bashrc ~/.bashrc.orig
 mv ~/.gitconfig ~/.gitconfig.orig 2>/dev/null
-cd ~/Documents/code/github/dotfiles
-stow --no-folding bash git starship ghostty btop lazygit terminal-default vscode claude systemd fontconfig
+stow --dir ~/Documents/code/github/dotfiles/home --target ~ --no-folding \
+  bash git starship ghostty btop lazygit bat eza fzf fastfetch terminal-default vscode claude systemd fontconfig
 ```
 
 ### VS Code extensions and Flatpak apps

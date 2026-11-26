@@ -34,12 +34,12 @@ jobs:
           /tmp/actionlint -color -shellcheck=
       - name: Syntax check (bash -n)
         run: |
-          for f in *.sh dot scripts/*.sh .githooks/pre-commit bash/.bashrc; do bash -n "$f"; done
+          for f in bootstrap.sh bin/*.sh dot scripts/*.sh .githooks/pre-commit home/bash/.bashrc; do bash -n "$f"; done
           for f in system/etc/cron.*/*; do sh -n "$f"; done
       - name: shellcheck (warnings and errors)
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
-          shellcheck -x -S warning *.sh dot scripts/*.sh .githooks/pre-commit system/etc/cron.*/*
+          shellcheck -x -S warning bootstrap.sh bin/*.sh dot scripts/*.sh .githooks/pre-commit system/etc/cron.*/*
       - name: Shared helpers and the app table (scripts/test-helpers.sh)
         run: bash scripts/test-helpers.sh
       - name: No secrets in any file (the pre-commit secret check, on the whole repo)
@@ -65,7 +65,7 @@ jobs:
           printf 'ID=fedora\nPRETTY_NAME="Fedora Linux 43"\n' > $d/fedora
           sed -n '/^check_system() {/,/^}/p' bootstrap.sh > $d/boot.sh
           run() {  # run <lib|boot> <os> <desktop> [--yes|any]: prints "<exit code> <continues|stops>"
-            local load="source ./lib.sh >/dev/null" any=; [[ $1 == boot ]] && load="set -euo pipefail; source $d/boot.sh"
+            local load="source ./bin/lib.sh >/dev/null" any=; [[ $1 == boot ]] && load="set -euo pipefail; source $d/boot.sh"
             [[ ${4:-} == any ]] && any=1
             OS_RELEASE_FILE=$d/$2 XDG_CURRENT_DESKTOP=$3 DOTFILES_SYSTEM_CHECKED= DOTFILES_ANY_SYSTEM=$any \
               bash -c "$load; check_system ${4/any/} && echo continues" </dev/null >$d/out 2>&1
@@ -100,7 +100,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: install.sh dry run (checks the pinned downloads, changes nothing)
         run: |
-          DRY_RUN=1 ./install.sh --yes | tee dry.txt
+          DRY_RUN=1 ./bin/install.sh --yes | tee dry.txt
           grep -q 'would run: stow' dry.txt
           if [[ -e "$HOME/.bashrc" && -L "$HOME/.bashrc" ]] || [[ -d "$HOME/.local/share/fonts/RobotoMonoNerdFont" ]]; then
             echo "the dry run changed something"; exit 1
@@ -108,7 +108,7 @@ jobs:
       - name: fresh-install.sh dry run (every step of a new computer's setup, changes nothing)
         run: |
           # A container has no GNOME, which fresh-install.sh would otherwise ask about first.
-          DRY_RUN=1 DOTFILES_ANY_SYSTEM=1 ./fresh-install.sh --yes | tee dry.txt
+          DRY_RUN=1 DOTFILES_ANY_SYSTEM=1 ./bin/fresh-install.sh --yes | tee dry.txt
           grep -q 'would run: sudo apt-get -y full-upgrade' dry.txt          # 1. system update
           grep -q 'would run: sudo flatpak remote-add' dry.txt              # 3. Flathub
           grep -q 'would run: stow' dry.txt                                 # 4. install.sh
@@ -119,16 +119,16 @@ jobs:
         run: |
           mkdir -p /tmp/src-dry
           printf 'Types: deb\nURIs: https://example.com\nSuites: stable\nComponents: main\nEnabled: no\n' > /tmp/src-dry/app.sources
-          DRY_RUN=1 SOURCES_DIR=/tmp/src-dry ./post-upgrade.sh --yes | tee dry.txt
+          DRY_RUN=1 SOURCES_DIR=/tmp/src-dry ./bin/post-upgrade.sh --yes | tee dry.txt
           grep -q 'would run: sudo sed' dry.txt
           grep -qx 'Enabled: no' /tmp/src-dry/app.sources                  # not changed
       - name: install.sh
-        run: ./install.sh --yes
+        run: ./bin/install.sh --yes
       - name: install.sh again (must be safe to run twice)
-        run: ./install.sh --yes
+        run: ./bin/install.sh --yes
       - name: Config files are linked and the font is installed
         run: |
-          ./check.sh | tee check.txt || true
+          ./bin/check.sh | tee check.txt || true
           grep -q '✔ all config files linked' check.txt
           grep -q '✔ RobotoMono Nerd Font' check.txt
           test "$(git config core.hooksPath)" = "$PWD/.githooks"
@@ -140,13 +140,13 @@ jobs:
           ./dot install --help                    # explains it; doesn't start install.sh
           if ./dot frobnicate; then exit 1; else test $? = 2; fi
       - name: install-apps.sh dry run (checks every download source, installs nothing)
-        run: DRY_RUN=1 ./install-apps.sh
+        run: DRY_RUN=1 ./bin/install-apps.sh
       - name: post-upgrade.sh on a copy of apt sources made to look upgraded
         run: |
           mkdir -p /tmp/src
           printf 'Types: deb\nURIs: https://example.com\nSuites: stable\nComponents: main\nEnabled: no\n' > /tmp/src/app.sources
           printf '# deb https://example.com stable main # disabled on upgrade to next\n' > /tmp/src/app.list
-          SOURCES_DIR=/tmp/src SUDO= ./post-upgrade.sh --sources-only
+          SOURCES_DIR=/tmp/src SUDO= ./bin/post-upgrade.sh --sources-only
           grep -qx 'Enabled: yes' /tmp/src/app.sources
           grep -qx 'deb https://example.com stable main' /tmp/src/app.list
       - name: Secret check catches a made-up token
@@ -157,7 +157,7 @@ jobs:
       - name: uninstall.sh dry run changes nothing
         run: |
           before="$(find "$HOME" -type l | sort)"
-          DRY_RUN=1 ./uninstall.sh --apps --yes | tee dry.txt
+          DRY_RUN=1 ./bin/uninstall.sh --apps --yes | tee dry.txt
           grep -q 'would run: rm' dry.txt
           test "$before" = "$(find "$HOME" -type l | sort)"
           test "$(git config core.hooksPath)" = "$PWD/.githooks"
@@ -170,7 +170,7 @@ jobs:
           added="$HOME/.local/state/dotfiles/added"
           test -f "$added" && ! grep -qx legacy "$added"   # install.sh started a fresh record
           echo pkg:bat >> "$added"
-          ./uninstall.sh --apps --yes
+          ./bin/uninstall.sh --apps --yes
           if dpkg -s bat >/dev/null 2>&1; then echo "still installed: bat (the dotfiles added it)"; exit 1; fi
           dpkg -s fzf >/dev/null 2>&1 || { echo "fzf was removed, but the dotfiles didn't add it"; exit 1; }
           if grep -qx pkg:bat "$added"; then echo "the record wasn't emptied after --apps"; exit 1; fi
@@ -219,18 +219,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: How the choices are read (DOTFILES_CHOICES, DOTFILES_SKIP, the choices file)
         run: |
-          DOTFILES_SKIP='claude-md app:steam' bash -c 'source lib.sh
+          DOTFILES_SKIP='claude-md app:steam' bash -c 'source bin/lib.sh
             chosen terminal && chosen app:chrome && ! chosen claude-md && ! chosen app:steam'
-          DOTFILES_CHOICES='terminal pkg:vlc' bash -c 'source lib.sh
+          DOTFILES_CHOICES='terminal pkg:vlc' bash -c 'source bin/lib.sh
             chosen terminal && chosen pkg:vlc && ! chosen desktop && chosen_any pkg: && ! chosen_any app:'
           mkdir -p /tmp/h/.config/dotfiles && printf 'terminal\n-app:steam\n' > /tmp/h/.config/dotfiles/choices
-          HOME=/tmp/h bash -c 'source lib.sh
+          HOME=/tmp/h bash -c 'source bin/lib.sh
             [[ "$DOTFILES_CHOICES" == terminal && "$DOTFILES_SKIP" == app:steam ]]'
       - name: install.sh with only the terminal and safety checks chosen (as bootstrap.sh saves them)
         run: |
           mkdir -p "$HOME/.config/dotfiles"
           printf 'terminal\nsafety\n' > "$HOME/.config/dotfiles/choices"
-          ./install.sh --yes
+          ./bin/install.sh --yes
       - name: Only the chosen config files are linked
         run: |
           for f in .bashrc .config/ghostty/config .config/starship.toml .config/systemd/user/dotfiles-reminder.timer; do
@@ -241,7 +241,7 @@ jobs:
           done
       - name: dot check shows the rest as not chosen
         run: |
-          ./check.sh | tee check.txt || true
+          ./bin/check.sh | tee check.txt || true
           grep -q '✔ all config files linked' check.txt
           grep -q 'Roboto Mono: not chosen' check.txt
           grep -q 'Google Chrome.*not chosen' check.txt

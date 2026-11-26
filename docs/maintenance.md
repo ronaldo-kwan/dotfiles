@@ -61,7 +61,7 @@ DOT_PLAIN=1 dot apps
 
 ## Health check
 
-`dot check` (or `~/Documents/code/github/dotfiles/check.sh`) checks that this computer still matches the repo. Each ✘ line ends with what fixes it (→ `dot apps`, → `dot push`, ...), and if anything is wrong it offers to [fix it](#fixing-problems). It changes nothing unless you say yes.
+`dot check` (or `~/Documents/code/github/dotfiles/bin/check.sh`) checks that this computer still matches the repo. Each ✘ line ends with what fixes it (→ `dot apps`, → `dot push`, ...), and if anything is wrong it offers to [fix it](#fixing-problems). It changes nothing unless you say yes.
 
 <details>
 <summary>Everything it checks</summary>
@@ -114,7 +114,7 @@ It never commits anything.
 
 ```bash
 systemctl --user list-timers dotfiles-reminder.timer   # when it runs next
-~/Documents/code/github/dotfiles/check.sh --notify                            # run it now
+~/Documents/code/github/dotfiles/bin/check.sh --notify                            # run it now
 systemctl --user disable --now dotfiles-reminder.timer  # switch it off
 ```
 
@@ -168,11 +168,11 @@ rm ~/.config/git/signing.gitconfig          # stop signing
 > A new Ubuntu release (for example 26.04 → 28.04) switches off every app's own update source, so Chrome, VS Code, Claude, ChatGPT, Proton VPN, ONLYOFFICE and OBS would quietly stop updating. After the upgrade and its restart, run `dot upgrade`.
 
 ```bash
-dot upgrade                  # same as ~/Documents/code/github/dotfiles/post-upgrade.sh
+dot upgrade                  # same as ~/Documents/code/github/dotfiles/bin/post-upgrade.sh
 DRY_RUN=1 dot upgrade --yes  # only shows what it would do
 ```
 
-1. **Switches the update sources back on.** OBS's PPA is made for each release, so it's added again for the new one. If OBS doesn't support the new release yet, it says so; run `~/Documents/code/github/dotfiles/post-upgrade.sh --sources-only` again a few weeks later.
+1. **Switches the update sources back on.** OBS's PPA is made for each release, so it's added again for the new one. If OBS doesn't support the new release yet, it says so; run `~/Documents/code/github/dotfiles/bin/post-upgrade.sh --sources-only` again a few weeks later.
 2. **Updates everything** (apt and Flatpak).
 3. **Runs `install-apps.sh`:** anything missing comes back, the Snap Firefox is removed again if the upgrade brought it back, the NVIDIA driver and Steam's 32-bit library match, and the weekly and monthly jobs are put back.
 4. **Runs `install.sh`,** downloading GNOME extensions again in the versions for the new GNOME.

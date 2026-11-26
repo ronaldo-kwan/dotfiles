@@ -7,9 +7,9 @@
 # Does NOT use sudo. Steps that need sudo or a sign-in are listed at the end.
 # If one step fails, the others still run, and failures are listed at the end.
 #
-#   ~/Documents/code/github/dotfiles/install.sh                 asks first
-#   ~/Documents/code/github/dotfiles/install.sh --yes           without asking
-#   DRY_RUN=1 ~/Documents/code/github/dotfiles/install.sh --yes  only shows what it would change (downloads are checked)
+#   ~/Documents/code/github/dotfiles/bin/install.sh                 asks first
+#   ~/Documents/code/github/dotfiles/bin/install.sh --yes           without asking
+#   DRY_RUN=1 ~/Documents/code/github/dotfiles/bin/install.sh --yes  only shows what it would change (downloads are checked)
 
 set -uo pipefail
 
@@ -25,9 +25,14 @@ link_configs() {
   local pkgs f target; mapfile -t pkgs < <(chosen_packages)
   # Move aside real files that stow would refuse to replace. An .orig already there is
   # your file from before the dotfiles, so it's kept, and the newer file goes to .orig.<date>.
+  # Broken links go: stow refuses them too. They're left when the repo's folders move
+  # (before v2.0.0 the packages were at the top of the repo, not in home/).
   while IFS= read -r -d '' f; do
     target="$HOME/${f#*/}"
-    if [[ -e "$target" && ! -L "$target" ]]; then
+    if [[ -L "$target" && ! -e "$target" ]]; then
+      run rm "$target"
+      did "removed the broken link ${target/#$HOME/\~}"
+    elif [[ -e "$target" && ! -L "$target" ]]; then
       local backup="$target.orig"
       [[ -e "$backup" ]] && backup="$target.orig.$(date +%Y%m%d-%H%M%S)"
       run mv "$target" "$backup"
@@ -36,7 +41,7 @@ link_configs() {
   done < <(config_files "${pkgs[@]}")
   # --no-folding links individual files, so apps that write extra files into
   # their config folder (like btop's log) don't write them into this repo.
-  run stow --dir="$DOTFILES" --target="$HOME" --no-folding --restow "${pkgs[@]}"
+  run stow --dir="$STOW_DIR" --target="$HOME" --no-folding --restow "${pkgs[@]}"
   did "linked: ${pkgs[*]}"
   # bat reads its themes from a cache: add the Catppuccin one from ~/.config/bat/themes.
   if [[ " ${pkgs[*]} " == *" bat "* ]] && have batcat && ! bat_theme_ok; then
@@ -133,7 +138,7 @@ install_flatpaks() {
 flatpak_fonts() {
   need desktop || return 0
   have flatpak || { skip "flatpak isn't installed"; return 0; }
-  local conf="$DOTFILES/fontconfig/.config/fontconfig/fonts.conf" app n=0
+  local conf="$STOW_DIR/fontconfig/.config/fontconfig/fonts.conf" app n=0
   while read -r app; do
     [[ -n "$app" ]] || continue
     if [[ "$DRY_RUN" == 1 ]]; then put_file "$conf" "$HOME/.var/app/$app/config/fontconfig/fonts.conf"
@@ -443,7 +448,7 @@ json.dump(data, open(path, "w"))
 # Secret check before commits (in ~/Documents/code/github/dotfiles and the vault), and a weekly reminder
 # (Sunday evening, or the next login) when settings changed since the last dot save or
 # changes aren't committed. The reminder only notifies; it never commits.
-# The reminder's unit runs ~/Documents/code/github/dotfiles/check.sh. Dotfiles kept somewhere else (DOTFILES_DIR
+# The reminder's unit runs ~/Documents/code/github/dotfiles/bin/check.sh. Dotfiles kept somewhere else (DOTFILES_DIR
 # in bootstrap.sh) get a drop-in next to it that points it at the real folder.
 reminder_folder() {
   if [[ "$DOTFILES" == "$DEFAULT_DOTFILES" ]]; then
@@ -453,9 +458,9 @@ reminder_folder() {
   if [[ "$DRY_RUN" == 1 ]]; then echo "    would point the weekly reminder at ${DOTFILES/#$HOME/\~}"; return 0; fi
   mkdir -p "$(dirname "$REMINDER_DROPIN")"
   # (In unit files % starts a specifier, so a literal one is written %%.)
-  printf '# Written by install.sh: the dotfiles are in %s, not ~/Documents/code/github/dotfiles.\n[Service]\nExecStart=\nExecStart="%s/check.sh" --notify\n' \
+  printf '# Written by install.sh: the dotfiles are in %s, not ~/Documents/code/github/dotfiles.\n[Service]\nExecStart=\nExecStart="%s/bin/check.sh" --notify\n' \
     "$DOTFILES" "${DOTFILES//%/%%}" > "$REMINDER_DROPIN"
-  did "weekly reminder runs ${DOTFILES/#$HOME/\~}/check.sh"
+  did "weekly reminder runs ${DOTFILES/#$HOME/\~}/bin/check.sh"
 }
 
 setup_safety_checks() {
@@ -470,6 +475,9 @@ setup_safety_checks() {
   run bash "$DOTFILES/scripts/ssh-setup.sh" --signing-only
   if has_user_systemd; then
     reminder_folder
+    # A link to the timer from before the repo's folders moved: enable makes a new one.
+    local wants="$HOME/.config/systemd/user/timers.target.wants/dotfiles-reminder.timer"
+    if [[ -L "$wants" && ! -e "$wants" ]]; then run rm "$wants"; fi
     run systemctl --user daemon-reload
     run systemctl --user enable --now dotfiles-reminder.timer 2>/dev/null
     did "weekly reminder on (see: systemctl --user list-timers dotfiles-reminder.timer)"
@@ -519,7 +527,7 @@ run_steps \
 summary; ok=$?
 if [[ "$UI_NESTED" == 0 && "$DRY_RUN" != 1 ]]; then
   printf '\n%sStill to do yourself%s\n' "$C_B" "$C_N"
-  note "Run ~/Documents/code/github/dotfiles/install-apps.sh (apps, NVIDIA driver, weekly updates), then this again for VS Code's extensions and Obsidian"
+  note "Run ~/Documents/code/github/dotfiles/bin/install-apps.sh (apps, NVIDIA driver, weekly updates), then this again for VS Code's extensions and Obsidian"
   note "Log out and back in (starts the GNOME extensions), then open a new terminal"
   note "Sign in to your apps (Steam, browsers, Discord, Backups/Google Drive)"
 fi

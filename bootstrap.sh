@@ -95,4 +95,6 @@ if [[ -n "$REF" ]]; then
   git -C "$DIR" checkout --quiet -B main "$REF^{commit}" --
   echo "Setting up from $REF (dot pull later brings it up to date)"
 fi
+# The scripts are in bin/; releases before v2.0.0 had them at the top of the repo.
+if [[ -x "$DIR/bin/fresh-install.sh" ]]; then exec "$DIR/bin/fresh-install.sh" "$@"; fi
 exec "$DIR/fresh-install.sh" "$@"

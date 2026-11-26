@@ -129,7 +129,8 @@ alias bashrc='code --wait ~/.bashrc && source ~/.bashrc'   # edit in VS Code, re
 # because only the shell itself can change its folder.
 # The dotfiles folder: where this file links to (it may not be ~/Documents/code/github/dotfiles, see
 # DOTFILES_DIR in bootstrap.sh), else ~/Documents/code/github/dotfiles. $DOTFILES, if set, wins.
-__dotfiles_dir="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")"
+__dotfiles_dir="$(readlink -f "${BASH_SOURCE[0]}")"   # <dotfiles>/home/bash/.bashrc
+__dotfiles_dir="${__dotfiles_dir%/home/bash/.bashrc}"
 [ -x "$__dotfiles_dir/dot" ] || __dotfiles_dir="$HOME/Documents/code/github/dotfiles"   # also DEFAULT_DOTFILES in lib.sh
 dot() {
   if [ "${1:-}" = cd ]; then cd "${DOTFILES:-$__dotfiles_dir}" || return

@@ -11,7 +11,7 @@ on:
     paths:
       - site/**
       - setup/**
-      - install-apps.sh
+      - bin/install-apps.sh
       - dot
       - README.md
       - docs/**
@@ -23,7 +23,7 @@ on:
     paths:
       - site/**
       - setup/**
-      - install-apps.sh
+      - bin/install-apps.sh
       - dot
       - README.md
       - docs/**

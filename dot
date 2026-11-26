@@ -9,8 +9,8 @@
 # Exit codes: 0 done, 1 something failed, 2 the command line was wrong.
 
 set -uo pipefail
-# shellcheck source=lib.sh
-source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib.sh"   # repo_state, repo_behind, ask, VAULT, DOTFILES
+# shellcheck source=bin/lib.sh
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/bin/lib.sh"   # repo_state, repo_behind, ask, VAULT, DOTFILES
 # The scripts dot starts take its place: give them the full look (title box, summary)
 # and their own log, as if you'd run them directly.
 export UI_DEPTH="$UI_NESTED"
@@ -381,13 +381,13 @@ cmd_pull() {
   changed="$(git -C "$DOTFILES" diff --name-only "$start" HEAD)"
   echo
   if ask "Apply the changes to this computer now (dot install)?"; then
-    "$DOTFILES/install.sh" --yes || return 1
+    "$DOTFILES/bin/install.sh" --yes || return 1
   else
     hint "Apply them later: dot install"
   fi
-  if grep -qE '^(install-apps\.sh|setup/apt-packages\.txt)$' <<<"$changed"; then
+  if grep -qE '^(bin/install-apps\.sh|setup/apt-packages\.txt)$' <<<"$changed"; then
     if ask "The app list changed. Install the new apps too (dot apps)?"; then
-      "$DOTFILES/install-apps.sh" || return 1
+      "$DOTFILES/bin/install-apps.sh" || return 1
     else
       hint "Install them later: dot apps"
     fi
@@ -461,13 +461,13 @@ fi
 case "$cmd" in
   push)    cmd_push "$@" ;;
   pull)    cmd_pull "$@" ;;
-  check)   exec "$DOTFILES/check.sh" "$@" ;;
-  install) exec "$DOTFILES/install.sh" "$@" ;;
-  apps)    exec "$DOTFILES/install-apps.sh" "$@" ;;
-  fresh)   exec "$DOTFILES/fresh-install.sh" "$@" ;;
-  upgrade) exec "$DOTFILES/post-upgrade.sh" "$@" ;;
+  check)   exec "$DOTFILES/bin/check.sh" "$@" ;;
+  install) exec "$DOTFILES/bin/install.sh" "$@" ;;
+  apps)    exec "$DOTFILES/bin/install-apps.sh" "$@" ;;
+  fresh)   exec "$DOTFILES/bin/fresh-install.sh" "$@" ;;
+  upgrade) exec "$DOTFILES/bin/post-upgrade.sh" "$@" ;;
   ssh)     exec "$DOTFILES/scripts/ssh-setup.sh" "$@" ;;
-  uninstall) exec "$DOTFILES/uninstall.sh" "$@" ;;
+  uninstall) exec "$DOTFILES/bin/uninstall.sh" "$@" ;;
   edit)
     if have code; then exec code "$DOTFILES"; fi
     ed="${VISUAL:-${EDITOR:-}}"

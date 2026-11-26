@@ -16,7 +16,7 @@ set -uo pipefail
 # shellcheck source=lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # have, installed, TOOLS, PACKAGES, VAULT, DOTFILES, SETUP
 # shellcheck source=install-apps.sh
-source "$DOTFILES/install-apps.sh"   # only loads APPS, APP_PACKAGES and the check_* functions
+source "$DOTFILES/bin/install-apps.sh"   # only loads APPS, APP_PACKAGES and the check_* functions
 
 MODE=full
 case "${1:-}" in --notify) MODE=notify ;; --fix) MODE=fix ;; esac
@@ -186,7 +186,7 @@ broken=()
 mapfile -t pkgs < <(chosen_packages)
 while IFS= read -r -d '' f; do
   # shellcheck disable=SC2088  # "~/" is only shown, not used as a path
-  [[ "$(readlink -f "$HOME/${f#*/}")" == "$(readlink -f "$DOTFILES/$f")" ]] || broken+=("~/${f#*/}")
+  [[ "$(readlink -f "$HOME/${f#*/}")" == "$(readlink -f "$STOW_DIR/$f")" ]] || broken+=("~/${f#*/}")
 done < <(config_files "${pkgs[@]}")
 list_missing "all config files linked (${pkgs[*]})" install "${broken[@]}"
 mapfile -t backups < <(dotfiles_backups)
@@ -390,8 +390,8 @@ export UI_DEPTH="$UI_NESTED"   # the scripts below get their full look
 has_fix pull    && fix_step "Changes from GitHub" "Run dot pull?" "$DOTFILES/dot" pull
 has_fix tools   && fix_step "Terminal tools" "Install ${MISSING_TOOLS[*]}?" \
                      apt_get install -y "${MISSING_TOOLS[@]}"
-has_fix apps    && fix_step "Apps, firewall, scheduled jobs" "Run dot apps?" "$DOTFILES/install-apps.sh"
-has_fix install && fix_step "Links, extensions, settings, safety checks" "Run dot install?" "$DOTFILES/install.sh" --yes
+has_fix apps    && fix_step "Apps, firewall, scheduled jobs" "Run dot apps?" "$DOTFILES/bin/install-apps.sh"
+has_fix install && fix_step "Links, extensions, settings, safety checks" "Run dot install?" "$DOTFILES/bin/install.sh" --yes
 has_fix ssh     && fix_step "SSH key and signed commits" "Run dot ssh?" "$DOTFILES/scripts/ssh-setup.sh"
 has_fix addapt  && fix_step "Ubuntu apps not saved" "Add ${unsaved[*]} to setup/apt-packages.txt?" add_unsaved
 # Apps from other sources can't go in apt-packages.txt (a new computer lacks their source).

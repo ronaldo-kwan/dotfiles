@@ -6,5 +6,5 @@ Type=oneshot
 # Give the desktop a moment after login so the notification shows.
 ExecStartPre=/usr/bin/sleep 90
 # Exits 1 when it has something to remind about; that's not a failure.
-ExecStart=%h/Documents/code/github/dotfiles/check.sh --notify
+ExecStart=%h/Documents/code/github/dotfiles/bin/check.sh --notify
 SuccessExitStatus=1

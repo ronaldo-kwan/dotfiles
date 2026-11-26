@@ -8,8 +8,8 @@
 set -uo pipefail
 [[ "${CI:-}" == true ]] || { echo "Only for GitHub's checks: this changes the desktop settings."; exit 1; }
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# shellcheck source=../lib.sh
-source "$ROOT/lib.sh"   # DCONF_FILES, fill_home, WALLPAPER, SETUP
+# shellcheck source=../bin/lib.sh
+source "$ROOT/bin/lib.sh"   # DCONF_FILES, fill_home, WALLPAPER, SETUP
 export NO_COLOR=1 DOT_PLAIN=1 DOTFILES_CHOICES=desktop
 
 fails=0
@@ -37,7 +37,7 @@ favorites="$(cat "$SETUP/dock-favorites.txt")"
 wall_uri="'file://$WALLPAPER'"
 
 echo "== install.sh (desktop only)"
-"$ROOT/install.sh" --yes || bad "install.sh failed"
+"$ROOT/bin/install.sh" --yes || bad "install.sh failed"
 n=0
 for kv in "${KEYS[@]}"; do
   key="${kv%%$'\t'*}" want="${kv#*$'\t'}" got="$(dconf read "${kv%%$'\t'*}")"
@@ -51,10 +51,10 @@ cmp -s "$SETUP/wallpaper/${WALLPAPER##*/}" "$WALLPAPER" || bad "wallpaper file n
 [[ -L "$HOME/.config/fontconfig/fonts.conf" ]] || bad "fontconfig settings not linked"
 
 echo "== install.sh again (must change nothing and still pass)"
-"$ROOT/install.sh" --yes >/dev/null || bad "install.sh failed the second time"
+"$ROOT/bin/install.sh" --yes >/dev/null || bad "install.sh failed the second time"
 
 echo "== uninstall.sh"
-"$ROOT/uninstall.sh" --yes || bad "uninstall.sh failed"
+"$ROOT/bin/uninstall.sh" --yes || bad "uninstall.sh failed"
 n=0
 for kv in "${KEYS[@]}"; do
   key="${kv%%$'\t'*}"

@@ -14,10 +14,10 @@ export HOME="$T/home" NO_COLOR=1 DOT_PLAIN=1 UI_LOG="$T/ui.log"   # no saved cho
 export LC_ALL=C.UTF-8
 unset DOTFILES_CHOICES DOTFILES_SKIP DRY_RUN
 mkdir -p "$HOME"
-# shellcheck source=../lib.sh
-source "$ROOT/lib.sh"
-# shellcheck source=../install-apps.sh
-source "$ROOT/install-apps.sh"   # only loads APPS, APP_PARTS and the checks
+# shellcheck source=../bin/lib.sh
+source "$ROOT/bin/lib.sh"
+# shellcheck source=../bin/install-apps.sh
+source "$ROOT/bin/install-apps.sh"   # only loads APPS, APP_PARTS and the checks
 
 fails=0 n=0
 # t "what" command...: one check; passes when the command succeeds
@@ -54,14 +54,14 @@ DOTFILES_CHOICES="" DOTFILES_SKIP=""
 echo "Config files (stow packages)"
 mapfile -d '' -t files < <(config_files "${PACKAGES[@]}")
 t "config_files lists every file in the packages" \
-  same "${#files[@]}" "$(for p in "${PACKAGES[@]}"; do find "$DOTFILES/$p" -type f; done | wc -l)"
+  same "${#files[@]}" "$(for p in "${PACKAGES[@]}"; do find "$STOW_DIR/$p" -type f; done | wc -l)"
 t "each is <package>/<path in home>, and exists" \
-  bash -c 'for f in "${@:2}"; do [[ -f "$1/$f" && "$f" == */* ]] || exit 1; done' _ "$DOTFILES" "${files[@]}"
+  bash -c 'for f in "${@:2}"; do [[ -f "$1/$f" && "$f" == */* ]] || exit 1; done' _ "$STOW_DIR" "${files[@]}"
 t "bash/.bashrc is linked as ~/.bashrc" bash -c 'printf "%s\n" "${@:2}" | grep -qx "bash/.bashrc"' _ x "${files[@]}"
 
 echo "Dry runs"
 t "run only prints in a dry run" same "$(DRY_RUN=1 run touch "$T/x"; [[ -e "$T/x" ]] && echo made)" "    would run: touch $T/x"
-t "run runs otherwise" bash -c 'source "$1/lib.sh"; run touch "$2/y"; [[ -e "$2/y" ]]' _ "$ROOT" "$T"
+t "run runs otherwise" bash -c 'source "$1/bin/lib.sh"; run touch "$2/y"; [[ -e "$2/y" ]]' _ "$ROOT" "$T"
 t "run_quiet hides output when it runs" same "$(run_quiet echo hello)" ""
 t "did is silent in a dry run" same "$(DRY_RUN=1 did "made it")" ""
 t "did says what changed otherwise" same "$(did "made it")" "    made it"
@@ -104,7 +104,7 @@ echo "Progress panel (in a terminal)"
 if have script; then
   cat > "$T/panel.sh" <<EOF
 set -uo pipefail
-source "$ROOT/lib.sh"
+source "$ROOT/bin/lib.sh"
 fast() { :; }
 slow() { quiet "a quiet command" sleep 0.3; echo "    SPINNER-STEP-FINISHED"; }
 run_steps "Fast step|fast" "Step with a spinner|slow"
@@ -115,14 +115,14 @@ EOF
   t "the panel shows (its · marks a step still to come)" grep -q '· Step with a spinner' <<< "$panel"
   t "a spinner step after a quick step finishes" grep -q 'SPINNER-STEP-FINISHED' <<< "$panel"
   # The script's own EXIT trap still runs after the panel's, even with a ' in it.
-  printf '%s\n' 'set -uo pipefail' "source \"$ROOT/lib.sh\"" \
+  printf '%s\n' 'set -uo pipefail' "source \"$ROOT/bin/lib.sh\"" \
     "trap 'echo \"OWN-TRAP: it'\\''s here, code \$?\"' EXIT" \
     'fast() { :; }; run_steps "One step|fast"; summary; exit 3' > "$T/trap.sh"
   traps="$(script -qc "stty rows 40 cols 100; env -u NO_COLOR -u DOT_PLAIN -u UI_LOG -u UI_DEPTH TERM=xterm-256color bash '$T/trap.sh'" /dev/null 2>&1 | tr -d '\r')"
   t "the script's own EXIT trap runs too (with a ' in it, and its exit code)" grep -q "OWN-TRAP: it's here, code 3" <<< "$traps"
   # In a narrow window the spinner line must still fit on one line (a longer one wraps,
   # leaving a copy at every redraw): its label is cut to the width.
-  printf 'source "%s/lib.sh"\nquiet "Installing 9 Flatpak apps (already installed ones are skipped)" sleep 0.3\n' "$ROOT" > "$T/narrow.sh"
+  printf 'source "%s/bin/lib.sh"\nquiet "Installing 9 Flatpak apps (already installed ones are skipped)" sleep 0.3\n' "$ROOT" > "$T/narrow.sh"
   script -qc "stty rows 30 cols 40; env -u NO_COLOR -u DOT_PLAIN -u UI_LOG -u UI_DEPTH TERM=xterm-256color bash '$T/narrow.sh'" "$T/narrow.out" >/dev/null 2>&1
   widest="$(python3 -I -c '
 import re, sys
@@ -141,8 +141,8 @@ echo "Terminal configs"
 shaders_exist() {
   local s ok=0
   while read -r s; do
-    [[ -f "$ROOT/ghostty/.config/ghostty/$s" ]] || { echo "      missing: $s"; ok=1; }
-  done < <(sed -n 's/^custom-shader *= *//p' "$ROOT/ghostty/.config/ghostty/config")
+    [[ -f "$ROOT/home/ghostty/.config/ghostty/$s" ]] || { echo "      missing: $s"; ok=1; }
+  done < <(sed -n 's/^custom-shader *= *//p' "$ROOT/home/ghostty/.config/ghostty/config")
   return "$ok"
 }
 t "Ghostty's shaders are in the ghostty package" shaders_exist
@@ -213,7 +213,7 @@ done
 t "lets an ordinary file through" hook_file notes/rclone.md
 
 echo "Saved files put back (install.sh put_file)"
-load_fn install.sh put_file
+load_fn bin/install.sh put_file
 mkdir -p "$T/put"; echo saved > "$T/put/src"; echo mine > "$T/put/conf"
 put_file "$T/put/src" "$T/put/conf" >/dev/null
 echo changed-by-the-app > "$T/put/conf"
@@ -223,7 +223,7 @@ t "the first .orig (yours from before) is kept on a second run" same "$(cat "$T/
 t "the file it replaced the second time is in .prev" same "$(cat "$T/put/conf.prev")" changed-by-the-app
 
 echo "Display settings (install.sh monitors_for_here)"
-load_fn install.sh monitors_for_here
+load_fn bin/install.sh monitors_for_here
 mkdir -p "$T/mon"
 cat > "$T/mon/two.xml" <<'EOF'
 <monitors><configuration>
@@ -238,7 +238,7 @@ screens "(('DP-1', 'DEL', 'U2720Q', 'AAA'), [()]), (('DP-2', 'DEL', 'U2720Q', 'B
 t "two identical screens each get their own serial" same "$(serials "$T/mon/two.xml")" "AAA BBB "
 screens "(('HDMI-1', 'DEL', 'U2720Q', 'AAA'), [()]), (('HDMI-2', 'DEL', 'U2720Q', 'BBB'), [()])"
 t "identical screens that can't be told apart: left alone" not bash -c \
-  'source <(sed -n "/^monitors_for_here() {/,/^}/p" "$1/install.sh"); have() { command -v "$1" >/dev/null; }; PATH="$2:$PATH" monitors_for_here "$3" >/dev/null' \
+  'source <(sed -n "/^monitors_for_here() {/,/^}/p" "$1/bin/install.sh"); have() { command -v "$1" >/dev/null; }; PATH="$2:$PATH" monitors_for_here "$3" >/dev/null' \
   _ "$ROOT" "$T/bin" "$T/mon/two.xml"
 screens "(('eDP-2', 'EDO', 'LEN151WQXGA', 'S1'), [()]), (('HDMI-1', 'MSI', 'MSI MP2412', 'S2'), [()])"
 t "a screen on another connector, the only one of its model, still matches" \
@@ -267,7 +267,7 @@ t "something not recorded wasn't added" not was_added app:chrome
 mark_added app:chrome; mark_added app:chrome
 t "something recorded was added" was_added app:chrome
 t "recorded once" same "$(grep -cx app:chrome "$ADDED_FILE")" 1
-t "a dry run records nothing" bash -c 'DRY_RUN=1; source "$1/lib.sh"; ADDED_FILE="$2"; mark_added pkg:vlc; ! grep -qx pkg:vlc "$2"' _ "$ROOT" "$ADDED_FILE"
+t "a dry run records nothing" bash -c 'DRY_RUN=1; source "$1/bin/lib.sh"; ADDED_FILE="$2"; mark_added pkg:vlc; ! grep -qx pkg:vlc "$2"' _ "$ROOT" "$ADDED_FILE"
 ADDED_FILE="$T/state/legacy" old_wallpaper="$T/legacy-home/${WALLPAPER#"$HOME"/}"   # its wallpaper is there
 mkdir -p "$(dirname "$old_wallpaper")"; touch "$old_wallpaper"
 WALLPAPER="$old_wallpaper" added_init
@@ -275,7 +275,7 @@ t "a computer set up before the record is legacy: everything counts" was_added a
 ADDED_FILE="$T/state/none"
 
 echo "Why an extension didn't install (install.sh download_extension)"
-load_fn install.sh download_extension
+load_fn bin/install.sh download_extension
 # A stand-in curl: exits with $CURL_RC, or answers HTTP $CURL_CODE.
 printf '#!/bin/sh\n[ "${CURL_RC:-0}" = 0 ] || exit "$CURL_RC"\nprintf "%%s" "$CURL_CODE"\n' > "$T/bin/curl"; chmod +x "$T/bin/curl"
 why() { EXTENSIONS_SITE=https://extensions.gnome.org PATH="$T/bin:$PATH" download_extension x@y 49 "$T/ext.zip"; }
@@ -286,37 +286,37 @@ mv "$T/bin/curl" "$T/bin/curl.off"
 
 echo "Other fixes"
 trap_kept() {
-  bash -c 'source "$1/lib.sh"; trap "echo stop" TERM; UI_TTY=1
+  bash -c 'source "$1/bin/lib.sh"; trap "echo stop" TERM; UI_TTY=1
     quiet test true >/dev/null 2>&1 </dev/null; [[ -n "$(trap -p TERM)" ]]' _ "$ROOT"
 }
 t "quiet() keeps the progress panel's TERM trap" trap_kept
 fix_fails() {
-  bash -c 'source "$1/lib.sh"; source <(sed -n "/^fix_step() {/,/^}/p" "$1/check.sh"); YES_ALL=1
+  bash -c 'source "$1/bin/lib.sh"; source <(sed -n "/^fix_step() {/,/^}/p" "$1/bin/check.sh"); YES_ALL=1
     half() { false; echo "    KEPT-GOING"; }
     fix_step "A fix" "Fix it?" half; [[ "${FAILED[*]}" == "A fix" ]]' _ "$ROOT" | not grep -q KEPT-GOING
 }
 t "a dot check fix stops at its first error and is marked failed" fix_fails
 # SUDO=false: the edit of the source file fails (for any user, root too).
 mkdir -p "$T/src"; printf 'Types: deb\nEnabled: no\n' > "$T/src/app.sources"
-src_rc=0; (cd "$ROOT" && SOURCES_DIR="$T/src" SUDO=false ./post-upgrade.sh --sources-only >/dev/null 2>&1) || src_rc=$?
+src_rc=0; (cd "$ROOT" && SOURCES_DIR="$T/src" SUDO=false ./bin/post-upgrade.sh --sources-only >/dev/null 2>&1) || src_rc=$?
 t "post-upgrade.sh --sources-only fails when it can't switch a source on" same "$src_rc" 1
 sed -n '/^# Remember what was picked/,/^fi$/p' "$ROOT/bootstrap.sh" > "$T/choices.sh"
 mkdir -p "$HOME/.config/dotfiles"; echo terminal > "$HOME/.config/dotfiles/choices"
 DOTFILES_CHOICES='' DOTFILES_SKIP='' bash "$T/choices.sh" >/dev/null
 t "bootstrap.sh with no picks removes earlier choices" not test -e "$HOME/.config/dotfiles/choices"
-load_fn install.sh reminder_folder
+load_fn bin/install.sh reminder_folder
 REMINDER_DROPIN="$T/dropin.conf"
 reminder_in() { DOTFILES="$1" reminder_folder >/dev/null; }
 reminder_in "$T/my 100% code/dotfiles"
 t "dotfiles elsewhere: the reminder's drop-in runs them there" \
-  grep -qxF "ExecStart=\"$T/my 100%% code/dotfiles/check.sh\" --notify" "$REMINDER_DROPIN"
+  grep -qxF "ExecStart=\"$T/my 100%% code/dotfiles/bin/check.sh\" --notify" "$REMINDER_DROPIN"
 reminder_in "$DEFAULT_DOTFILES"
 t "back in the default folder: the drop-in is removed" not test -e "$REMINDER_DROPIN"
 
 echo "The dot command"
-mkdir -p "$T/dotcopy"; cp "$ROOT/dot" "$ROOT/lib.sh" "$T/dotcopy/"
+mkdir -p "$T/dotcopy/bin"; cp "$ROOT/dot" "$T/dotcopy/"; cp "$ROOT/bin/lib.sh" "$T/dotcopy/bin/"
 for s in install.sh install-apps.sh fresh-install.sh post-upgrade.sh uninstall.sh check.sh; do
-  printf '#!/bin/sh\ntouch "%s/ran"\n' "$T/dotcopy" > "$T/dotcopy/$s"; chmod +x "$T/dotcopy/$s"
+  printf '#!/bin/sh\ntouch "%s/ran"\n' "$T/dotcopy" > "$T/dotcopy/bin/$s"; chmod +x "$T/dotcopy/bin/$s"
 done
 dot_rc() { local rc=0; "$T/dotcopy/dot" "$@" >/dev/null 2>&1 || rc=$?; echo "$rc"; }
 for c in install apps fresh upgrade uninstall check; do
@@ -405,7 +405,7 @@ t "... and turns Markdown into the site's HTML" same "$(site_py $'## The `dot` m
 <div class="tbl"><table><thead><tr><th>A</th><th>B</th></tr></thead><tbody><tr><td><code>x</code></td><td><a href="https://github.com/ronaldo-kwan/dotfiles/tree/main/setup">y</a></td></tr></tbody></table></div>'
 
 echo "dot check: the record and backups"
-load_fn check.sh adopt_record
+load_fn bin/check.sh adopt_record
 ADDED_FILE="$T/state/adopt"; printf 'legacy\n' > "$ADDED_FILE"
 t "a legacy record is noticed" added_is_legacy
 adopted() (   # ( ): the stand-ins below stay in here
@@ -417,7 +417,7 @@ adopted
 t "your answers replace it: only what the dotfiles added" same "$(grep -v '^#' "$ADDED_FILE")" app:chrome
 t "... and it's no longer legacy" not added_is_legacy
 t "added_candidates runs on this computer" eval 'added_candidates >/dev/null'
-load_fn check.sh dotfiles_backups
+load_fn bin/check.sh dotfiles_backups
 mkdir -p "$HOME/.config/qBittorrent"
 touch "$HOME/.bashrc.orig" "$HOME/.bashrc.orig.20261122-101010" "$HOME/.config/qBittorrent/qBittorrent.conf.prev"
 t "dot check lists the backups install.sh made" same "$(dotfiles_backups | sed "s|$HOME/||" | sort | tr '\n' ' ')" \
@@ -426,7 +426,7 @@ t "dot check lists the backups install.sh made" same "$(dotfiles_backups | sed "
 echo "The weekly reminder (check.sh --notify)"
 # notify-send is a stand-in, so no real notification pops up.
 printf '#!/bin/sh\nexit 0\n' > "$T/bin/notify-send"; chmod +x "$T/bin/notify-send"
-remind() { PATH="$T/bin:$PATH" ADDED_FILE="$1" timeout 120 bash "$ROOT/check.sh" --notify 2>/dev/null; }
+remind() { PATH="$T/bin:$PATH" ADDED_FILE="$1" timeout 120 bash "$ROOT/bin/check.sh" --notify 2>/dev/null; }
 mkdir -p "$T/state" && printf 'legacy\n' > "$T/state/remind-legacy"
 for day in 1 2 3; do touch "$HOME/.bashrc.orig.2026010$day-000000"; done   # 6, with the 3 from above
 reminder="$(remind "$T/state/remind-legacy")"
@@ -449,7 +449,7 @@ t "every check and install function in APPS exists" bash -c '
   for e in "${@:2}"; do IFS="|" read -r _ _ check fn _ <<< "$e"
     for f in "$fn" $([[ "$check" == check_* ]] && echo "$check"); do
       grep -q "^$f() {" "$1" || { echo "      no function $f"; exit 1; }; done; done' \
-  _ "$ROOT/install-apps.sh" "${APPS[@]}"
+  _ "$ROOT/bin/install-apps.sh" "${APPS[@]}"
 t "APP_PACKAGES has each app's packages" bash -c '[[ " $* " == *" google-chrome-stable "* && " $* " == *" steam-launcher "* ]]' _ "${APP_PACKAGES[@]}"
 t "every DCONF_FILES file is in setup/" bash -c 'for e in "${@:2}"; do [[ -f "$1/${e%%|*}" ]] || exit 1; done' _ "$SETUP" "${DCONF_FILES[@]}"
 

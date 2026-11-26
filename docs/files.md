@@ -16,24 +16,29 @@ A map of every file and folder, and what each one is for.
 
 ```text
 dotfiles/
-├── bootstrap.sh, fresh-install.sh,   setup scripts
-│   install.sh, install-apps.sh,
-│   post-upgrade.sh
-├── dot, check.sh, lib.sh             the dot command, the health check, shared helpers
-├── bash/ git/ starship/ ghostty/ …   config files, linked into ~ by Stow
-├── licenses/                         licences of the Catppuccin themes and the wallpaper
+├── bootstrap.sh                      the one command for a new computer (stays here: its web address)
+├── dot                               the dot command
+├── bin/                              the main scripts: setting up, checking, undoing
+│   ├── fresh-install.sh  install.sh  install-apps.sh  post-upgrade.sh  uninstall.sh
+│   └── check.sh  lib.sh              the health check, shared helpers
+├── home/                             config files, linked into ~ by Stow
+│   └── bash/ git/ starship/ ghostty/ …
 ├── setup/                            snapshots: apps, extensions, desktop settings
 ├── scripts/                          snapshot, SSH, website and test helpers
 ├── system/                           weekly and monthly jobs
+├── licenses/                         licences of the Catppuccin themes and the wallpaper
 ├── site/                             the website: the installer, and the docs in docs/
 ├── docs/                             these pages (images/: the README screenshot)
 ├── .githooks/                        the secret check
 └── .github/workflows/                GitHub checks and the website
 ```
 
+> [!NOTE]
+> Before v2.0.0 the scripts and config folders were at the top of the repo. `bootstrap.sh` still sets up those older releases, and `install.sh` removes the links they left behind.
+
 ## Linked config files
 
-These folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). Each one is a "package" whose contents mirror your home folder, and the real files in `~` are links into this repo.
+The folders in `home/` are laid out for [GNU Stow](https://www.gnu.org/software/stow/). Each one is a "package" whose contents mirror your home folder, and the real files in `~` are links into this repo: `~/.bashrc` is a link to `home/bash/.bashrc`, for example.
 
 | Package | Links to | What it is |
 |---|---|---|
@@ -63,18 +68,18 @@ These folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). E
 | File | What it is |
 |---|---|
 | `bootstrap.sh` | The one command for a fresh Ubuntu: installs git, gum and gh, downloads the repo, starts `fresh-install.sh` |
-| `fresh-install.sh` | Sets up a freshly installed Ubuntu in one go: system and firmware update, tools, then the two scripts below |
-| `install.sh` | Configs, fonts, Flatpak apps, extensions, settings, the secret check and the reminder (no sudo) |
-| `install-apps.sh` | Apps from their makers' sources, the NVIDIA driver, Steam on the NVIDIA card, weekly updates, monthly clean-up, Snap Firefox removal (sudo) |
-| `post-upgrade.sh` | After upgrading Ubuntu to a new release: switches app update sources back on and puts everything back |
-| `uninstall.sh` | `dot uninstall`: undoes `install.sh` for your user (links, desktop settings, extensions, fonts, reminder, secret check); `--apps` also removes the apps and system parts you pick |
+| `bin/fresh-install.sh` | Sets up a freshly installed Ubuntu in one go: system and firmware update, tools, then the two scripts below |
+| `bin/install.sh` | Configs, fonts, Flatpak apps, extensions, settings, the secret check and the reminder (no sudo) |
+| `bin/install-apps.sh` | Apps from their makers' sources, the NVIDIA driver, Steam on the NVIDIA card, weekly updates, monthly clean-up, Snap Firefox removal (sudo) |
+| `bin/post-upgrade.sh` | After upgrading Ubuntu to a new release: switches app update sources back on and puts everything back |
+| `bin/uninstall.sh` | `dot uninstall`: undoes `install.sh` for your user (links, desktop settings, extensions, fonts, reminder, secret check); `--apps` also removes the apps and system parts you pick |
 
 ### Everyday
 
 | File | What it is |
 |---|---|
 | `dot` | The `dot` command (`save`, `push`, `pull`, `check`, ...): a menu on its own, or `dot help`. `.bashrc` adds `dot cd` and <kbd>Tab</kbd> completion |
-| `check.sh` | The health check (`dot check`); `--notify` is the weekly reminder |
+| `bin/check.sh` | The health check (`dot check`); `--notify` is the weekly reminder |
 | `scripts/ssh-setup.sh` | `dot ssh`: SSH key, signed commits, adding the key to GitHub |
 | `scripts/snapshot.sh` | Writes the snapshots in `setup/` (used by `dot push`, and by `check.sh` into a temporary copy) |
 | `scripts/dump-desktop-settings.sh` | Writes `setup/desktop-settings.dconf` |
@@ -86,7 +91,7 @@ These folders are laid out for [GNU Stow](https://www.gnu.org/software/stow/). E
 
 | File | What it is |
 |---|---|
-| `lib.sh` | Helpers shared by the scripts (questions, gum, the progress panel, steps, spinner, summary, clock check, apt-get, dry runs, reading the `setup/` lists), plus the lists of terminal tools and stow packages and the places outside `~/Documents/code/github/dotfiles` the scripts use (notes vault, wallpaper, fonts, which dconf file goes where) |
+| `bin/lib.sh` | Helpers shared by the scripts (questions, gum, the progress panel, steps, spinner, summary, clock check, apt-get, dry runs, reading the `setup/` lists), plus the lists of terminal tools and stow packages and the places outside `~/Documents/code/github/dotfiles` the scripts use (notes vault, wallpaper, fonts, which dconf file goes where) |
 
 ## Snapshots (`setup/`)
 

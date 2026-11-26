@@ -10,11 +10,12 @@
 [[ -n "${DOTFILES_LIB_LOADED:-}" ]] && return 0
 DOTFILES_LIB_LOADED=1
 
-DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # lib.sh is in bin/
 # Where bootstrap.sh puts the dotfiles, and where the weekly reminder's unit looks.
 # (bootstrap.sh, bash/.bashrc and the unit can't load this file, so they spell it out too.)
 DEFAULT_DOTFILES="$HOME/Documents/code/github/dotfiles"
 SETUP="$DOTFILES/setup"
+STOW_DIR="$DOTFILES/home"   # the Stow packages: folders whose files are linked into your home folder
 FAILED=()
 # Terminal tools from apt (installed by fresh-install.sh, checked by check.sh)
 TOOLS=(git gh gum curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit flatpak)
@@ -43,7 +44,7 @@ list_of() { sed 's/#.*//' "$SETUP/$1" | awk 'NF && $1 !~ /^-/ {print $1}'; }
 
 # config_files <stow package>...: each of their files as "<package>/<path in your home
 # folder>", NUL-separated. The file is $DOTFILES/<that>; its link is ~/<that without the package>.
-config_files() { local p; for p in "$@"; do find "$DOTFILES/$p" -type f -printf "$p/%P\\0"; done; }
+config_files() { local p; for p in "$@"; do find "$STOW_DIR/$p" -type f -printf "$p/%P\\0"; done; }
 
 # Is there a systemd user session (for the weekly reminder)? Not in containers or CI.
 has_user_systemd() { have systemctl && systemctl --user show-environment >/dev/null 2>&1; }

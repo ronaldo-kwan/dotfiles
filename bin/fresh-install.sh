@@ -16,7 +16,7 @@
 # One question at the start: Yes to everything (runs by itself), or choose as it goes.
 # With gum installed, questions are arrow-key menus and the steps stay pinned on screen.
 #
-# DRY_RUN=1 ~/Documents/code/github/dotfiles/fresh-install.sh --yes   only shows what every step would do
+# DRY_RUN=1 ~/Documents/code/github/dotfiles/bin/fresh-install.sh --yes   only shows what every step would do
 # (install.sh and install-apps.sh too); downloads are checked, nothing changes.
 
 set -uo pipefail
@@ -91,8 +91,8 @@ install_tools() {
 # 4-6. The dotfiles scripts -------------------------------------------------------------
 # DEFER_DESKTOP: the look (theme, fonts, extensions, wallpaper) stays Ubuntu's until the
 # very end, then changes once, right before the restart (apply_look below).
-run_install() { DEFER_DESKTOP=1 "$DOTFILES/install.sh" --yes; }
-run_install_apps() { "$DOTFILES/install-apps.sh"; }
+run_install() { DEFER_DESKTOP=1 "$DOTFILES/bin/install.sh" --yes; }
+run_install_apps() { "$DOTFILES/bin/install-apps.sh"; }
 
 run_steps \
   "Update the system|update_system" \
@@ -120,7 +120,7 @@ echo
 # change halfway through. Also when you don't restart (or press Ctrl+C to stay).
 apply_look() {
   note "Applying your desktop look (theme, fonts, extensions, wallpaper)"
-  "$DOTFILES/install.sh" --desktop-only > /dev/null 2>&1 || warn "some of it didn't apply: run dot install"
+  "$DOTFILES/bin/install.sh" --desktop-only > /dev/null 2>&1 || warn "some of it didn't apply: run dot install"
 }
 if ask "Restart now?"; then
   if [[ "$YES_ALL" == 1 ]]; then

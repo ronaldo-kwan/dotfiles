@@ -62,7 +62,7 @@ FLATPAK_NAMES = {
 
 
 def outside_apps():
-    text = (ROOT / "install-apps.sh").read_text()
+    text = (ROOT / "bin" / "install-apps.sh").read_text()
     block = re.search(r"^APPS=\(\n(.*?)^\)", text, re.S | re.M).group(1)
     apps = []
     for line in block.splitlines():

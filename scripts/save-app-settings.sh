@@ -15,8 +15,8 @@ DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SETUP_DIR="${1:-$DOTFILES/setup}"   # optional argument: a different setup folder
 OUT="$SETUP_DIR/apps"
 # Only the parts this computer chose on the website (see snapshot.sh); everything otherwise.
-# shellcheck source=../lib.sh
-source "$DOTFILES/lib.sh"
+# shellcheck source=../bin/lib.sh
+source "$DOTFILES/bin/lib.sh"
 CFG="$HOME/.config"
 
 mkdir -p "$OUT"

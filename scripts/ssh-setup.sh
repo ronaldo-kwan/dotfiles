@@ -9,8 +9,8 @@
 # Safe to run again: finished parts are skipped.
 
 set -uo pipefail
-# shellcheck source=../lib.sh
-source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../lib.sh"
+# shellcheck source=../bin/lib.sh
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../bin/lib.sh"
 
 KEY="$HOME/.ssh/id_ed25519"
 SIGNING="$HOME/.config/git/signing.gitconfig"

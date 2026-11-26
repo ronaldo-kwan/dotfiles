@@ -12,16 +12,16 @@
 # the rest after one password. Apps' own settings and data stay, so reinstalling one
 # brings it back as it was. The NVIDIA driver and Backups always stay. ~/Documents/code/github/dotfiles stays.
 #
-#   ~/Documents/code/github/dotfiles/uninstall.sh                 asks first
-#   ~/Documents/code/github/dotfiles/uninstall.sh --apps          also the apps (a checklist)
-#   ~/Documents/code/github/dotfiles/uninstall.sh --apps --yes    everything, without asking
-#   DRY_RUN=1 ~/Documents/code/github/dotfiles/uninstall.sh --apps --yes   only shows what it would do (all of it)
+#   ~/Documents/code/github/dotfiles/bin/uninstall.sh                 asks first
+#   ~/Documents/code/github/dotfiles/bin/uninstall.sh --apps          also the apps (a checklist)
+#   ~/Documents/code/github/dotfiles/bin/uninstall.sh --apps --yes    everything, without asking
+#   DRY_RUN=1 ~/Documents/code/github/dotfiles/bin/uninstall.sh --apps --yes   only shows what it would do (all of it)
 
 set -uo pipefail
 # shellcheck source=lib.sh
 source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib.sh"   # VAULT, WALLPAPER, DCONF_FILES, run, apt_get
 # shellcheck source=install-apps.sh
-source "$DOTFILES/install-apps.sh"   # only loads APPS and APP_PARTS: the apps and what each adds
+source "$DOTFILES/bin/install-apps.sh"   # only loads APPS and APP_PARTS: the apps and what each adds
 
 # Each step below changes things only through run, copy and did (lib.sh), so a dry run
 # (DRY_RUN=1) shows the same steps as "would run: ..." lines and changes nothing.
@@ -45,7 +45,7 @@ reminder_off() {
 unlink_configs() {
   local f src target n=0 links=0 gone
   while IFS= read -r -d '' f; do
-    src="$DOTFILES/$f" target="$HOME/${f#*/}" gone=0
+    src="$STOW_DIR/$f" target="$HOME/${f#*/}" gone=0
     if [[ -L "$target" && "$(readlink -f "$target")" == "$(readlink -f "$src")" ]]; then
       run rm "$target"; links=$((links + 1)) gone=1
       [[ "$DRY_RUN" == 1 ]] || rmdir --ignore-fail-on-non-empty "$(dirname "$target")" 2>/dev/null || true
@@ -151,7 +151,7 @@ remove_fonts_wallpaper() {
 # 7. Copies install.sh made (put_file): the font settings in each Flatpak app, and apps
 #    that start at login. Removed only if unchanged; your earlier file (.orig) comes back.
 remove_copies() {
-  local conf="$DOTFILES/fontconfig/.config/fontconfig/fonts.conf" f n=0
+  local conf="$STOW_DIR/fontconfig/.config/fontconfig/fonts.conf" f n=0
   for f in "$HOME"/.var/app/*/config/fontconfig/fonts.conf "$HOME"/.config/autostart/*.desktop; do
     [[ -f "$f" ]] || continue
     local saved="$conf"

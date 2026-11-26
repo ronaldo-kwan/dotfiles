@@ -18,9 +18,9 @@ Which apps the setup installs, where each comes from, and the system parts that 
 `install-apps.sh` (or `dot apps`) installs the apps that need sudo and extra setup, so `install.sh` leaves them out. It skips anything already installed.
 
 ```bash
-~/Documents/code/github/dotfiles/install-apps.sh            # one question: Yes to everything, or a checklist
-~/Documents/code/github/dotfiles/install-apps.sh --yes      # Yes to everything without asking (--all and -y work too)
-DRY_RUN=1 ~/Documents/code/github/dotfiles/install-apps.sh  # only checks the downloads, installs nothing
+~/Documents/code/github/dotfiles/bin/install-apps.sh            # one question: Yes to everything, or a checklist
+~/Documents/code/github/dotfiles/bin/install-apps.sh --yes      # Yes to everything without asking (--all and -y work too)
+DRY_RUN=1 ~/Documents/code/github/dotfiles/bin/install-apps.sh  # only checks the downloads, installs nothing
 ```
 
 It first asks whether to answer Yes to everything. Choose **Let me choose** to get one checklist of the apps not yet installed: all pre-ticked, <kbd>Space</kbd> unticks, <kbd>Enter</kbd> starts. The codecs' font licence is a checkbox in it. Without gum, it asks Y/n for each app instead.
