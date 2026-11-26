@@ -13,9 +13,9 @@
 # Exits with 1 if anything needs attention.
 
 set -uo pipefail
-# shellcheck source=lib.sh
+# shellcheck source=bin/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # have, installed, TOOLS, PACKAGES, VAULT, DOTFILES, SETUP
-# shellcheck source=install-apps.sh
+# shellcheck source=bin/install-apps.sh
 source "$DOTFILES/bin/install-apps.sh"   # only loads APPS, APP_PACKAGES and the check_* functions
 
 MODE=full

@@ -15,7 +15,7 @@
 
 set -uo pipefail
 
-# shellcheck source=lib.sh
+# shellcheck source=bin/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, skip, ask, run, apt_get, installed, fill_user, SETUP
 
 # Where apt keeps update sources and their signing keys

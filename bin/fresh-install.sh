@@ -21,7 +21,7 @@
 
 set -uo pipefail
 
-# shellcheck source=lib.sh
+# shellcheck source=bin/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, ask, apt_get, run_steps, summary, DOTFILES
 # Plugged in? A computer without a battery (a desktop) always counts as plugged in.
 on_charger() {

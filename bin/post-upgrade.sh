@@ -19,7 +19,7 @@
 # (SUDO is only for step 1; the updates in step 2 always use sudo)
 
 set -uo pipefail
-# shellcheck source=lib.sh
+# shellcheck source=bin/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, skip, have, ask, apt_get, has_nvidia, run_steps, summary
 
 SOURCES_DIR="${SOURCES_DIR:-/etc/apt/sources.list.d}"

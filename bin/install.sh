@@ -13,7 +13,7 @@
 
 set -uo pipefail
 
-# shellcheck source=lib.sh
+# shellcheck source=bin/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, skip, have, run, did, run_steps, DOTFILES, SETUP
 
 # 1. Link config files with stow ------------------------------------------------

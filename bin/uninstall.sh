@@ -18,9 +18,9 @@
 #   DRY_RUN=1 ~/Documents/code/github/dotfiles/bin/uninstall.sh --apps --yes   only shows what it would do (all of it)
 
 set -uo pipefail
-# shellcheck source=lib.sh
+# shellcheck source=bin/lib.sh
 source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib.sh"   # VAULT, WALLPAPER, DCONF_FILES, run, apt_get
-# shellcheck source=install-apps.sh
+# shellcheck source=bin/install-apps.sh
 source "$DOTFILES/bin/install-apps.sh"   # only loads APPS and APP_PARTS: the apps and what each adds
 
 # Each step below changes things only through run, copy and did (lib.sh), so a dry run
