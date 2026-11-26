@@ -72,7 +72,8 @@ function showDoc(id, scroll) {
   const target = id ? document.getElementById(id) : null;
   const page = target?.closest(".doc-page");
   if (!page) return false;
-  if (docs.current !== page) {
+  const samePage = docs.current === page;
+  if (!samePage) {
     document.querySelectorAll(".doc-page").forEach((p) => { p.hidden = p !== page; });
     docs.current = page;
     docs.toc = JSON.parse(page.dataset.toc);
@@ -97,8 +98,10 @@ function showDoc(id, scroll) {
     document.title = `${info.title} · Dotfiles docs`;
   }
   target.closest("details:not([open])")?.setAttribute("open", "");
-  // Instant: the page under you has just changed, and a smooth scroll across it takes seconds.
-  if (scroll) target === page ? scrollTo({ top: 0, behavior: "instant" }) : target.scrollIntoView({ behavior: "instant" });
+  // Smooth within the page you're reading. Instant when the page under you has just changed
+  // (a smooth scroll across it takes seconds), and with reduced motion.
+  const behavior = samePage && !CALM ? "smooth" : "instant";
+  if (scroll) target === page ? scrollTo({ top: 0, behavior }) : target.scrollIntoView({ behavior });
   spyDoc();
   return true;
 }
