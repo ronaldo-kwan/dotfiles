@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Health check: is this computer still set up the way ~/dotfiles describes?
+# Health check: is this computer still set up the way ~/Documents/code/github/dotfiles describes?
 # It changes nothing unless you say yes to a fix, and never commits by itself.
 #
 #   dot check            full check (links, tools, apps, firewall, Flatpaks, extensions,
@@ -177,9 +177,9 @@ fi
 
 # --- Full check -------------------------------------------------------------------------
 if [[ "$MODE" == fix ]]; then
-  header "Health check and fix" "Checks this computer against ~/dotfiles, then offers to fix what's wrong."
+  header "Health check and fix" "Checks this computer against ~/Documents/code/github/dotfiles, then offers to fix what's wrong."
 else
-  header "Health check" "Is this computer still set up the way ~/dotfiles says? Asks before fixing anything."
+  header "Health check" "Is this computer still set up the way ~/Documents/code/github/dotfiles says? Asks before fixing anything."
 fi
 section "Config links (stow)"
 broken=()

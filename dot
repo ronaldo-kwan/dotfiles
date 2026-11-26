@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dot: one command for everything in ~/dotfiles.
+# dot: one command for everything in ~/Documents/code/github/dotfiles.
 #   dot                 the menu (with gum); otherwise what needs doing, and the commands
 #   dot <command>       run one (dot help lists them)
 #   dot help <command>  what one does, with examples (or: dot <command> --help)
@@ -23,9 +23,9 @@ unset UI_LOG
 COMMANDS=(
   "push|[message]|daily|Save to GitHub|Save this computer's settings and your notes to GitHub"
   "pull||daily|Get changes|Get what you saved on another computer, and apply it here"
-  "check||daily|Health check|Check this computer against ~/dotfiles, and offer to fix problems"
-  "edit||daily|Open in VS Code|Open ~/dotfiles in VS Code"
-  "cd||daily||Go to ~/dotfiles in this terminal"
+  "check||daily|Health check|Check this computer against ~/Documents/code/github/dotfiles, and offer to fix problems"
+  "edit||daily|Open in VS Code|Open ~/Documents/code/github/dotfiles in VS Code"
+  "cd||daily||Go to ~/Documents/code/github/dotfiles in this terminal"
   "install||setup|Configs and desktop|Config links, fonts, Flatpaks, extensions, desktop settings"
   "apps||setup|Apps and firewall|Apps, NVIDIA driver, weekly updates, firewall"
   "ssh||setup|SSH and signing|SSH key for this computer, and signed (Verified) commits"
@@ -89,13 +89,13 @@ secret check runs before each commit. If GitHub has commits this computer doesn'
 stops and asks you to dot pull first.
 
   dot push                 the message says what changed ("Update desktop settings")
-  dot push "Add Steam"     your own message (for ~/dotfiles; notes get "Update notes")
+  dot push "Add Steam"     your own message (for ~/Documents/code/github/dotfiles; notes get "Update notes")
   dot push --dry-run, -n   only show what would be saved
   dot push --yes, -y       don't ask
 EOF
     ;;
     pull) cat <<'EOF'
-Gets the commits saved from another computer, for ~/dotfiles and your notes, and lists
+Gets the commits saved from another computer, for ~/Documents/code/github/dotfiles and your notes, and lists
 them. It only fast-forwards: it never merges or overwrites anything. Then it offers to
 apply them (dot install), and dot apps if the app lists changed.
 
@@ -112,7 +112,7 @@ asking before each. Nothing changes unless you say yes.
   dot check --fix          go straight to the fixes
 EOF
     ;;
-    edit) echo "Opens ~/dotfiles in VS Code (or \$VISUAL / \$EDITOR without it)." ;;
+    edit) echo "Opens ~/Documents/code/github/dotfiles in VS Code (or \$VISUAL / \$EDITOR without it)." ;;
     cd)   echo "Works from the dot() function in ~/.bashrc, since a script can't change your terminal's folder." ;;
     install) cat <<'EOF'
 Runs install.sh: config links, fonts, Flatpak apps, GNOME extensions, desktop and app

@@ -11,6 +11,9 @@
 DOTFILES_LIB_LOADED=1
 
 DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Where bootstrap.sh puts the dotfiles, and where the weekly reminder's unit looks.
+# (bootstrap.sh, bash/.bashrc and the unit can't load this file, so they spell it out too.)
+DEFAULT_DOTFILES="$HOME/Documents/code/github/dotfiles"
 SETUP="$DOTFILES/setup"
 FAILED=()
 # Terminal tools from apt (installed by fresh-install.sh, checked by check.sh)
@@ -18,12 +21,12 @@ TOOLS=(git gh gum curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty
 # Stow packages: folders here whose files are linked into your home folder
 PACKAGES=(bash git starship ghostty btop lazygit bat eza fzf fastfetch terminal-default vscode claude systemd fontconfig)
 
-# Places outside ~/dotfiles that install.sh fills, and check.sh, dot and uninstall.sh look at
+# Places outside the dotfiles folder that install.sh fills, and check.sh, dot and uninstall.sh look at
 VAULT="$HOME/Documents/Obsidian Vault"   # your notes: the private GitHub repo obsidian-vault
 WALLPAPER="$HOME/Pictures/Wallpapers/current/catppuccin-tropic-island-night-16x9.jpg"
 NERD_FONT_DIR="$HOME/.local/share/fonts/RobotoMonoNerdFont"   # the terminal's font
 MONO_FONT_DIR="$HOME/.local/share/fonts/RobotoMono"           # the desktop's monospace font
-# Only when ~/dotfiles is somewhere else: points the weekly reminder there
+# Only when the dotfiles are somewhere else (not DEFAULT_DOTFILES): points the weekly reminder there
 REMINDER_DROPIN="$HOME/.config/systemd/user/dotfiles-reminder.service.d/dotfiles-folder.conf"
 # The desktop settings in setup/ and where in dconf each goes: install.sh loads them,
 # uninstall.sh resets every key in them.

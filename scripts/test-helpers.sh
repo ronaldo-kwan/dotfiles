@@ -310,8 +310,8 @@ reminder_in() { DOTFILES="$1" reminder_folder >/dev/null; }
 reminder_in "$T/my 100% code/dotfiles"
 t "dotfiles elsewhere: the reminder's drop-in runs them there" \
   grep -qxF "ExecStart=\"$T/my 100%% code/dotfiles/check.sh\" --notify" "$REMINDER_DROPIN"
-reminder_in "$HOME/dotfiles"
-t "back in ~/dotfiles: the drop-in is removed" not test -e "$REMINDER_DROPIN"
+reminder_in "$DEFAULT_DOTFILES"
+t "back in the default folder: the drop-in is removed" not test -e "$REMINDER_DROPIN"
 
 echo "The dot command"
 mkdir -p "$T/dotcopy"; cp "$ROOT/dot" "$ROOT/lib.sh" "$T/dotcopy/"

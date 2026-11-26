@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Secret check before each commit: stops the commit if what's being committed looks
-# like a password, token, private key or sign-in file. Used by ~/dotfiles and the
+# like a password, token, private key or sign-in file. Used by ~/Documents/code/github/dotfiles and the
 # Obsidian vault (install.sh points both at this folder with core.hooksPath).
 #
 # It shows only file and line, never the value itself.

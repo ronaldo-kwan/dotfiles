@@ -11,10 +11,10 @@
 #   4. runs install.sh, reinstalling GNOME extensions for the new GNOME version
 #   5. checks the NVIDIA driver and runs check.sh
 #
-#   ~/dotfiles/post-upgrade.sh                  one question: Yes to everything, or ask each
-#   ~/dotfiles/post-upgrade.sh --yes            Yes to everything without asking
-#   ~/dotfiles/post-upgrade.sh --sources-only   only step 1
-#   DRY_RUN=1 ~/dotfiles/post-upgrade.sh --yes  only shows what every step would do
+#   ~/Documents/code/github/dotfiles/post-upgrade.sh                  one question: Yes to everything, or ask each
+#   ~/Documents/code/github/dotfiles/post-upgrade.sh --yes            Yes to everything without asking
+#   ~/Documents/code/github/dotfiles/post-upgrade.sh --sources-only   only step 1
+#   DRY_RUN=1 ~/Documents/code/github/dotfiles/post-upgrade.sh --yes  only shows what every step would do
 # For testing: SOURCES_DIR=<folder> SUDO= ./post-upgrade.sh --sources-only
 # (SUDO is only for step 1; the updates in step 2 always use sudo)
 
@@ -121,5 +121,5 @@ summary; ok=$?
 "$DOTFILES/check.sh" || true
 printf '\n%sNext%s\n' "$C_B" "$C_N"
 note "Restart. If a GNOME extension is still off afterwards, switch it on in the Extensions app."
-note "If the NVIDIA driver wasn't running, run ~/dotfiles/post-upgrade.sh again after the restart."
+note "If the NVIDIA driver wasn't running, run ~/Documents/code/github/dotfiles/post-upgrade.sh again after the restart."
 exit "$ok"

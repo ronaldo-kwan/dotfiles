@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Set up this computer from ~/dotfiles. Safe to run more than once.
+# Set up this computer from ~/Documents/code/github/dotfiles. Safe to run more than once.
 #
 # Needs (install first, see README):
 #   sudo apt install git gh gum curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit flatpak
@@ -7,9 +7,9 @@
 # Does NOT use sudo. Steps that need sudo or a sign-in are listed at the end.
 # If one step fails, the others still run, and failures are listed at the end.
 #
-#   ~/dotfiles/install.sh                 asks first
-#   ~/dotfiles/install.sh --yes           without asking
-#   DRY_RUN=1 ~/dotfiles/install.sh --yes  only shows what it would change (downloads are checked)
+#   ~/Documents/code/github/dotfiles/install.sh                 asks first
+#   ~/Documents/code/github/dotfiles/install.sh --yes           without asking
+#   DRY_RUN=1 ~/Documents/code/github/dotfiles/install.sh --yes  only shows what it would change (downloads are checked)
 
 set -uo pipefail
 
@@ -258,7 +258,7 @@ restore_gnome_settings() {
 # 7. Wallpaper -----------------------------------------------------------------------
 # From setup/wallpaper/: tropic_island_night.jpg from the Catppuccin wallpaper collection
 # (github.com/zhichaoh/catppuccin-wallpapers, MIT: licenses/wallpaper.txt). Copied to
-# ~/Pictures/Wallpapers/current, so the desktop keeps it even if ~/dotfiles moves.
+# ~/Pictures/Wallpapers/current, so the desktop keeps it even if the dotfiles folder moves.
 WALLPAPER_SAVED="$SETUP/wallpaper/${WALLPAPER##*/}"
 set_wallpaper() {
   need desktop || return 0
@@ -440,20 +440,20 @@ json.dump(data, open(path, "w"))
 }
 
 # 10. Safety checks ---------------------------------------------------------------------
-# Secret check before commits (in ~/dotfiles and the vault), and a weekly reminder
+# Secret check before commits (in ~/Documents/code/github/dotfiles and the vault), and a weekly reminder
 # (Sunday evening, or the next login) when settings changed since the last dot save or
 # changes aren't committed. The reminder only notifies; it never commits.
-# The reminder's unit runs ~/dotfiles/check.sh. Dotfiles kept somewhere else (DOTFILES_DIR
+# The reminder's unit runs ~/Documents/code/github/dotfiles/check.sh. Dotfiles kept somewhere else (DOTFILES_DIR
 # in bootstrap.sh) get a drop-in next to it that points it at the real folder.
 reminder_folder() {
-  if [[ "$DOTFILES" == "$HOME/dotfiles" ]]; then
+  if [[ "$DOTFILES" == "$DEFAULT_DOTFILES" ]]; then
     if [[ -f "$REMINDER_DROPIN" ]]; then run rm -f "$REMINDER_DROPIN"; fi
     return 0
   fi
   if [[ "$DRY_RUN" == 1 ]]; then echo "    would point the weekly reminder at ${DOTFILES/#$HOME/\~}"; return 0; fi
   mkdir -p "$(dirname "$REMINDER_DROPIN")"
   # (In unit files % starts a specifier, so a literal one is written %%.)
-  printf '# Written by install.sh: the dotfiles are in %s, not ~/dotfiles.\n[Service]\nExecStart=\nExecStart="%s/check.sh" --notify\n' \
+  printf '# Written by install.sh: the dotfiles are in %s, not ~/Documents/code/github/dotfiles.\n[Service]\nExecStart=\nExecStart="%s/check.sh" --notify\n' \
     "$DOTFILES" "${DOTFILES//%/%%}" > "$REMINDER_DROPIN"
   did "weekly reminder runs ${DOTFILES/#$HOME/\~}/check.sh"
 }
@@ -519,7 +519,7 @@ run_steps \
 summary; ok=$?
 if [[ "$UI_NESTED" == 0 && "$DRY_RUN" != 1 ]]; then
   printf '\n%sStill to do yourself%s\n' "$C_B" "$C_N"
-  note "Run ~/dotfiles/install-apps.sh (apps, NVIDIA driver, weekly updates), then this again for VS Code's extensions and Obsidian"
+  note "Run ~/Documents/code/github/dotfiles/install-apps.sh (apps, NVIDIA driver, weekly updates), then this again for VS Code's extensions and Obsidian"
   note "Log out and back in (starts the GNOME extensions), then open a new terminal"
   note "Sign in to your apps (Steam, browsers, Discord, Backups/Google Drive)"
 fi

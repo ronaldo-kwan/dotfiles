@@ -11,12 +11,12 @@
 #
 # Before running it (see README, "Setting up a new computer"):
 #   bash <(wget -qO- https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/bootstrap.sh)
-# (which installs git, gum and gh, downloads ~/dotfiles and starts this script)
+# (which installs git, gum and gh, downloads ~/Documents/code/github/dotfiles and starts this script)
 #
 # One question at the start: Yes to everything (runs by itself), or choose as it goes.
 # With gum installed, questions are arrow-key menus and the steps stay pinned on screen.
 #
-# DRY_RUN=1 ~/dotfiles/fresh-install.sh --yes   only shows what every step would do
+# DRY_RUN=1 ~/Documents/code/github/dotfiles/fresh-install.sh --yes   only shows what every step would do
 # (install.sh and install-apps.sh too); downloads are checked, nothing changes.
 
 set -uo pipefail
@@ -31,7 +31,7 @@ on_charger() {
 
 title="Fresh install"; [[ "$DRY_RUN" == 1 ]] && title+=" (dry run: changes nothing)"
 header "$title" \
-  "Sets up this computer from ~/dotfiles, in six steps:" \
+  "Sets up this computer from ~/Documents/code/github/dotfiles, in six steps:" \
   "  1 update the system        2 firmware (on charger only)" \
   "  3 terminal tools           4 configs and desktop (install.sh)" \
   "  5 apps (install-apps.sh)   6 configs again, now the apps exist" \

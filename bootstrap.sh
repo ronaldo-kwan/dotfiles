@@ -4,7 +4,7 @@
 #   bash <(wget -qO- https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/bootstrap.sh)
 #
 # (wget, because a fresh Ubuntu has it but not curl.) It installs git, gum and gh,
-# downloads the dotfiles to ~/dotfiles (no GitHub sign-in needed: the repo is public)
+# downloads the dotfiles to ~/Documents/code/github/dotfiles (no GitHub sign-in needed: the repo is public)
 # and starts fresh-install.sh. Options are passed on, e.g. ... bootstrap.sh) --yes
 #
 # The website (site/) adds what you picked in front of the command:
@@ -50,7 +50,7 @@ check_system
 export DOTFILES_SYSTEM_CHECKED=1   # fresh-install.sh doesn't ask again
 
 REPO="${DOTFILES_REPO:-https://github.com/ronaldo-kwan/dotfiles.git}"
-DIR="${DOTFILES_DIR:-$HOME/dotfiles}"
+DIR="${DOTFILES_DIR:-$HOME/Documents/code/github/dotfiles}"   # also DEFAULT_DOTFILES in lib.sh
 
 printf '\n\e[1mSetting up this computer from %s\e[0m\n' "$REPO"
 echo "First: git, gum (menus) and gh (GitHub, used later). Asks for your password."
