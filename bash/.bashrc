@@ -122,6 +122,7 @@ fi
 # --- My aliases ---
 alias update='sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y'   # update everything
 alias c='clear'
+alias bashrc='code --wait ~/.bashrc && source ~/.bashrc'   # edit in VS Code, reload when the tab is closed
 
 # --- My functions ---
 # dot: one command for the dotfiles (dot help). `dot cd` needs to be a function,
