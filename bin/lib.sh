@@ -63,6 +63,32 @@ has_nvidia() {
   [[ "$HAS_NVIDIA" == yes ]]
 }
 
+# --- Flatpak apps in the background (fresh-install.sh) -----------------------------------
+# A new computer's Flatpak apps take minutes to download. fresh-install.sh starts them as
+# soon as Flathub is added, so they install while apt installs everything else (Flatpak
+# and apt don't share a lock). install.sh's Flatpak step leaves them be on its first run,
+# and on the second (FLATPAKS_WAIT=1) waits for them, then installs as usual: whatever
+# didn't make it, with its errors shown. install-apps.sh waits before it looks for the
+# Flatpak Firefox. Their output goes to $FLATPAKS_BG.log.
+FLATPAKS_BG="${FLATPAKS_BG:-${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}/dotfiles-flatpaks}"   # .pid and .log
+flatpaks_in_background() {   # flatpaks_in_background <app ID>...
+  [[ "$DRY_RUN" == 1 ]] && { printf '    would install in the background: %s\n' "$*"; return 0; }
+  flatpak install -y --noninteractive flathub "$@" > "$FLATPAKS_BG.log" 2>&1 < /dev/null &
+  echo "$!" > "$FLATPAKS_BG.pid"
+  disown 2>/dev/null || true
+  echo "    installing ${#} Flatpak apps in the background, alongside the next steps"
+}
+# flatpaks_installing: still at it? (The ID is checked to still be that flatpak install.)
+flatpaks_installing() {
+  local pid; pid="$(cat "$FLATPAKS_BG.pid" 2>/dev/null)"
+  [[ "$pid" =~ ^[0-9]+$ ]] && [[ "$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)" == *"flatpak install "* ]]
+}
+flatpaks_wait() {   # until the background install has finished (with a spinner)
+  flatpaks_installing || return 0
+  quiet "Waiting for the Flatpak apps (installing since the terminal tools)" flatpaks_wait_quietly
+}
+flatpaks_wait_quietly() { while flatpaks_installing; do sleep 1; done; }
+
 # --- Choices: what to set up (picked on the website, or everything) ----------------------
 # DOTFILES_CHOICES lists what to set up, separated by spaces. Groups: terminal desktop
 # notes safety updates firewall nvidia firmware claude-md nosnapfirefox; single apps:

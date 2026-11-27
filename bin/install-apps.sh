@@ -319,7 +319,8 @@ signed_source() {
 # add_source <source file> <keyring file> <key> <fingerprint> <source>: add a maker's update
 # source (<source> is the file's text: a deb line, or deb822 fields) as $APT_SOURCES/<source
 # file>, trusting only <key> (see signed_source, which checks it first). A keyring file
-# ending in .gpg gets the key in binary form. Then the package lists are refreshed.
+# ending in .gpg gets the key in binary form. The package lists are refreshed once, after
+# the last app (install_queued), not for each source.
 add_source() {
   local file="$1" keyring="$2" key="$3" fpr="$4" src="$5" repo suite
   read -r repo suite < <(awk '/^URIs:/ {r = $2} /^Suites:/ {s = $2}
@@ -330,7 +331,6 @@ add_source() {
   printf '%s\n' "$src" > "$TMP/$file"
   run sudo install -m 644 "$TMP/$file.keyring" "$APT_KEYS/$keyring"
   run sudo install -m 644 "$TMP/$file" "$APT_SOURCES/$file"
-  apt_get update
 }
 
 # --- Apps --------------------------------------------------------------------------
@@ -347,7 +347,7 @@ Suites: stable
 Components: main
 Architectures: amd64
 Signed-By: $APT_KEYS/google-chrome.gpg"
-  apt_get install -y google-chrome-stable
+  install_later google-chrome-stable
 }
 
 # Brave signs its Linux release source with these keys, all three in the keyring file it
@@ -369,7 +369,7 @@ Suites: stable
 Components: main
 Architectures: amd64 arm64
 Signed-By: $APT_KEYS/brave-browser-archive-keyring.gpg" || return 1
-    apt_get install -y brave-origin
+    install_later brave-origin
   fi
   run sudo install -D -m 644 "$DOTFILES/system/etc/$BRAVE_POLICY" "/etc/$BRAVE_POLICY"
   local search; search="$(brave_recommended_policy)"
@@ -395,14 +395,14 @@ Suites: stable
 Components: main
 Architectures: amd64
 Signed-By: $APT_KEYS/microsoft.gpg"
-  apt_get install -y code
+  install_later code
 }
 
 install_claude() {
   add_source claude-desktop.list claude-desktop-archive-keyring.asc \
     https://downloads.claude.ai/claude-desktop/key.asc "$ANTHROPIC_KEY" \
     "deb [arch=amd64,arm64 signed-by=$APT_KEYS/claude-desktop-archive-keyring.asc] https://downloads.claude.ai/claude-desktop/apt/stable stable main"
-  apt_get install -y claude-desktop
+  install_later claude-desktop
 }
 
 install_chatgpt() {
@@ -417,7 +417,7 @@ Suites: stable
 Components: main
 Architectures: amd64
 Signed-By: $APT_KEYS/chatgpt-archive-keyring.gpg"
-  apt_get install -y chatgpt
+  install_later chatgpt
 }
 
 install_claude_code() {
@@ -425,7 +425,7 @@ install_claude_code() {
   # source, signed with the same key as Claude Desktop's. Updates come with apt.
   add_source claude-code.list claude-code.asc https://downloads.claude.ai/keys/claude-code.asc "$ANTHROPIC_KEY" \
     "deb [arch=amd64,arm64 signed-by=$APT_KEYS/claude-code.asc] https://downloads.claude.ai/claude-code/apt/stable stable main"
-  apt_get install -y claude-code
+  install_later claude-code
 }
 
 install_protonvpn() {
@@ -440,15 +440,14 @@ install_protonvpn() {
   [[ -n "$path" && -n "$sha" ]] || { echo "    couldn't find Proton's setup package" >&2; return 1; }
   fetch_checked "$base/$path" "$sha" "$TMP/protonvpn-release.deb" "Downloading Proton's setup package"
   echo "    setup package matches Proton's signed package list"
-  apt_get install -y "$TMP/protonvpn-release.deb"
-  apt_get update
-  apt_get install -y proton-vpn-gnome-desktop
+  apt_get install -y "$TMP/protonvpn-release.deb"   # now: it adds Proton's source
+  install_later proton-vpn-gnome-desktop
 }
 
 install_obs() {
   apt_wait
-  run sudo add-apt-repository -y ppa:obsproject/obs-studio
-  apt_get install -y obs-studio
+  run sudo add-apt-repository -y -n ppa:obsproject/obs-studio   # -n: refreshed with the rest
+  install_later obs-studio
 }
 
 install_onlyoffice() {
@@ -456,7 +455,7 @@ install_onlyoffice() {
   add_source onlyoffice.list onlyoffice.gpg https://download.onlyoffice.com/GPG-KEY-ONLYOFFICE \
     E09CA29F6E178040EF22B4098320CA65CB2DE8E5 \
     "deb [signed-by=$APT_KEYS/onlyoffice.gpg] https://download.onlyoffice.com/repo/debian squeeze main"
-  apt_get install -y onlyoffice-desktopeditors
+  install_later onlyoffice-desktopeditors
 }
 
 install_ubuntu_apps() {
@@ -476,7 +475,7 @@ install_ubuntu_apps() {
       run sudo debconf-set-selections "$TMP/fonts.debconf"
     fi
   fi
-  apt_get install -y "${missing[@]}"
+  install_later "${missing[@]}"
   for p in "${missing[@]}"; do mark_added "pkg:$p"; done   # for dot uninstall
 }
 
@@ -544,7 +543,9 @@ setup_steam_nvidia() {
 
 remove_snap_firefox() {
   # Ubuntu ships Firefox as a Snap; this setup uses the Flatpak one (setup/flatpaks.txt).
-  # Only remove it when the Flatpak Firefox is there, so you're never left without one.
+  # Only remove it when the Flatpak Firefox is there, so you're never left without one
+  # (on a new computer it may still be installing in the background: lib.sh).
+  flatpaks_wait
   if ! flatpak info org.mozilla.firefox >/dev/null 2>&1; then
     skip "the Flatpak Firefox isn't installed (run install.sh first), so the Snap one stays"
     return 0
@@ -565,15 +566,63 @@ install_steam() {
   if ! dpkg --print-foreign-architectures | grep -qx i386; then
     run sudo dpkg --add-architecture i386
   fi
-  apt_get update
   # (apt_get runs non-interactively, which skips a note Steam shows on some NVIDIA setups.)
-  apt_get install -y steam-installer
+  install_later steam-installer
+}
+
+# --- The apps' packages, all at once -----------------------------------------------------
+# Each app's step adds and checks its update source, then queues its packages
+# (install_later). After the last app, one apt run installs them all (install_queued): one
+# refresh of the package lists instead of one per app, the downloads from all the sources
+# at once, and dpkg's follow-up jobs (man pages, icon and desktop caches) once instead of
+# for every app. A few minutes faster on a new computer than one app at a time.
+APP_QUEUE=""   # a file, "<number in APPS>|<packages>" per app (set below, in Main)
+install_later() {   # install_later <package>...: (in an app's step) install with the others
+  printf '%s|%s\n' "$APP_I" "$*" >> "$APP_QUEUE"
+  echo "    installs with the other apps, after the last of them: $*"
+}
+app_name() { local name; IFS='|' read -r _ name _ <<< "${APPS[$1]}"; printf '%s' "${name%% (*}"; }
+install_queued() {
+  [[ -s "$APP_QUEUE" ]] || { echo "    nothing to install"; return 0; }
+  local i pkgs p all=() names=() failed=()
+  while IFS='|' read -r i pkgs; do
+    read -ra p <<< "$pkgs"; all+=("${p[@]}"); names+=("$(app_name "$i")")
+  done < "$APP_QUEUE"
+  echo "    $(printf '%s, ' "${names[@]}" | sed 's/, $//')"
+  apt_get update
+  apt_get_as "Installing ${#names[@]} apps (${#all[@]} packages)" install -y "${all[@]}" && return 0
+  # Together failed: one at a time, so it's clear which app it was (the others still install).
+  warn "installing them together failed: now one app at a time, to find which"
+  while IFS='|' read -r i pkgs; do
+    read -ra p <<< "$pkgs"
+    apt_get install -y "${p[@]}" || failed+=("$(app_name "$i")")
+  done < "$APP_QUEUE"
+  (( ${#failed[@]} == 0 )) || { warn "couldn't install: $(printf '%s, ' "${failed[@]}" | sed 's/, $//')"; return 1; }
+}
+# install_queued_step: install_queued as a step of its own, then the apps from their makers
+# that are installed now go in the record for dot uninstall (as the loop does for the rest).
+install_queued_step() {
+  local rc i choice check
+  step_begin "Install: the apps above, together"
+  ( set -e; install_queued ); rc=$?
+  if (( rc != 0 )); then step_end fail "exit code $rc"; else step_end ok; fi
+  [[ -s "$APP_QUEUE" ]] || return 0
+  while IFS='|' read -r i _; do
+    IFS='|' read -r choice _ check _ <<< "${APPS[$i]}"
+    [[ "$choice" == app:* ]] && is_done "$check" >/dev/null 2>&1 && mark_added "$choice"
+  done < "$APP_QUEUE"
+  return 0
 }
 
 # --- Main (the clock check, clock_step, is in lib.sh) ----------------------------------
 
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 chmod 755 "$TMP"   # lets apt's download user read the .deb files
+APP_QUEUE="$TMP/app-queue"
+# The apps (app:, pkg:) come first in APPS; their packages install together right before
+# the first entry that isn't one (the NVIDIA driver), which may need them installed.
+QUEUE_AT=${#APPS[@]}
+for i in "${!APPS[@]}"; do [[ "${APPS[$i]}" == app:* || "${APPS[$i]}" == pkg:* ]] || { QUEUE_AT=$i; break; }; done
 
 for tool in curl gpg sha256sum; do
   command -v "$tool" >/dev/null || { echo "Needs $tool first: sudo apt install $tool"; exit 1; }
@@ -588,7 +637,7 @@ header "$title" \
   "firewall and no Snap Firefox." \
   "Uses sudo. Yes to everything also accepts the Microsoft fonts licence."
 # shellcheck disable=SC2034  # read by step_begin in lib.sh
-STEP_TOTAL=${#APPS[@]}
+STEP_TOTAL=$(( ${#APPS[@]} + 1 ))   # and installing the apps together
 [[ "$DRY_RUN" == 1 ]] && note "Dry run: downloads are checked, but nothing is installed."
 if [[ "$DRY_RUN" != 1 ]]; then
   yes_flag "$@"
@@ -635,12 +684,15 @@ if [[ "$DRY_RUN" != 1 && "$YES_ALL" == 0 ]] && ui_gum; then
 fi
 
 titles=()
-for entry in "${APPS[@]}"; do
-  IFS='|' read -r _ name _ _ verb <<< "$entry"; titles+=("${verb:-Install}: $name")
+for i in "${!APPS[@]}"; do
+  (( i == QUEUE_AT )) && titles+=("Install: the apps above, together")
+  IFS='|' read -r _ name _ _ verb <<< "${APPS[$i]}"; titles+=("${verb:-Install}: $name")
 done
+(( QUEUE_AT == ${#APPS[@]} )) && titles+=("Install: the apps above, together")
 ui_plan "${titles[@]}"
 
 for i in "${!APPS[@]}"; do
+  (( i == QUEUE_AT )) && install_queued_step
   IFS='|' read -r choice name check fn verb <<< "${APPS[$i]}"
   verb="${verb:-Install}"
   step_begin "$verb: $name"
@@ -658,13 +710,18 @@ for i in "${!APPS[@]}"; do
   elif [[ "$DRY_RUN" != 1 ]] && ! ask "$verb $name?"; then
     step_end skip "you chose not to"; continue
   fi
+  APP_I=$i   # for install_later
   ( set -e; "$fn" )
   rc=$?
   if (( rc != 0 )); then step_end fail "exit code $rc"; else step_end ok; fi
   # An app from its maker that wasn't here before (ones already installed were skipped
-  # above), for dot uninstall. Ubuntu apps, the firewall and Snap Firefox mark their own.
-  if (( rc == 0 )) && [[ "$choice" == app:* ]]; then mark_added "$choice"; fi
+  # above), for dot uninstall. Ubuntu apps, the firewall and Snap Firefox mark their own;
+  # an app waiting to be installed with the others is marked once it is (install_queued_step).
+  if (( rc == 0 )) && [[ "$choice" == app:* ]] && ! grep -q "^$i|" "$APP_QUEUE" 2>/dev/null; then
+    mark_added "$choice"
+  fi
 done
+(( QUEUE_AT == ${#APPS[@]} )) && install_queued_step
 
 summary; ok=$?
 if [[ "$DRY_RUN" != 1 && "$UI_NESTED" == 0 ]]; then

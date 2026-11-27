@@ -271,6 +271,31 @@ for f in rclone.conf sub/credentials.json .npmrc .pypirc .pgpass work.ovpn; do
 done
 t "lets an ordinary file through" hook_file notes/rclone.md
 
+echo "A new computer's installs (Flatpaks in the background, the apps' packages together)"
+mkdir -p "$T/fp"; printf '#!/bin/sh\nsleep 30\n' > "$T/fp/flatpak"; chmod +x "$T/fp/flatpak"
+fp_bg="$T/fp/bg"
+t "flatpaks_installing: nothing started" not env FLATPAKS_BG="$fp_bg" bash -c 'source "$1/bin/lib.sh"; flatpaks_installing' _ "$ROOT"
+"$T/fp/flatpak" install x & fp_pid=$!
+echo "$fp_pid" > "$fp_bg.pid"
+t "flatpaks_installing: a flatpak install that's running" env FLATPAKS_BG="$fp_bg" bash -c 'source "$1/bin/lib.sh"; flatpaks_installing' _ "$ROOT"
+kill "$fp_pid" 2>/dev/null; wait "$fp_pid" 2>/dev/null
+echo "$$" > "$fp_bg.pid"   # an ID that's in use, but not by flatpak (as after a restart)
+t "flatpaks_installing: not some other program with the old ID" not env FLATPAKS_BG="$fp_bg" bash -c 'source "$1/bin/lib.sh"; flatpaks_installing' _ "$ROOT"
+# install_queued, with apt stood in for: together, and one at a time when that fails.
+queued() (   # queued <fail together: 0/1> <app that fails alone>: what it says and returns
+  load_fn bin/install-apps.sh install_queued; load_fn bin/install-apps.sh app_name
+  APP_QUEUE="$T/queue"; printf '0|google-chrome-stable\n2|code\n10|vlc qbittorrent\n' > "$APP_QUEUE"
+  apt_get() { [[ "$1" == update ]] && return 0; [[ "$*" != *"$FAIL_ALONE"* ]]; }
+  apt_get_as() { echo "together: ${*:4}"; [[ "$TOGETHER" == 0 ]]; }   # label install -y <packages>
+  warn() { echo "! $*"; }
+  TOGETHER="$1" FAIL_ALONE="$2"
+  install_queued; echo "rc=$?"
+)
+t "install_queued: all the apps' packages in one apt run" same "$(queued 0 none | grep -E 'together|rc=')" \
+  $'together: google-chrome-stable code vlc qbittorrent\nrc=0'
+t "install_queued: if that fails, one at a time, naming the app that failed" same "$(queued 1 code | grep -E "couldn't|rc=")" \
+  $"! couldn't install: VS Code"$'\nrc=1'
+
 echo "Checks before pushing (.githooks/pre-push)"
 # lint.sh only when the push changes something it checks; the tests every time.
 lints() { bash -c 'source "$1/.githooks/pre-push"; needs_lint "${@:2}"' _ "$ROOT" "$@"; }
@@ -693,6 +718,28 @@ mkdir -p "$HOME/.config/qBittorrent"
 touch "$HOME/.bashrc.orig" "$HOME/.bashrc.orig.20261122-101010" "$HOME/.config/qBittorrent/qBittorrent.conf.prev"
 t "dot check lists the backups install.sh made" same "$(dotfiles_backups | sed "s|$HOME/||" | sort | tr '\n' ' ')" \
   ".bashrc.orig .bashrc.orig.20261122-101010 .config/qBittorrent/qBittorrent.conf.prev "
+
+# Backups: on, off, never run (a new computer, nowhere to back up to yet), or behind.
+load_fn bin/check.sh backups_state
+backups_with() (   # backups_with <periodic> <last-backup, as gsettings shows it> [interval]: what it says
+  gsettings() {    # ( ): this stand-in stays in here
+    case "$1 ${3:-}" in
+      "list-keys "*) return 0 ;;
+      "get periodic") echo "$P" ;;
+      "get last-backup") echo "$L" ;;
+      "get periodic-period") echo "${I:-7}" ;;
+    esac
+  }
+  P="$1" L="$2" I="${3:-}"
+  backups_state
+)
+days_ago() { printf "'%s'" "$(date -d "-$1 days" --iso-8601=seconds)"; }
+t "backups: off" same "$(backups_with false "''")" off
+t "backups: on, but none has run yet (a new computer) is never, not on" same "$(backups_with true "''")" never
+t "backups: on, the last one 3 days ago" same "$(backups_with true "$(days_ago 3)")" "on 3"
+t "backups: more than twice the interval ago is late" same "$(backups_with true "$(days_ago 20)" 7)" "late 20"
+t "backups: a month-long interval isn't late at 20 days" same "$(backups_with true "$(days_ago 20)" 30)" "on 20"
+t "backups: Backups not installed says nothing" same "$(gsettings() { return 1; }; backups_state)" ""
 
 echo "The weekly reminder (check.sh --notify)"
 # notify-send is a stand-in, so no real notification pops up.

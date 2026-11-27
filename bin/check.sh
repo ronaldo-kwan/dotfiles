@@ -40,7 +40,7 @@ fix_hint() {
     ssh)     echo "dot ssh" ;;
     addapt)  echo "add them to setup/apt-packages.txt (or as -name to keep them off new computers)" ;;
     addother) echo "add each to install-apps.sh with its source, like ChatGPT (docs/apps.md); or write -name in setup/apt-packages.txt to keep it off new computers" ;;
-    backups) echo "open Backups, turn on Back Up Automatically, then dot push" ;;
+    backups) echo "open Backups: connect where to back up (Google Drive), turn on Back Up Automatically, then dot push" ;;
     save)    echo "dot push" ;;
     push)    echo "dot push" ;;
     pull)    echo "dot pull" ;;
@@ -53,11 +53,26 @@ fix_hint() {
     braveext) echo "the fixes open their Chrome Web Store pages in Brave, to add them" ;;
   esac
 }
-# Backups (Déjà Dup): is "Back Up Automatically" on?
-backups_state() { # prints on/off, or nothing if Backups isn't installed
+# Backups (Déjà Dup): is "Back Up Automatically" on, and does it back up? Prints one of
+#   on <days>     on, and the last backup was <days> days ago
+#   late <days>   on, but the last backup was more than twice its interval ago
+#   never         on, but no backup has finished yet: nowhere to back up to (a new computer
+#                 is like this until you connect Google Drive; setup/ doesn't save when this
+#                 computer last backed up)
+#   off
+# or nothing if Backups isn't installed.
+backups_state() {
   gsettings list-keys org.gnome.DejaDup >/dev/null 2>&1 || return 0
-  [[ "$(gsettings get org.gnome.DejaDup periodic)" == true ]] && echo on || echo off
+  [[ "$(gsettings get org.gnome.DejaDup periodic)" == true ]] || { echo off; return 0; }
+  local last when period days
+  last="$(gsettings get org.gnome.DejaDup last-backup | tr -d "'")"
+  # (Not date -d on an empty value: that's midnight today.)
+  if [[ -z "$last" ]] || ! when="$(date -d "$last" +%s 2>/dev/null)"; then echo never; return 0; fi
+  period="$(gsettings get org.gnome.DejaDup periodic-period | awk '{print $NF}')"
+  days=$(( ($(date +%s) - when) / 86400 ))
+  if (( days > 2 * ${period:-7} )); then echo "late $days"; else echo "on $days"; fi
 }
+ago() { case "$1" in 0) echo today ;; 1) echo yesterday ;; *) echo "$1 days ago" ;; esac; }
 info() { printf '  %s–%s %s\n' "$C_DIM" "$C_N" "$*"; }
 section() { printf '\n%s%s%s%s\n' "$C_ACC" "$C_B" "$*" "$C_N"; }
 # list_missing <description> <items...>: ok if nothing given, else one ✘ line
@@ -155,7 +170,12 @@ if [[ "$MODE" == notify ]]; then
   find_unsaved
   (( ${#unsaved[@]} )) && msgs+=("Ubuntu apps not in apt-packages.txt: ${unsaved[*]}")
   (( ${#unsaved_other[@]} )) && msgs+=("Apps from other sources not saved: ${unsaved_other[*]} (add to install-apps.sh, or -name)")
-  [[ "$(backups_state)" == off ]] && msgs+=("Automatic backups are off. Open Backups and turn on Back Up Automatically.")
+  backup_state="$(backups_state)"
+  case "${backup_state%% *}" in
+    off)   msgs+=("Automatic backups are off. Open Backups and turn on Back Up Automatically.") ;;
+    never) msgs+=("Automatic backups haven't run yet. Open Backups and connect Google Drive.") ;;
+    late)  msgs+=("The last backup was $(ago "${backup_state#* }"). Open Backups to see why.") ;;
+  esac
   # Once, until answered: dot uninstall --apps can't tell your apps from the dotfiles' ones.
   added_is_legacy && msgs+=("dot uninstall can't tell which apps you had before the dotfiles. Run: dot check")
   # Only once they've piled up: a few backups (your .orig from before) are expected.
@@ -287,15 +307,24 @@ if have code && chosen app:code; then
 fi
 
 section "Obsidian, safety, backups and reminder"
+# The GitHub CLI's sign-in (asked in the background above): the vault needs it.
+wait "$GH_PID" 2>/dev/null
+gh_signin="$(cat "$GH_STATE_FILE")"; rm -f "$GH_STATE_FILE"
 if ! chosen notes; then info "Obsidian vault: not chosen"
 elif [[ -d "$VAULT/.git" ]]; then ok "Obsidian vault: ${VAULT/#$HOME/\~}"
+# dot install can't clone it without the sign-in (a new computer, until you do it).
+elif [[ -z "$gh_signin" ]]; then bad "Obsidian vault not cloned: sign in to GitHub first (gh auth login), then dot install"
 else bad "Obsidian vault not cloned" install; fi
+# The hooks: the secret check in both repos; the checks before pushing only run in the dotfiles.
 for d in "$DOTFILES" "$VAULT"; do
   { [[ -d "$d/.git" ]] && chosen safety; } || continue
   hp="$(git -C "$d" config core.hooksPath)"
-  if [[ -n "$hp" && -x "$(cd "$d" && readlink -f "$hp")/pre-commit" ]]; then
-    ok "secret check before commits: ${d/#$HOME/\~}"
-  else bad "secret check not switched on for ${d/#$HOME/\~}" install; fi
+  hooks=(pre-commit) what="secret check before commits"
+  [[ "$d" == "$DOTFILES" ]] && hooks+=(pre-push) what+=", checks before pushing"
+  on=1
+  for h in "${hooks[@]}"; do [[ -n "$hp" && -x "$(cd "$d" && readlink -f "$hp")/$h" ]] || on=0; done
+  if (( on )); then ok "$what: ${d/#$HOME/\~}"
+  else bad "$what not switched on for ${d/#$HOME/\~}" install; fi
 done
 if [[ -n "$(git config --get user.email 2>/dev/null)" ]]; then ok "git name and email set ($(git config --get user.name))"
 else bad "git doesn't know your name and email" install; fi
@@ -303,15 +332,16 @@ if ! chosen safety; then :
 elif [[ -f "$HOME/.config/git/signing.gitconfig" && -f "$HOME/.ssh/id_ed25519.pub" ]]; then
   ok "commits signed with this computer's SSH key"
 else bad "commits aren't signed" ssh; fi
-wait "$GH_PID" 2>/dev/null
-case "$(cat "$GH_STATE_FILE")" in
+case "$gh_signin" in
   admin)   bad "the GitHub CLI can still add SSH keys to your account" ghkeys ;;
   limited) ok "the GitHub CLI can't add SSH keys to your account" ;;
 esac
-rm -f "$GH_STATE_FILE"
-case "$(backups_state)" in
-  on)  ok "automatic backups (every $(gsettings get org.gnome.DejaDup periodic-period) days)" ;;
-  off) bad "automatic backups are off" backups ;;
+backup_state="$(backups_state)"
+case "${backup_state%% *}" in
+  on)    ok "automatic backups (every $(gsettings get org.gnome.DejaDup periodic-period) days; the last one $(ago "${backup_state#* }"))" ;;
+  late)  bad "automatic backups: the last one was $(ago "${backup_state#* }"), though they're meant to run every $(gsettings get org.gnome.DejaDup periodic-period) days" backups ;;
+  never) bad "automatic backups haven't run yet (nowhere to back up to: a new computer needs Google Drive connected)" backups ;;
+  off)   bad "automatic backups are off" backups ;;
 esac
 if have systemctl && chosen safety; then
   if systemctl --user is-enabled dotfiles-reminder.timer >/dev/null 2>&1; then
@@ -494,7 +524,7 @@ has_fix addapt  && fix_step addapt "Ubuntu apps not saved" "Add ${unsaved[*]} to
 has_fix addother && warn "Not added: ${unsaved_other[*]} only come from their makers' own sources. Add each to install-apps.sh with its source (docs/apps.md), or write -name in setup/apt-packages.txt."
 has_fix record  && fix_step record "What the dotfiles added" "Say which apps the dotfiles installed (so uninstall keeps yours)?" adopt_record
 has_fix braveext && fix_step braveext "Brave extensions" "Open their Chrome Web Store pages in Brave?" open_brave_extensions
-has_fix backups && fix_step backups "Automatic backups" "Open Backups to turn them on?" open_backups
+has_fix backups && fix_step backups "Automatic backups" "Open Backups to set them up?" open_backups
 has_fix ghkeys  && fix_step ghkeys "GitHub CLI permissions" "Remove its permission to add SSH keys (approve in the browser)?" \
                      gh auth refresh -h github.com --remove-scopes "$GH_KEY_SCOPES"
 has_fix restart && warn "The NVIDIA driver needs a restart (and with Secure Boot, the blue MOK screen)."

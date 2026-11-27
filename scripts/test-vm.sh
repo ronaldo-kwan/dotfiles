@@ -43,7 +43,7 @@ INSTALL_TIMEOUT=$((90 * 60)) BOOT_TIMEOUT=$((10 * 60)) SETUP_TIMEOUT=$((3 * 60 *
 EXPECTED=(
   "^commits aren't signed"                                  # dot ssh, after gh auth login
   "^Obsidian vault not cloned"                              # gh auth login, then dot install
-  "^automatic backups are off"                              # Backups: Back Up Automatically
+  "^automatic backups haven't run yet"                       # Backups: connect Google Drive
   "^Brave extensions you saved that aren't added here"      # added by hand, from the Web Store
   "^snapshots out of date: apps/brave-settings\.json →"     # the same: its list of extensions
 )

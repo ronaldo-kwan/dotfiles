@@ -69,8 +69,8 @@ DOT_PLAIN=1 dot apps
 - Config links, terminal tools, and the two fonts: installed, and the pinned version (an older copy shows ✘; `dot install` replaces it)
 - Every app and system job from `install-apps.sh`, and the NVIDIA driver. If it isn't running because Ubuntu installed a new kernel before the NVIDIA module for it (this happens; the module follows within days), it says so, names an older kernel to start from the boot menu (**Advanced options for Ubuntu**) meanwhile, and tells you once Ubuntu has published the module (`sudo apt update && sudo apt full-upgrade`, then restart)
 - Flatpaks, GNOME extensions and VS Code extensions
-- The firewall, the Obsidian vault, the secret check, signed commits and the reminder
-- Automatic backups
+- The firewall, the Obsidian vault (without a GitHub sign-in, it says to run `gh auth login` first), the secret check and the checks before pushing, signed commits and the reminder
+- Automatic backups: switched on, and actually running (✘ if none has run yet, or the last one is more than twice their interval ago)
 - Whether the snapshots are out of date
 - Ubuntu apps you installed that aren't in `setup/apt-packages.txt`
 - Whether anything isn't committed or pushed, and whether GitHub has commits from another computer
@@ -85,7 +85,7 @@ DOT_PLAIN=1 dot apps
 
 Apps that only come from their maker's own update source, a PPA or a downloaded `.deb` are listed separately: `setup/apt-packages.txt` can't install them, because a new computer doesn't have that source. To keep one, add it to `install-apps.sh` with its source (see how ChatGPT is done: an `APPS` entry, its `APP_PARTS` line and its install function); otherwise write it as `-name`. `dot check` never adds these to the list.
 
-**Automatic backups** count as part of the setup: `dot check` shows ✘ while Backups' "Back Up Automatically" is off. Turn it on (and connect Google Drive), then run `dot push`, so new computers get it switched on too.
+**Automatic backups** count as part of the setup: `dot check` shows ✘ while Backups' "Back Up Automatically" is off, and also while it's on but no backup has run yet, or the last one is more than twice their interval ago. A new computer gets it switched on from `setup/`, but not where to back up to: there it says "haven't run yet" until you connect Google Drive in Backups. Turn it on there, then run `dot push`, so new computers get it switched on too.
 
 ### Fixing problems
 
@@ -112,7 +112,7 @@ A systemd user timer runs `check.sh --notify` on Sunday at 19:00, or at your nex
 
 - settings changed since your last `dot push`,
 - you installed Ubuntu apps that aren't in `setup/apt-packages.txt`,
-- automatic backups are off,
+- automatic backups are off, haven't run yet, or are behind,
 - `~/code/github/dotfiles` or your notes have changes that aren't committed or pushed, or
 - GitHub has commits from another computer (run `dot pull`).
 

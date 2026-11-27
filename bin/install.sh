@@ -126,6 +126,15 @@ install_flatpaks() {
   local -a apps
   mapfile -t apps < <(chosen_from flatpaks.txt flatpak:)
   (( ${#apps[@]} )) || { skip "no Flatpak apps chosen"; return 0; }
+  # Started in the background by fresh-install.sh (lib.sh): the first run leaves them be,
+  # the second waits for them, then checks below that they're all there.
+  if flatpaks_installing; then
+    if [[ "${FLATPAKS_WAIT:-0}" != 1 ]]; then
+      echo "    installing in the background (since the terminal tools); checked when install.sh runs again"
+      return 0
+    fi
+    flatpaks_wait
+  fi
   local app new=()
   for app in "${apps[@]}"; do flatpak info "$app" >/dev/null 2>&1 || new+=("$app"); done
   quiet "Installing ${#apps[@]} Flatpak apps (already installed ones are skipped)" \

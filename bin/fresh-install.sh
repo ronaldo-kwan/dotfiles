@@ -3,10 +3,13 @@
 #
 #   1. Update the system            (apt full-upgrade)
 #   2. Update firmware              (optional, only on charger power)
-#   3. Install the terminal tools   (starship, eza, ghostty, ...) and Flathub
-#   4. install.sh                   (configs, fonts, Flatpak apps, extensions, settings)
-#   5. install-apps.sh              (Chrome, VS Code, Steam, NVIDIA driver, weekly updates, ...)
-#   6. install.sh again             (VS Code extensions and Obsidian, now that the apps exist)
+#   3. Install the terminal tools   (starship, eza, ghostty, ...) and Flathub, and start the
+#                                   Flatpak apps installing in the background
+#   4. install.sh                   (configs, fonts, extensions, settings)
+#   5. install-apps.sh              (Chrome, VS Code, Steam, NVIDIA driver, weekly updates, ...;
+#                                   their packages in one apt run)
+#   6. install.sh again             (VS Code extensions, the Flatpak apps and Obsidian, now
+#                                   that the apps exist)
 #   7. Restart
 #
 # Before running it (see README, "Setting up a new computer"):
@@ -81,11 +84,19 @@ update_firmware() {
 
 # 3. Terminal tools and Flathub ---------------------------------------------------------
 install_tools() {
-  local t new=()
+  local t new=() apps=()
   for t in "${TOOLS[@]}"; do installed "$t" || new+=("$t"); done
   apt_get_as "Installing ${#TOOLS[@]} terminal tools" install -y "${TOOLS[@]}"
   for t in ${new[@]+"${new[@]}"}; do mark_added "pkg:$t"; done   # for dot uninstall
   run sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+  # The Flatpak apps: now, in the background, while apt does the rest (lib.sh). The ones
+  # not here yet go in the record for dot uninstall now: by the time install.sh looks,
+  # they're installed, so it can't tell they're new.
+  have flatpak || [[ "$DRY_RUN" == 1 ]] || return 0
+  mapfile -t apps < <(chosen_from flatpaks.txt flatpak:)
+  (( ${#apps[@]} )) || return 0
+  for t in "${apps[@]}"; do flatpak info "$t" >/dev/null 2>&1 || mark_added "flatpak:$t"; done
+  flatpaks_in_background "${apps[@]}"
 }
 
 # 4-6. The dotfiles scripts -------------------------------------------------------------
@@ -93,6 +104,8 @@ install_tools() {
 # very end, then changes once, right before the restart (apply_look below).
 run_install() { DEFER_DESKTOP=1 "$DOTFILES/bin/install.sh" --yes; }
 run_install_apps() { "$DOTFILES/bin/install-apps.sh"; }
+# The second time, its Flatpak step waits for the background install, then checks it.
+run_install_again() { FLATPAKS_WAIT=1 run_install; }
 
 run_steps \
   "Update the system|update_system" \
@@ -100,7 +113,8 @@ run_steps \
   "Terminal tools and Flathub|install_tools" \
   "Configs, fonts, Flatpak apps, extensions, settings (install.sh)|run_install" \
   "Apps, NVIDIA driver, weekly updates (install-apps.sh)|run_install_apps" \
-  "VS Code extensions and Obsidian (install.sh again)|run_install"
+  "VS Code extensions, Flatpak apps and Obsidian (install.sh again)|run_install_again"
+flatpaks_wait   # (if that step was skipped: not restarting halfway through an install)
 
 # Done -------------------------------------------------------------------------------
 summary; ok=$?

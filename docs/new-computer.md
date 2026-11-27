@@ -86,10 +86,10 @@ git clone https://github.com/ronaldo-kwan/dotfiles ~/code/github/dotfiles
 |---|---|
 | 1. Update the system | `apt full-upgrade` |
 | 2. Update firmware | BIOS, SSD and devices with `fwupdmgr`, only if the charger is plugged in |
-| 3. Terminal tools | Starship, eza, bat, fzf, zoxide, ble.sh, Ghostty, btop, lazygit and more, plus what checks the dotfiles' own scripts before a push (shellcheck, pyflakes, Node.js); adds Flathub |
-| 4. `install.sh` | Configs, fonts, Flatpak apps, GNOME extensions (including the frosted glass), desktop and app settings (on the same laptop, its display scale too), the lock screen, the secret check, the weekly reminder |
-| 5. `install-apps.sh` | Chrome, Brave Origin, VS Code, Claude Desktop, Claude Code, ChatGPT, Proton VPN, OBS, ONLYOFFICE, Steam, Ubuntu apps, the NVIDIA driver, weekly updates, monthly clean-up, the login screen's look, the firewall, and no Snap Firefox ([details](apps.md)) |
-| 6. `install.sh` again | VS Code's extensions and Obsidian, now that those apps exist |
+| 3. Terminal tools | Starship, eza, bat, fzf, zoxide, ble.sh, Ghostty, btop, lazygit and more, plus what checks the dotfiles' own scripts before a push (shellcheck, pyflakes, Node.js); adds Flathub and starts the Flatpak apps installing in the background, so they download while the next steps run |
+| 4. `install.sh` | Configs, fonts, GNOME extensions (including the frosted glass), desktop and app settings (on the same laptop, its display scale too), the lock screen, the secret check, the weekly reminder |
+| 5. `install-apps.sh` | Chrome, Brave Origin, VS Code, Claude Desktop, Claude Code, ChatGPT, Proton VPN, OBS, ONLYOFFICE, Steam, Ubuntu apps, the NVIDIA driver, weekly updates, monthly clean-up, the login screen's look, the firewall, and no Snap Firefox ([details](apps.md)). Each app's update source is added and checked first; then all their packages install in one go, which is minutes faster than one app at a time |
+| 6. `install.sh` again | VS Code's extensions and Obsidian, now that those apps exist; waits for the Flatpak apps and installs any that didn't make it |
 
 ### What you see
 
