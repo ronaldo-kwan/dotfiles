@@ -309,7 +309,7 @@ EOF
 # create: a fresh Ubuntu, installed by itself, kept as the snapshot "clean".
 create() {
   local t0=$SECONDS pid uuid
-  header "Test machine: a fresh Ubuntu 26.04" "Installs by itself in GNOME Boxes ($VM). About 20 minutes."
+  header "Test machine: a fresh Ubuntu 26.04" "Installs by itself in GNOME Boxes ($VM). About 15 minutes."
   if ! have flatpak || ! flatpak info org.gnome.Boxes >/dev/null 2>&1; then
     die "GNOME Boxes isn't installed: flatpak install flathub org.gnome.Boxes"
   fi

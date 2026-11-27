@@ -26,7 +26,7 @@ gh workflow run check.yml --repo ronaldo-kwan/dotfiles
 
 (Or **Actions → check → Run workflow** on GitHub, which works from a phone too.) Within a few minutes it has installed everything in a clean Ubuntu 26.04 and tried every app's download and signing key. If something fails, such as a maker that moved a download or changed its key, fix it now and push, rather than halfway through the new computer's setup. See [GitHub checks](maintenance.md#github-checks) for what it covers.
 
-To try the whole setup the way the new computer will get it (a fresh Ubuntu, the website's command, the restart, then `dot check`), run `dot vm` here too: it does it in a GNOME Boxes virtual machine, in about an hour the first time. See [A test in a virtual machine](maintenance.md#a-test-in-a-virtual-machine).
+To try the whole setup the way the new computer will get it (a fresh Ubuntu, the website's command, the restart, then `dot check`), run `dot vm` here too: it does it in a GNOME Boxes virtual machine: about 25 minutes the first time (it installs Ubuntu first), about 7 after that. See [A test in a virtual machine](maintenance.md#a-test-in-a-virtual-machine).
 
 They also run by themselves every Monday, but a maker can change something any day, so run them now. If the run warns that an action or a pinned download is old, or fails because of one, see [updating the actions](maintenance.md#pinned-downloads).
 

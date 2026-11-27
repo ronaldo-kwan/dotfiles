@@ -5,9 +5,10 @@
 #   dot check            full check (links, tools, apps, firewall, Flatpaks, extensions,
 #                        signing, backups, scheduled jobs, Obsidian, unsaved changes);
 #                        if anything is wrong, asks whether to fix it, then offers each
-#                        fix in order (asks before each one; Enter = yes)
+#                        fix in order (asks before each one; Enter = yes, except for
+#                        saving to GitHub, the last one: Enter = no)
 #   dot check --fix      the same, without the first question
-#   check.sh --notify    only "anything to save? backups off?", as a desktop
+#   check.sh --notify    only "anything to save? backups off or not running?", as a desktop
 #                        notification (used by the weekly reminder)
 #
 # Exits with 1 if anything needs attention.

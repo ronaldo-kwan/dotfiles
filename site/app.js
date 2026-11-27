@@ -342,7 +342,7 @@ function demo() {
     }),
     line([["✔ ", "ok"], [`${apps} apps`, "hl"], [" from their makers, Ubuntu and Flathub", "dim"]]),
     "",
-    line([["All done. ", "ok"], ["Restarting in 10 s…", "warn"]]),
+    line([["All done. ", "ok"], ["Restarting in 15 s…", "warn"]]),
   ];
   const prompt = '<span class="p">❯</span> ';
   if (CALM) { pre.innerHTML = prompt + esc(typed) + "\n" + out.join("\n") + "\n" + prompt; return; }

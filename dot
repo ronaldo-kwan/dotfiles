@@ -108,7 +108,9 @@ EOF
     check) cat <<'EOF'
 Checks links, tools, apps, extensions, firewall, signing, backups and unsaved changes.
 Each problem says what fixes it. If there are any, it offers to fix them one by one,
-asking before each. Nothing changes unless you say yes.
+asking before each (Enter = yes). Saving to GitHub comes last, after refreshing the
+snapshots, and is the one where Enter means no: type y to push. Nothing changes unless
+you say yes.
 
   dot check
   dot check --fix          go straight to the fixes

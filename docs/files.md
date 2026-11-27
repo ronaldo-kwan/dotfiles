@@ -24,12 +24,12 @@ dotfiles/
 ├── home/                             config files, linked into ~ by Stow
 │   └── bash/ git/ starship/ ghostty/ …
 ├── setup/                            snapshots: apps, extensions, desktop settings
-├── scripts/                          snapshot, SSH, website and test helpers
+├── scripts/                          snapshot, SSH, website, lint, the tests and the VM test
 ├── system/                           weekly and monthly jobs, Brave's settings
 ├── licenses/                         licences of the Catppuccin themes and the wallpaper
 ├── site/                             the website: the installer, and the docs in docs/
 ├── docs/                             these pages (images/: the README screenshot)
-├── .githooks/                        the secret check
+├── .githooks/                        the secret check, and the checks before pushing
 └── .github/                          GitHub checks, the website and Dependabot
 ```
 
@@ -68,9 +68,9 @@ The folders in `home/` are laid out for [GNU Stow](https://www.gnu.org/software/
 | File | What it is |
 |---|---|
 | `bootstrap.sh` | The one command for a fresh Ubuntu: installs git, gum and gh, downloads the repo, starts `fresh-install.sh` |
-| `bin/fresh-install.sh` | Sets up a freshly installed Ubuntu in one go: system and firmware update, tools, then the two scripts below |
+| `bin/fresh-install.sh` | Sets up a freshly installed Ubuntu in one go: system and firmware update, tools (the Flatpak apps start installing in the background there), then the two scripts below, and a restart that waits for any other software update to finish |
 | `bin/install.sh` | Configs, fonts, Flatpak apps, extensions, settings, the secret check and the reminder (no sudo) |
-| `bin/install-apps.sh` | Apps from their makers' sources, the NVIDIA driver, Steam on the NVIDIA card, weekly updates, monthly clean-up, Snap Firefox removal (sudo) |
+| `bin/install-apps.sh` | Apps from their makers' sources (each source added and checked, then all their packages installed in one go), the NVIDIA driver, Steam on the NVIDIA card, weekly updates, monthly clean-up, Snap Firefox removal (sudo) |
 | `bin/post-upgrade.sh` | After upgrading Ubuntu to a new release: switches app update sources back on and puts everything back |
 | `bin/uninstall.sh` | `dot uninstall`: undoes `install.sh` for your user (links, desktop settings, extensions, fonts, reminder, secret check); `--apps` also removes the apps and system parts you pick |
 
@@ -84,18 +84,18 @@ The folders in `home/` are laid out for [GNU Stow](https://www.gnu.org/software/
 | `scripts/snapshot.sh` | Writes the snapshots in `setup/` (used by `dot push`, and by `check.sh` into a temporary copy) |
 | `scripts/dump-desktop-settings.sh` | Writes `setup/desktop-settings.dconf` |
 | `scripts/save-app-settings.sh` | Writes `setup/apps/` |
-| `scripts/test-helpers.sh` | Quick checks of the helpers in `lib.sh` and the app table in `install-apps.sh`; GitHub's checks run it |
+| `scripts/test-helpers.sh` | Quick checks of the helpers in `lib.sh` and the app table in `install-apps.sh`, in five groups at once (about 2 seconds); GitHub's checks and the checks before each push run it |
 | `docs/brave-phone.md` | How to set Brave on Android the same as the laptop (a phone can't get it from the dotfiles) |
 | `scripts/brave-settings.py` | Saves and puts back Brave Origin's own settings: an allowlist from its profile, never the account, tabs or per-site parts (used by `dot push`, `dot check` and `install.sh`) |
-| `scripts/lint.sh` | Looks for mistakes in the scripts without running them: syntax, `shellcheck`, `pyflakes`, `node --check` and ESLint; GitHub's checks run it |
+| `scripts/lint.sh` | Looks for mistakes in the scripts without running them: syntax, `shellcheck` (every script at once), `pyflakes`, `node --check` and ESLint; GitHub's checks run it, and so do the checks before a push that changes scripts |
 | `scripts/test-desktop.sh` | Loads the saved desktop settings and resets them again, checking each one; only runs in GitHub's checks (it changes desktop settings) |
-| `scripts/test-vm.sh` | `dot vm`: tests the whole setup like a new computer, in a GNOME Boxes virtual machine: a fresh Ubuntu, the website's command, the restart, then `dot check` ([how](maintenance.md#a-test-in-a-virtual-machine)) |
+| `scripts/test-vm.sh` | `dot vm`: tests the whole setup like a new computer, in a GNOME Boxes virtual machine: a fresh Ubuntu, the website's command, the restart, then `dot check`. Keeps apt's downloads on a cache disk between tests, so later ones take about 7 minutes ([how](maintenance.md#a-test-in-a-virtual-machine)) |
 
 ### Shared
 
 | File | What it is |
 |---|---|
-| `bin/lib.sh` | Helpers shared by the scripts (questions, gum, the progress panel, steps, spinner, summary, clock check, apt-get, dry runs, reading the `setup/` lists), plus the lists of terminal tools and stow packages and the places outside `~/code/github/dotfiles` the scripts use (notes vault, wallpaper, fonts, which dconf file goes where) |
+| `bin/lib.sh` | Helpers shared by the scripts (questions, gum, the progress panel, steps, spinner, summary, clock check, apt-get, dry runs, reading the `setup/` lists, which packages are installed, fetching both repos at once, the Flatpak apps in the background), plus the lists of terminal tools and stow packages and the places outside `~/code/github/dotfiles` the scripts use (notes vault, wallpaper, fonts, which dconf file goes where) |
 
 ## Snapshots (`setup/`)
 

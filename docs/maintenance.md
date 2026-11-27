@@ -20,6 +20,7 @@ dot push                       # the message says what changed: "Update desktop 
 dot push "Describe the change" # or your own
 dot push --dry-run             # only show what would be saved (-n)
 dot push --yes                 # don't ask (-y)
+dot push --no-snapshot         # save what's changed, without refreshing the snapshots first
 ```
 
 It refreshes the snapshots, lists what will be saved in `~/code/github/dotfiles` and your Obsidian notes (message "Update notes"), and asks first. With gum you can also change the message there. Then it commits everything (`git add -A`) and pushes; the [secret check](#secret-check-before-commits) runs before each commit, and the [checks before pushing](#checks-before-pushing) before the push. If GitHub has commits this computer doesn't, it stops before changing anything and asks you to `dot pull` first.
@@ -38,7 +39,7 @@ Changes you push from one computer don't reach the others by themselves. On the 
 dot pull
 ```
 
-1. **Gets the new commits** for `~/code/github/dotfiles` and your notes, and lists them. It only fast-forwards, so it never merges or overwrites anything.
+1. **Gets the new commits** for `~/code/github/dotfiles` and your notes (both fetched at once), and lists them. It only fast-forwards, so it never merges or overwrites anything.
 2. **Offers to apply them** with `dot install`: new config links, extensions, desktop and app settings. Config files that were already linked are up to date straight away.
 3. **Offers `dot apps`** if the app lists changed (`install-apps.sh` or `setup/apt-packages.txt`).
 
@@ -232,7 +233,7 @@ A container has no real desktop, no restart and no first sign-in. For the whole 
 dot vm
 ```
 
-1. The first time, it installs a fresh Ubuntu 26.04 by itself (about 20 minutes) and keeps it as a snapshot, "clean". It uses the newest Ubuntu 26.04 desktop ISO in Boxes' folder (`~/.var/app/org.gnome.Boxes/data/gnome-boxes/isos/`), checked against Ubuntu's checksums, and offers to download one if there's none.
+1. The first time, it installs a fresh Ubuntu 26.04 by itself (about 15 minutes) and keeps it as a snapshot, "clean". It uses the newest Ubuntu 26.04 desktop ISO in Boxes' folder (`~/.var/app/org.gnome.Boxes/data/gnome-boxes/isos/`), checked against Ubuntu's checksums, and offers to download one if there's none.
 2. Each test goes back to that snapshot, signs in, and runs the website's command in a terminal: what's on GitHub, so push first (it warns about commits that aren't).
 3. The setup ends with a restart. After it, `dot check` runs in a new terminal.
 

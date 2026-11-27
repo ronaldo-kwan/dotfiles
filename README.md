@@ -57,11 +57,11 @@ Everything goes through one command, `dot`. On its own, **`dot` opens a menu** t
 |---|---|
 | `dot push` | Refreshes the snapshots in `setup/` (apps, extensions, dock, desktop settings), shows what will be saved (the files, and the lines that changed), and asks before committing and pushing, your Obsidian notes too. The message says what changed ("Update desktop settings"), or give your own: `dot push "Add Steam"`. `--dry-run` only shows it |
 | `dot pull` | Gets changes you saved on another computer, then offers to apply them |
-| `dot check` | Health check: links, tools, apps, extensions, firewall, signing, backups, unsaved changes. If something's wrong, offers to fix each problem in order, showing what each fix would change before it asks |
+| `dot check` | Health check: links, tools, apps, extensions, firewall, signing, backups, unsaved changes. If something's wrong, offers to fix each problem in order, showing what each fix would change before it asks (<kbd>Enter</kbd> = yes, except for saving to GitHub) |
 | `dot cd` · `dot edit` | Go to `~/code/github/dotfiles` · open it in VS Code |
 | `dot install` · `dot apps` · `dot fresh` | Run the setup scripts again (each is safe to rerun) |
 | `dot uninstall` | Undo it: your own config files back, Ubuntu's desktop look, extensions and fonts removed. `--apps` also removes the apps you pick ([details](docs/new-computer.md#undoing-it)) |
-| `dot vm` | Test the whole setup like a new laptop, in a GNOME Boxes virtual machine: a fresh Ubuntu, the website's command, the restart, then `dot check` (what's on GitHub: push first). About 10 minutes ([details](docs/maintenance.md#a-test-in-a-virtual-machine)) |
+| `dot vm` | Test the whole setup like a new laptop, in a GNOME Boxes virtual machine: a fresh Ubuntu, the website's command, the restart, then `dot check` (what's on GitHub: push first). About 7 minutes, reusing earlier tests' downloads (`--no-cache` for fresh ones) ([details](docs/maintenance.md#a-test-in-a-virtual-machine)) |
 | `update` | Update Ubuntu packages now (it also happens weekly by itself) |
 
 > [!NOTE]
