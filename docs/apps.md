@@ -48,6 +48,25 @@ If a maker changes its download link, update the script; the table shows the man
 | Steam | Ubuntu's own package; needs 32-bit support: `sudo dpkg --add-architecture i386` | `steam-installer` |
 | Ubuntu apps | `sudo apt install` the packages in [`setup/apt-packages.txt`](../setup/apt-packages.txt) | see the file |
 
+## Brave Origin's settings
+
+`install-apps.sh` also puts [`system/etc/brave/policies/managed/dotfiles.json`](../system/etc/brave/policies/managed/dotfiles.json) in `/etc/brave/policies/managed/`, where Brave reads settings an administrator sets. They apply from Brave's next start, show at `brave://policy`, and are locked in Brave's own settings (with a "managed by your organization" note). Shields' ad blocking and fingerprinting levels are left at Brave's defaults: "aggressive" and "strict" break sites.
+
+| Setting | Value | Why |
+|---|---|---|
+| `BraveP3AEnabled`, `BraveStatsPingEnabled`, `BraveWebDiscoveryEnabled`, `MetricsReportingEnabled` | off | No product analytics, daily usage ping, Web Discovery Project or diagnostic reports sent to Brave |
+| `BraveGlobalPrivacyControlEnabled` | on | Tells sites not to sell or share your data (a legal opt-out in some places) |
+| `BraveDeAmpEnabled`, `BraveDebouncingEnabled`, `BraveTrackingQueryParametersFilteringEnabled` | on | Skips Google's AMP pages and tracking redirects, and strips tracking parts (like `fbclid`) from links |
+| `BraveReduceLanguageEnabled` | on | Shares less about your languages, which sites use to tell people apart |
+| `BlockThirdPartyCookies` | on | No cookies from other sites embedded in a page |
+| `WebRtcIPHandling` | `default_public_interface_only` | Video calls still work, but sites can't see your local network addresses (with Proton VPN on, only the VPN's) |
+| `BackgroundModeEnabled` | off | Closing Brave quits it, instead of leaving it running |
+| `AutofillCreditCardEnabled` | off | Card numbers aren't saved in the browser |
+
+`brave://policy` lists `AutofillCreditCardEnabled` as deprecated: Chromium is moving it into a newer `AutofillSettings` policy. It still applies (cards aren't saved). Once `AutofillSettings`' format is documented, switch to it; if a future Brave drops the old one, `brave://policy` shows it as unknown.
+
+To change one, edit the file and run `dot apps`; `dot check` shows ✘ until the computer has the saved version. `dot uninstall --apps` removes the file with Brave.
+
 ## What else it sets up
 
 | Part | What it does |

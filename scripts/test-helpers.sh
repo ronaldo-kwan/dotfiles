@@ -229,6 +229,14 @@ for f in rclone.conf sub/credentials.json .npmrc .pypirc .pgpass work.ovpn; do
 done
 t "lets an ordinary file through" hook_file notes/rclone.md
 
+echo "Brave Origin's settings (system/etc/brave)"
+policy="$ROOT/system/etc/brave/policies/managed/dotfiles.json"
+t "the policy file is valid JSON" python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$policy"
+# Every setting in it is explained in docs/apps.md (Brave ignores a misspelt one silently).
+undocumented="$(python3 -c 'import json, sys; [print(k) for k in json.load(open(sys.argv[1]))]' "$policy" \
+  | while read -r k; do grep -q "\`$k\`" "$ROOT/docs/apps.md" || echo "$k"; done)"
+t "every setting is in docs/apps.md" same "$undocumented" ""
+
 echo "Signing-key files (install-apps.sh key_ok)"
 load_fn bin/install-apps.sh key_ok
 # Three throwaway keys, made here (no network): A and B are "the maker's", X is someone else's.

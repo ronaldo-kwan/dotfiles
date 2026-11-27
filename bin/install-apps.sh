@@ -20,6 +20,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, skip, ask, run, apt_get,
 
 # Where apt keeps update sources and their signing keys
 APT_SOURCES=/etc/apt/sources.list.d APT_KEYS=/usr/share/keyrings
+# Brave Origin's settings: a policy file in system/etc/, put in /etc/ as it is (Brave reads
+# /etc/brave/policies/managed/, as regular Brave does). What each setting does: docs/apps.md.
+BRAVE_POLICY=brave/policies/managed/dotfiles.json
 
 # --- What it sets up -------------------------------------------------------------------
 # One line per entry, in order:
@@ -29,7 +32,7 @@ APT_SOURCES=/etc/apt/sources.list.d APT_KEYS=/usr/share/keyrings
 # are offered as single apps.
 APPS=(
   "app:chrome|Google Chrome|google-chrome-stable|install_chrome"
-  "app:brave-origin|Brave Origin|brave-origin|install_brave_origin"
+  "app:brave-origin|Brave Origin|check_brave_origin|install_brave_origin"
   "app:code|VS Code|code|install_vscode"
   "app:claude|Claude Desktop|claude-desktop|install_claude"
   "app:claude-code|Claude Code (the claude command)|claude-code|install_claude_code"
@@ -53,7 +56,7 @@ APPS=(
 # uninstall.sh --apps removes these; check.sh counts the packages as saved.
 declare -gA APP_PARTS=(
   [app:chrome]="google-chrome-stable|$APT_SOURCES/google-chrome.sources $APT_SOURCES/google-chrome.list $APT_KEYS/google-chrome.gpg"
-  [app:brave-origin]="brave-origin|$APT_SOURCES/brave-browser-release.sources $APT_KEYS/brave-browser-archive-keyring.gpg"
+  [app:brave-origin]="brave-origin|$APT_SOURCES/brave-browser-release.sources $APT_KEYS/brave-browser-archive-keyring.gpg /etc/$BRAVE_POLICY"
   [app:code]="code|$APT_SOURCES/vscode.sources $APT_SOURCES/vscode.list $APT_KEYS/microsoft.gpg"
   [app:claude]="claude-desktop|$APT_SOURCES/claude-desktop.list $APT_KEYS/claude-desktop-archive-keyring.asc"
   [app:claude-code]="claude-code|$APT_SOURCES/claude-code.list $APT_KEYS/claude-code.asc"
@@ -76,6 +79,13 @@ entry_chosen() { if [[ "$1" == *'*' ]]; then chosen_any "${1%\*}"; else chosen "
 ubuntu_apps() { chosen_from apt-packages.txt pkg:; }
 check_ubuntu_apps() {
   local p; for p in $(ubuntu_apps); do installed "$p" || return 1; done
+}
+check_brave_origin() {
+  installed brave-origin || return 1
+  if ! cmp -s "$DOTFILES/system/etc/$BRAVE_POLICY" "/etc/$BRAVE_POLICY"; then
+    echo "    installed, but without the saved settings (/etc/$BRAVE_POLICY)"
+    return 1
+  fi
 }
 check_onlyoffice() {
   installed onlyoffice-desktopeditors || return 1
@@ -330,15 +340,20 @@ install_brave_origin() {
   # Brave Origin: Brave without Leo AI, Rewards, the wallet, the VPN and News (free on
   # Linux). From Brave's own release source, the one regular Brave uses too: the same
   # file names and contents as Brave's install steps (brave.com/origin/linux), so it
-  # matches if Brave was set up from there before.
-  add_source brave-browser-release.sources brave-browser-archive-keyring.gpg \
-    https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg "$BRAVE_KEYS" "Types: deb
+  # matches if Brave was set up from there before. Then its settings (telemetry off,
+  # tracking protections locked on: docs/apps.md), applied from Brave's next start.
+  if ! installed brave-origin; then
+    add_source brave-browser-release.sources brave-browser-archive-keyring.gpg \
+      https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg "$BRAVE_KEYS" "Types: deb
 URIs: https://brave-browser-apt-release.s3.brave.com
 Suites: stable
 Components: main
 Architectures: amd64 arm64
-Signed-By: $APT_KEYS/brave-browser-archive-keyring.gpg"
-  apt_get install -y brave-origin
+Signed-By: $APT_KEYS/brave-browser-archive-keyring.gpg" || return 1
+    apt_get install -y brave-origin
+  fi
+  run sudo install -D -m 644 "$DOTFILES/system/etc/$BRAVE_POLICY" "/etc/$BRAVE_POLICY"
+  echo "    settings: /etc/$BRAVE_POLICY (see them at brave://policy)"
 }
 
 install_vscode() {

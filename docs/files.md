@@ -25,7 +25,7 @@ dotfiles/
 │   └── bash/ git/ starship/ ghostty/ …
 ├── setup/                            snapshots: apps, extensions, desktop settings
 ├── scripts/                          snapshot, SSH, website and test helpers
-├── system/                           weekly and monthly jobs
+├── system/                           weekly and monthly jobs, Brave's settings
 ├── licenses/                         licences of the Catppuccin themes and the wallpaper
 ├── site/                             the website: the installer, and the docs in docs/
 ├── docs/                             these pages (images/: the README screenshot)
@@ -118,7 +118,7 @@ Written by `dot push` and restored by `install.sh`, except `apt-packages.txt`, w
 
 | File | What it is |
 |---|---|
-| `system/etc/` | The weekly update and monthly clean-up jobs; `@USER@` is replaced by your username when installed |
+| `system/etc/` | The weekly update and monthly clean-up jobs (`@USER@` is replaced by your username when installed), and Brave Origin's settings (`brave/policies/managed/dotfiles.json`) |
 | `.githooks/pre-commit` | The [secret check](maintenance.md#secret-check-before-commits) |
 | `.shellcheckrc` | `shellcheck`'s settings for every script (and why each one is there) |
 | `package.json`, `package-lock.json`, `eslint.config.mjs` | ESLint for the website's scripts (`scripts/lint.sh` runs it; `node_modules/` isn't saved). Nothing here goes on the computers |

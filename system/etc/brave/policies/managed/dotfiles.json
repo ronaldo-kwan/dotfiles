@@ -1,0 +1,15 @@
+{
+  "BraveP3AEnabled": false,
+  "BraveStatsPingEnabled": false,
+  "BraveWebDiscoveryEnabled": false,
+  "MetricsReportingEnabled": false,
+  "BraveGlobalPrivacyControlEnabled": true,
+  "BraveDeAmpEnabled": true,
+  "BraveDebouncingEnabled": true,
+  "BraveTrackingQueryParametersFilteringEnabled": true,
+  "BraveReduceLanguageEnabled": true,
+  "BlockThirdPartyCookies": true,
+  "WebRtcIPHandling": "default_public_interface_only",
+  "BackgroundModeEnabled": false,
+  "AutofillCreditCardEnabled": false
+}
