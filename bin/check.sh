@@ -430,26 +430,34 @@ preview_pull() {   # the commits waiting on GitHub (repo_behind fetched them abo
   return 0
 }
 indent() { local l; while IFS= read -r l; do printf '%s%s\n' "$1" "$l"; done; }   # indent <prefix>: each line of stdin
+# preview_save: the snapshot settings that would change, line by line (written into a copy,
+# as stale_snapshots does, so looking doesn't change setup/).
+preview_save() {
+  local tmp snap
+  fix_why save
+  tmp="$(mktemp -d)"; cp -r "$SETUP" "$tmp/setup"
+  bash "$DOTFILES/scripts/snapshot.sh" "$tmp/setup" >/dev/null 2>&1
+  snap="$(cd "$DOTFILES" && diff -ru -U0 setup "$tmp/setup" 2>/dev/null \
+    | sed "s|$tmp/setup|setup|g" | diff_lines 30 "dot push --dry-run")"
+  rm -rf "$tmp"
+  [[ -z "$snap" ]] || { printf '    %sThe snapshots would get:%s\n' "$C_DIM" "$C_N"; indent '  ' <<< "$snap"; }
+  printf '    %s(only setup/ on this computer changes: nothing is saved to GitHub yet)%s\n' "$C_DIM" "$C_N"
+  return 0
+}
+refresh_snapshots() { bash "$DOTFILES/scripts/snapshot.sh"; did "setup/ now matches this computer"; }
 preview_push() {   # what dot push would save, without changing anything yet
-  local d tmp files snap unpushed
+  local d files unpushed
+  fix_why push
+  if (( SNAPSHOTS_REFRESHED )); then   # the step before: now it's for saving them
+    [[ -n "${FIX_WHY[push]:-}" ]] || printf '    %sThis saves:%s\n' "$C_DIM" "$C_N"
+    printf '      %s✔%s the snapshots refreshed above\n' "$C_OK" "$C_N"
+  fi
   for d in "$DOTFILES" "$VAULT"; do
     [[ -d "$d/.git" ]] || continue
     files="$(git -C "$d" status --short 2>/dev/null)"
     unpushed="$(git -C "$d" log --format='%h %s' '@{u}..' 2>/dev/null)"
-    snap=''
-    if [[ "$d" == "$DOTFILES" ]]; then
-      # The snapshots dot push would refresh: written into a copy (as stale_snapshots does)
-      tmp="$(mktemp -d)"; cp -r "$SETUP" "$tmp/setup"
-      bash "$DOTFILES/scripts/snapshot.sh" "$tmp/setup" >/dev/null 2>&1
-      snap="$(cd "$DOTFILES" && diff -ru -U0 setup "$tmp/setup" 2>/dev/null \
-        | sed "s|$tmp/setup|setup|g" | diff_lines 30 "dot push --dry-run")"
-      rm -rf "$tmp"
-    fi
-    [[ -n "$files$unpushed$snap" ]] || continue
+    [[ -n "$files$unpushed" ]] || continue
     printf '    %s%s%s would get:\n' "$C_B" "${d/#$HOME/\~}" "$C_N"
-    if [[ -n "$snap" ]]; then
-      printf '    %sSnapshots refreshed from this computer:%s\n' "$C_DIM" "$C_N"; indent '  ' <<< "$snap"
-    fi
     if [[ -n "$files" ]]; then
       printf '    %sChanged files:%s\n' "$C_DIM" "$C_N"; head -n 12 <<< "$files" | sed 's/^/      /'
       [[ "$d" == "$DOTFILES" ]] && git -C "$d" diff HEAD -U0 --no-color --no-ext-diff 2>/dev/null \
@@ -459,7 +467,7 @@ preview_push() {   # what dot push would save, without changing anything yet
       printf '    %sCommits not on GitHub yet:%s\n' "$C_DIM" "$C_N"; indent '      ' <<< "$unpushed"
     fi
   done
-  printf '    %s(dot push writes the message from what changed, then commits and pushes)%s\n' "$C_DIM" "$C_N"
+  printf '    %s(dot push writes the message from what changed, then commits and pushes to GitHub)%s\n' "$C_DIM" "$C_N"
   return 0
 }
 # fix_step <key> "title" "question" command...: one fix as its own step. Shows what it
@@ -468,7 +476,7 @@ fix_step() {
   local key="$1" title="$2" q="$3"; shift 3
   step_begin "$title"
   if declare -F "preview_$key" >/dev/null; then "preview_$key"; else fix_why "$key"; fi
-  if ! ask "$q"; then step_end skip "you chose not to"; return; fi
+  if ! "${FIX_ASK:-ask}" "$q"; then step_end skip "you chose not to"; return; fi
   # Not `( set -e; ... ) && ...`: after && bash ignores set -e inside the ( ), so a fix
   # that failed halfway would carry on and could still show ✔. Like run_step in lib.sh.
   ( set -e; "$@" )
@@ -529,10 +537,18 @@ has_fix ghkeys  && fix_step ghkeys "GitHub CLI permissions" "Remove its permissi
                      gh auth refresh -h github.com --remove-scopes "$GH_KEY_SCOPES"
 has_fix restart && warn "The NVIDIA driver needs a restart (and with Secure Boot, the blue MOK screen)."
 has_fix nvidiakernel && warn "NVIDIA: $(fix_hint nvidiakernel)"
-# Save last, after anything above that changed files. dot push refreshes the snapshots
-# and saves your notes too.
-if has_fix save || [[ -n "$(repo_state "$DOTFILES")" ]] || [[ -d "$VAULT/.git" && -n "$(repo_state "$VAULT")" ]]; then
-  fix_step push "Save to GitHub" "Save this to GitHub (dot push)?" "$DOTFILES/dot" push --yes
+# Saving last, after anything above that changed files, in two steps, each asked on its
+# own: the snapshots (only setup/ here changes), then GitHub (commit and push, your notes too).
+# Pushing publishes, so for that one Enter means no.
+SNAPSHOTS_REFRESHED=0 push_args=(push --yes)
+if has_fix save; then
+  fix_step save "Snapshots" "Refresh the snapshots in setup/ from this computer?" refresh_snapshots
+  if [[ "${RESULTS[-1]}" == ok\|* ]]; then SNAPSHOTS_REFRESHED=1
+  else push_args+=(--no-snapshot); fi   # you said no: saving mustn't refresh them either
+fi
+if [[ -n "$(repo_state "$DOTFILES")" ]] || [[ -d "$VAULT/.git" && -n "$(repo_state "$VAULT")" ]]; then
+  FIX_ASK=ask_no fix_step push "Save to GitHub" "Commit and push this to GitHub (dot push)? Enter = no" \
+    "$DOTFILES/dot" "${push_args[@]}"
 fi
 summary
 printf '\n  %sCheck again: dot check%s\n' "$C_DIM" "$C_N"

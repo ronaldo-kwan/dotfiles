@@ -149,7 +149,7 @@ _dot() {
   else
     case "${COMP_WORDS[1]}" in
       help)         [ "$COMP_CWORD" = 2 ] && words="$cmds" ;;
-      push)         words="--dry-run --yes --help" ;;
+      push)         words="--dry-run --yes --no-snapshot --help" ;;
       pull)         words="--yes --help" ;;
       check)        words="--fix --help" ;;
       install|apps) words="--yes --help" ;;

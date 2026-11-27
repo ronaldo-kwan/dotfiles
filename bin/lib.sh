@@ -393,6 +393,19 @@ ask() {
   fi
   local a; read -rp "    ${C_INFO}?${C_N} $1 ${C_DIM}[Y/n]${C_N} " a; [[ ! "$a" =~ ^[Nn]$ ]]
 }
+# ask_no "Question?": the same, but Enter means no (and so does no terminal): for what can't
+# be quietly undone, like pushing to GitHub. YES_ALL=1 still says yes.
+ask_no() {
+  if [[ "$YES_ALL" == 1 ]]; then
+    printf '    %s?%s %s %s› yes%s\n' "$C_INFO" "$C_N" "$1" "$C_DIM" "$C_N"; return 0
+  fi
+  if ui_gum; then
+    local rc=0; gum confirm --default=false "$1" < /dev/tty || rc=$?
+    printf '    %s?%s %s %s› %s%s\n' "$C_INFO" "$C_N" "$1" "$C_DIM" "$( ((rc == 0)) && echo yes || echo no)" "$C_N"
+    return "$rc"
+  fi
+  local a=""; [[ -t 0 ]] && read -rp "    ${C_INFO}?${C_N} $1 ${C_DIM}[y/N]${C_N} " a; [[ "$a" =~ ^[Yy] ]]
+}
 # ask_or_quit "Question?": the first question of a script; No ends it without changes.
 ask_or_quit() { ask "$1" || { echo "Nothing changed."; exit 0; }; }
 

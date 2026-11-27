@@ -93,6 +93,7 @@ stops and asks you to dot pull first.
   dot push "Add Steam"     your own message (for ~/code/github/dotfiles; notes get "Update notes")
   dot push --dry-run, -n   only show what would be saved
   dot push --yes, -y       don't ask
+  dot push --no-snapshot   save only what's changed, without refreshing the snapshots first
 EOF
     ;;
     pull) cat <<'EOF'
@@ -325,10 +326,11 @@ snapshot() {
 }
 
 cmd_push() {
-  local dry=0 words=() a d msg todo=() repos=("$DOTFILES") pick rc=0
+  local dry=0 snap=1 words=() a d msg todo=() repos=("$DOTFILES") pick rc=0
   for a in "$@"; do
     case "$a" in
       -n|--dry-run) dry=1 ;;
+      --no-snapshot) snap=0 ;;
       -y|--yes)     YES_ALL=1 ;;
       -h|--help)    details push; return 0 ;;
       -*)           usage_error "dot push: unknown option $a" push ;;
@@ -338,7 +340,7 @@ cmd_push() {
   [[ -d "$VAULT/.git" ]] && repos+=("$VAULT")
   repo_prefetch "${repos[@]}"   # both at once; repo_ready needs them
   for d in "${repos[@]}"; do repo_wait "$d"; repo_ready "$d" || return 1; done
-  snapshot
+  (( snap )) && snapshot
   for d in "${repos[@]}"; do [[ -n "$(repo_state "$d")" ]] && todo+=("$d"); done
   if (( ${#todo[@]} == 0 )); then ok "Nothing to save: everything is on GitHub"; return 0; fi
 

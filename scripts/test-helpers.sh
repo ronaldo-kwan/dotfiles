@@ -610,6 +610,22 @@ fix_run() {   # fix_run <command>: one dot check fix of a "demo" problem, answer
 }
 t "a dot check fix stops at its first error and is marked failed" same "$(fix_run half | grep -cE 'KEPT-GOING|MARKED-FAILED')" 1
 t "it shows the fix's problems before asking" grep -q '✘ the demo is broken' <<< "$(fix_run true)"
+# Saving, at the end of the fixes: the snapshots, then GitHub, each asked on its own.
+t "ask_no: no terminal means no" not bash -c 'source "$1/bin/lib.sh"; YES_ALL=0; ask_no "Push?" < /dev/null' _ "$ROOT"
+t "ask_no: yes to everything still says yes" bash -c 'source "$1/bin/lib.sh"; YES_ALL=1; ask_no "Push?" >/dev/null' _ "$ROOT"
+saving() {   # saving <fixes> <answer to the snapshots: ok or skip>: the steps the end of dot check offers
+  bash -c 'source "$1/bin/lib.sh"
+    FIXES=" $2 " ANSWER="$3" DOTFILES=/dots VAULT=/none RESULTS=()
+    has_fix() { [[ "$FIXES" == *" $1 "* ]]; }
+    repo_state() { echo uncommitted; }
+    fix_step() { echo "$1: asked with ${FIX_ASK:-ask}, runs ${*:4}"; RESULTS+=("$ANSWER|$2|0"); }
+    eval "$(sed -n "/^# Saving last/,/^summary$/p" "$1/bin/check.sh" | sed "\$d")"' _ "$ROOT" "$1" "$2"
+}
+t "saving: the snapshots first (Enter = yes), then GitHub (Enter = no)" same "$(saving save ok)" \
+  $'save: asked with ask, runs refresh_snapshots\npush: asked with ask_no, runs /dots/dot push --yes'
+t "saving: snapshots declined, so the push doesn't refresh them either" same "$(saving save skip | tail -1)" \
+  "push: asked with ask_no, runs /dots/dot push --yes --no-snapshot"
+t "saving: nothing to refresh, just the push" same "$(saving push ok)" "push: asked with ask_no, runs /dots/dot push --yes"
 # SUDO=false: the edit of the source file fails (for any user, root too).
 mkdir -p "$T/src"; printf 'Types: deb\nEnabled: no\n' > "$T/src/app.sources"
 src_rc=0; (cd "$ROOT" && SOURCES_DIR="$T/src" SUDO=false ./bin/post-upgrade.sh --sources-only >/dev/null 2>&1) || src_rc=$?
@@ -646,6 +662,7 @@ t "dot vm runs the virtual machine test" bash -c '"$1/dot" vm >/dev/null 2>&1; t
 rm -f "$T/dotcopy/ran"
 t "an unknown command exits 2" same "$(dot_rc frobnicate)" 2
 t "an unknown option exits 2" same "$(dot_rc push --frobnicate)" 2
+t "dot push takes --no-snapshot (not a wrong option, exit 2)" bash -c '[[ "$1" != 2 ]]' _ "$(dot_rc push --no-snapshot)"
 t "an old name says what replaced it" grep -q "dot push" < <("$T/dotcopy/dot" notes 2>&1)
 t "help for a command that doesn't exist exits 2" same "$(dot_rc help frobnicate)" 2
 # dot's functions, without running it (shellcheck checks dot itself)

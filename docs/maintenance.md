@@ -89,10 +89,11 @@ Apps that only come from their maker's own update source, a PPA or a downloaded 
 
 ### Fixing problems
 
-When `dot check` finds problems, it asks whether to fix them (`dot check --fix` skips that question). Then it offers each fix in a sensible order, and before each question it shows what that fix would change (<kbd>Enter</kbd> = yes, <kbd>n</kbd> = skip, and nothing has changed yet):
+When `dot check` finds problems, it asks whether to fix them (`dot check --fix` skips that question). Then it offers each fix in a sensible order, and before each question it shows what that fix would change (<kbd>Enter</kbd> = yes, <kbd>n</kbd> = skip, and nothing has changed yet; only saving to GitHub is the other way round, below):
 
 - **`dot pull`:** the commits waiting on GitHub, and how many files they change
-- **`dot push`:** the snapshot settings it would save, line by line (from a fresh copy, so looking doesn't change `setup/`), the changed files with their changed lines, and commits not on GitHub yet
+- **The snapshots:** the problem it fixes and the snapshot settings that would change, line by line (from a fresh copy, so looking doesn't change `setup/`)
+- **Saving to GitHub:** the problems it fixes, the changed files with their changes, and the commits not on GitHub yet
 - **Every other fix:** the ✘ problems it fixes, for example "Brave Origin: installed, but without the saved settings"
 
 The fixes, in order:
@@ -102,7 +103,8 @@ The fixes, in order:
 3. `dot apps`, `dot install`, `dot ssh`
 4. Adding unsaved Ubuntu apps to `setup/apt-packages.txt`
 5. Opening the Chrome Web Store pages of Brave extensions you saved but haven't added on this computer, and opening Backups
-6. `dot push`, for the snapshots and anything not saved to GitHub
+6. Refreshing the snapshots in `setup/` from this computer: only files here change
+7. Saving to GitHub (`dot push`: commit and push, your notes too), asked on its own. **Enter means no** for this one, since it publishes; type <kbd>y</kbd> to save. If you said no to the snapshots, it saves without refreshing them
 
 A summary shows what was fixed. Run `dot check` again to confirm.
 
