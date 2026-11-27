@@ -7,7 +7,7 @@ Day-to-day use after the setup: saving changes, checking the computer, and what 
 **Contents**
 
 - Everyday: [Saving changes](#saving-changes) · [More than one computer](#more-than-one-computer) · [The `dot` menu](#the-dot-menu) · [Health check](#health-check)
-- Runs by itself: [Weekly reminder](#weekly-reminder) · [Weekly updates and monthly clean-up](#weekly-updates-and-monthly-clean-up) · [Secret check before commits](#secret-check-before-commits)
+- Runs by itself: [Weekly reminder](#weekly-reminder) · [Weekly updates and monthly clean-up](#weekly-updates-and-monthly-clean-up) · [Secret check before commits](#secret-check-before-commits) · [Checks before pushing](#checks-before-pushing)
 - Once in a while: [Signed commits](#signed-commits) · [After upgrading Ubuntu](#after-upgrading-ubuntu)
 - The repo: [GitHub checks](#github-checks) · [The website and choices](#the-website-and-choices) · [The README screenshot](#the-readme-screenshot) · [Releases](#releases)
 
@@ -22,7 +22,7 @@ dot push --dry-run             # only show what would be saved (-n)
 dot push --yes                 # don't ask (-y)
 ```
 
-It refreshes the snapshots, lists what will be saved in `~/code/github/dotfiles` and your Obsidian notes (message "Update notes"), and asks first. With gum you can also change the message there. Then it commits everything (`git add -A`) and pushes; the [secret check](#secret-check-before-commits) runs before each commit. If GitHub has commits this computer doesn't, it stops before changing anything and asks you to `dot pull` first.
+It refreshes the snapshots, lists what will be saved in `~/code/github/dotfiles` and your Obsidian notes (message "Update notes"), and asks first. With gum you can also change the message there. Then it commits everything (`git add -A`) and pushes; the [secret check](#secret-check-before-commits) runs before each commit, and the [checks before pushing](#checks-before-pushing) before the push. If GitHub has commits this computer doesn't, it stops before changing anything and asks you to `dot pull` first.
 
 **The snapshots.** The files in `setup/` are snapshots of extensions, apps, shortcuts, the dock and desktop settings like the theme, so they don't update themselves: `dot push` refreshes them with `scripts/snapshot.sh` first. To see what changed without committing anything, run `dot push --dry-run`.
 
@@ -160,6 +160,18 @@ bash ~/code/github/dotfiles/.githooks/pre-commit --history
 ```
 
 It names the file, line and commit. A secret it finds there has been on GitHub: revoke it with whoever issued it, since deleting it in a new commit doesn't take it out of the history.
+
+## Checks before pushing
+
+[`.githooks/pre-push`](../.githooks/pre-push) runs before every push of `~/code/github/dotfiles` (also from `dot push`), so a mistake shows up on this computer rather than in the [GitHub checks](#github-checks) after it's public. It checks the commits being pushed, unpacked into a temporary folder, so edits you haven't committed don't count either way:
+
+- [`scripts/test-helpers.sh`](../scripts/test-helpers.sh), every time (about 6 seconds)
+- [`scripts/lint.sh`](../scripts/lint.sh) (shellcheck and the rest), when the push changes something it looks at: the scripts, `.bashrc`, the cron jobs, the Python and the website's scripts (about 20 seconds). Saved settings and docs alone, like most `dot push`es, skip it
+
+If a check fails, the push stops and shows its output. `lint.sh` needs its tools on this computer (`sudo apt install shellcheck pyflakes3 nodejs npm`); without them it fails and says so. The notes repo uses the same hooks folder for the secret check, but this doesn't run there. [The virtual machine test](#a-test-in-a-virtual-machine) isn't part of it: it tests what's on GitHub, so it comes after the push.
+
+> [!TIP]
+> To push anyway (say, to share a work in progress): `git push --no-verify`.
 
 ## Signed commits
 

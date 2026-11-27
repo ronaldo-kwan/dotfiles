@@ -18,7 +18,7 @@ if (( ${#missing[@]} )); then
   exit 1
 fi
 
-bash_files=(bootstrap.sh bin/*.sh dot scripts/*.sh .githooks/pre-commit home/bash/.bashrc)
+bash_files=(bootstrap.sh bin/*.sh dot scripts/*.sh .githooks/pre-commit .githooks/pre-push home/bash/.bashrc)
 sh_files=(system/etc/cron.*/*)
 rc=0
 step() {   # step "what" command...: run one check, and say how it went

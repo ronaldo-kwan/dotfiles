@@ -271,6 +271,18 @@ for f in rclone.conf sub/credentials.json .npmrc .pypirc .pgpass work.ovpn; do
 done
 t "lets an ordinary file through" hook_file notes/rclone.md
 
+echo "Checks before pushing (.githooks/pre-push)"
+# lint.sh only when the push changes something it checks; the tests every time.
+lints() { bash -c 'source "$1/.githooks/pre-push"; needs_lint "${@:2}"' _ "$ROOT" "$@"; }
+t "pre-push: a changed script needs lint.sh" lints setup/flatpaks.txt bin/lib.sh
+each_lints() { local f; for f in "$@"; do lints "$f" || { echo "      $f"; return 1; }; done; }
+t "pre-push: so do dot, the hooks, .bashrc, the cron jobs, Python and the website's scripts" each_lints \
+  dot .githooks/pre-push home/bash/.bashrc system/etc/cron.weekly/system-update scripts/brave-settings.py site/docs/docs.js package-lock.json
+t "pre-push: saved settings and docs alone don't" not lints setup/flatpaks.txt setup/apps/brave-settings.json docs/maintenance.md README.md
+t "pre-push: in another repo (the Obsidian vault) it does nothing" bash -c '
+  git init -q "$1/vault" && cd "$1/vault" && echo "refs/heads/main 1111111111111111111111111111111111111111 refs/heads/main 0000000000000000000000000000000000000000" \
+    | bash "$2/.githooks/pre-push" origin url >/dev/null' _ "$T" "$ROOT"
+
 echo "What a fix would change (lib.sh diff_lines, check.sh preview_pull)"
 printf 'diff --git a/setup/x.json b/setup/x.json\nindex 1..2 100644\n--- a/setup/x.json\n+++ b/setup/x.json\n@@ -1 +1 @@\n-"font": "Arial"\n+"font": "Roboto"\n' > "$T/d.diff"
 t "shows the file, then what was removed and added" same "$(diff_lines 10 x < "$T/d.diff")" \

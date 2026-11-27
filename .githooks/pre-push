@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# Checks before each push to GitHub, so a mistake shows up here rather than in GitHub's
+# checks after it's public: the quick tests (scripts/test-helpers.sh, about 6 seconds),
+# and when the push changes anything lint.sh looks at, scripts/lint.sh too (shellcheck
+# and the rest, about 20 seconds). It checks the commits being pushed, unpacked into a
+# temporary folder, not the files as they are now, so edits you haven't committed don't
+# count either way. Stops the push if a check fails.
+#
+# install.sh points the Obsidian vault at this folder too (for the secret check): for any
+# repo but the dotfiles this does nothing. scripts/test-vm.sh isn't run: it tests what's on
+# GitHub, so it comes after the push (docs/maintenance.md).
+# If you need to push anyway: git push --no-verify
+
+set -uo pipefail
+
+# needs_lint <file>...: does any of these changed files go through lint.sh?
+needs_lint() {
+  local f
+  for f in "$@"; do
+    case "$f" in
+      *.sh|dot|.githooks/*|home/bash/.bashrc|system/etc/cron.*/*|*.py|site/*.js|\
+      eslint.config.mjs|package.json|package-lock.json|.shellcheckrc) return 0 ;;
+    esac
+  done
+  return 1
+}
+[[ "${BASH_SOURCE[0]}" == "$0" ]] || return 0   # sourced (scripts/test-helpers.sh): only the function
+
+DOTFILES="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd -P)"
+[[ "$(git rev-parse --show-toplevel 2>/dev/null)" == "$DOTFILES" ]] || exit 0
+
+zero=0000000000000000000000000000000000000000
+checked=" " rc=0 tmp=""
+trap '[[ -n "$tmp" ]] && rm -rf "$tmp"' EXIT
+# Git passes one line per branch being pushed: <local ref> <local id> <remote ref> <remote id>.
+while read -r _ local_id _ remote_id; do
+  [[ "$local_id" == "$zero" || "$checked" == *" $local_id "* ]] && continue   # deleting a branch, or done
+  checked+="$local_id "
+  # What changed since GitHub's copy; everything, if GitHub doesn't have the branch yet.
+  lint=1
+  if [[ "$remote_id" != "$zero" ]] && git cat-file -e "$remote_id^{commit}" 2>/dev/null; then
+    mapfile -t changed < <(git diff --name-only "$remote_id" "$local_id")
+    needs_lint "${changed[@]}" || lint=0
+  fi
+
+  tmp="$(mktemp -d)"
+  # Nothing is shared with the repo itself, not even node_modules: lint.sh installs ESLint's
+  # packages into the temporary folder (from npm's cache, a second or so), and its npm ci
+  # empties the node_modules it's given.
+  git archive "$local_id" | tar -x -C "$tmp"
+  (
+    # The checks make git repos of their own: none of this repo's git settings for them.
+    unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX
+    cd "$tmp" && git init -q && git add -A   # lint.sh lists the website's scripts with git
+    run() {   # run "what" <script>: quiet if it passes, its output if not
+      local out cr=''
+      [[ -t 1 ]] && { printf '  … %s' "$1"; cr=$'\r'; }   # in a terminal, replaced by the result
+      if out="$(bash "$2" 2>&1)"; then printf '%s  ✔ %s \n' "$cr" "$1"
+      else printf '%s  ✘ %s \n' "$cr" "$1"; printf '%s\n' "$out" | tail -40 | sed 's/^/      /'; return 1; fi
+    }
+    echo "Checking what you're pushing (${local_id:0:7}):"
+    ok=0
+    if (( lint )); then run "scripts/lint.sh" scripts/lint.sh || ok=1
+    else echo "  – scripts/lint.sh: nothing it checks has changed"; fi
+    run "scripts/test-helpers.sh" scripts/test-helpers.sh || ok=1
+    exit "$ok"
+  ) || rc=1
+  rm -rf "$tmp"; tmp=""
+done
+
+if (( rc )); then
+  echo
+  echo "Push stopped: fix what failed above, commit, and push again."
+  echo "To push anyway: git push --no-verify"
+fi
+exit "$rc"

@@ -123,6 +123,7 @@ Written by `dot push` and restored by `install.sh`, except `apt-packages.txt`, w
 |---|---|
 | `system/etc/` | The weekly update and monthly clean-up jobs (`@USER@` is replaced by your username when installed), and Brave Origin's settings (`brave/policies/managed/dotfiles.json`) |
 | `.githooks/pre-commit` | The [secret check](maintenance.md#secret-check-before-commits) |
+| `.githooks/pre-push` | The [checks before pushing](maintenance.md#checks-before-pushing): `test-helpers.sh`, and `lint.sh` when a push changes scripts |
 | `.shellcheckrc` | `shellcheck`'s settings for every script (and why each one is there) |
 | `package.json`, `package-lock.json`, `eslint.config.mjs` | ESLint for the website's scripts (`scripts/lint.sh` runs it; `node_modules/` isn't saved). Nothing here goes on the computers |
 | `SECURITY.md` | How to report a security problem privately (GitHub's private vulnerability reporting is on) |
