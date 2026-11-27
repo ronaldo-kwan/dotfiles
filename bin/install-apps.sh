@@ -21,13 +21,15 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, skip, ask, run, apt_get,
 # Where apt keeps update sources and their signing keys
 APT_SOURCES=/etc/apt/sources.list.d APT_KEYS=/usr/share/keyrings
 # Brave Origin's settings, as policies (Brave reads /etc/brave/policies/, as regular Brave
-# does). managed/: locked, from system/etc/ as it is. recommended/: the search engine you
-# picked in Brave, saved by dot push in setup/apps/brave-settings.json (scripts/brave-settings.py
-# policy), which you can still change in Brave. What each setting does: docs/apps.md.
+# does). managed/: locked, from system/etc/ as it is. recommended/: the search engine and
+# what opens on start, as you picked them in Brave, saved by dot push in
+# setup/apps/brave-settings.json (scripts/brave-settings.py policy); you can still change
+# them in Brave. What each setting does: docs/apps.md.
 BRAVE_POLICY=brave/policies/managed/dotfiles.json
 BRAVE_RECOMMENDED=brave/policies/recommended/dotfiles.json
-# brave_search_policy: the recommended policy for the saved search engine (empty: none saved)
-brave_search_policy() {
+# brave_recommended_policy: the recommended policies for the saved search engine and startup
+# choice (empty: none saved)
+brave_recommended_policy() {
   [[ -f "$SETUP/apps/brave-settings.json" ]] || return 0
   python3 -I "$DOTFILES/scripts/brave-settings.py" policy "$SETUP/apps/brave-settings.json"
 }
@@ -95,12 +97,12 @@ check_brave_origin() {
     echo "    installed, but without the saved settings (/etc/$BRAVE_POLICY)"
     return 1
   fi
-  want="$(brave_search_policy)"
+  want="$(brave_recommended_policy)"
   if [[ -n "$want" ]] && ! cmp -s <(printf '%s\n' "$want") "/etc/$BRAVE_RECOMMENDED"; then
-    echo "    installed, but without the saved search engine (/etc/$BRAVE_RECOMMENDED)"
+    echo "    installed, but without the saved search engine and startup choice (/etc/$BRAVE_RECOMMENDED)"
     return 1
   elif [[ -z "$want" && -e "/etc/$BRAVE_RECOMMENDED" ]]; then
-    echo "    a search engine policy is set, but none is saved (/etc/$BRAVE_RECOMMENDED)"
+    echo "    a search engine or startup policy is set, but none is saved (/etc/$BRAVE_RECOMMENDED)"
     return 1
   fi
 }
@@ -370,11 +372,11 @@ Signed-By: $APT_KEYS/brave-browser-archive-keyring.gpg" || return 1
     apt_get install -y brave-origin
   fi
   run sudo install -D -m 644 "$DOTFILES/system/etc/$BRAVE_POLICY" "/etc/$BRAVE_POLICY"
-  local search; search="$(brave_search_policy)"
+  local search; search="$(brave_recommended_policy)"
   if [[ -n "$search" ]]; then
     printf '%s\n' "$search" > "$TMP/brave-search.json"
     run sudo install -D -m 644 "$TMP/brave-search.json" "/etc/$BRAVE_RECOMMENDED"
-    echo "    search engine: $(python3 -I -c 'import json, sys; print(json.load(open(sys.argv[1]))["DefaultSearchProviderName"])' "$TMP/brave-search.json") (yours, from dot push; change it in Brave's settings)"
+    echo "    your search engine and startup choice, from dot push (you can still change them in Brave)"
   elif [[ -e "/etc/$BRAVE_RECOMMENDED" ]]; then
     run sudo rm -f "/etc/$BRAVE_RECOMMENDED"   # none saved any more: Brave's own default
   fi

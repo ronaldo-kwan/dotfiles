@@ -8,12 +8,19 @@ browsing history). So only the settings named in KEEP are saved, and of those, n
 changes by itself (counters, timestamps, migration markers).
 
   brave-settings.py save <Preferences> [<saved.json>]   the kept settings, as JSON, to stdout
-      (the saved file: to keep its search engine when this profile hasn't picked one)
-  brave-settings.py restore <saved.json> <Preferences>
-      put them into the profile (creating it if Brave hasn't run yet); Brave must be closed
+      (the saved file: to keep its search engine and startup choice when this profile
+      hasn't picked them)
+  brave-settings.py restore <saved.json> <Preferences> [<images folder>]
+      put them into the profile (creating it if Brave hasn't run yet); Brave must be closed.
+      A new tab page background of your own is copied from the images folder (the dotfiles'
+      setup/wallpaper/); if it isn't there, the background stays Brave's own.
+  brave-settings.py missing <saved.json> <Preferences>
+      the saved extensions this profile doesn't have, one "<id> <name>" per line (dot check
+      offers to open their Chrome Web Store pages)
   brave-settings.py policy <saved.json>
-      the saved search engine as a Brave policy (recommended: you can still change it), or
-      nothing if none is saved. install-apps.sh puts it in /etc/brave/policies/recommended/.
+      the saved search engine and startup choice as Brave policies (recommended: you can
+      still change them), or nothing if none is saved. install-apps.sh puts them in
+      /etc/brave/policies/recommended/.
 
 Whole groups are saved and put back as Brave wrote them, not single values: Brave works some
 settings out from others (the bookmarks bar's old on/off from its newer visibility_state),
@@ -21,10 +28,17 @@ so one changed without the other is undone when Brave starts. Paths inside your 
 are stored as @HOME@. Used by save-app-settings.sh (dot push, and dot check to spot unsaved
 changes) and install.sh (restore_app_settings).
 
-The search engine for normal windows can't be put back that way: Brave guards it against
-changes from outside (written in, it's replaced with Google), so the engine you picked is
-saved as "search_engine" (name, keyword and addresses, as Brave has them) and put back as a
-recommended policy. The one for private windows isn't guarded, so it's an ordinary setting.
+Two settings can't be put back that way: Brave guards them against changes from outside
+(written in, the search engine is replaced with Google). So the search engine for normal
+windows is saved as "search_engine" (name, keyword and addresses, as Brave has them) and what
+Brave opens on start as "startup" (and its pages, if you chose some: those go in the repo,
+which is public), and both are put back as recommended policies. Brave records neither when
+only a policy chose it, so a profile without its own choice keeps the saved one. Private
+windows' engine isn't guarded, so it's an ordinary setting.
+
+Extensions (and themes, which are extensions) from the Chrome Web Store are saved as a list
+of their IDs and names, "extensions", never their data. They aren't installed for you: dot
+check lists the ones a computer is missing and offers to open their store pages, to add them.
 """
 import json
 import os
@@ -46,6 +60,8 @@ KEEP = [
     "brave.new_tab_page.show_background_image",
     "brave.new_tab_page.show_clock",
     "brave.new_tab_page.show_stats",
+    "brave.new_tab_page.background",          # Brave's images, a colour, or one of yours
+    "brave.new_tab_page.custom_background_image_list",  # (file names; the files: restore)
     "brave.enable_window_closing_confirm",
     "brave.enable_closing_last_tab",
     "brave.mru_cycling_enabled",
@@ -54,6 +70,13 @@ KEEP = [
     "brave.top_site_suggestions_enabled",
     "brave.omnibox.bookmark_suggestions_enabled",
     "browser.show_home_button",
+    "browser.show_forward_button",
+    "browser.pin_split_tab_button",
+    "toolbar.pinned_actions",                # Customize toolbar: what's pinned (downloads...)
+    "tab_search.pinned_to_tabstrip",
+    "extensions.pinned_extensions",          # which extensions' icons are on the toolbar
+    "brave.web_view_rounded_corners",
+    "ntp.custom_links_visible",              # shortcuts on the new tab page
     "homepage_is_newtabpage",
     "browser.enable_spellchecking",
     "spellcheck.dictionaries",
@@ -71,6 +94,9 @@ KEEP = [
                                                    # have the same ID on every computer)
 ]
 SEARCH = "search_engine"   # normal windows' engine: put back as a policy, not into Preferences
+EXTENSIONS = "extensions"  # Chrome Web Store extensions and themes: IDs and names only
+STARTUP = "startup"        # what opens on start (1 last session, 4 pages, 5 new tab, 6 both):
+                           # the same
 
 # Inside a kept group: what Brave changes by itself, or what belongs to this computer only.
 SKIP = re.compile(r"(^|_)(p3a|time|count|migrat\w*|last|seen|version|window_placement"
@@ -112,16 +138,60 @@ def search_engine(prefs):
     return out
 
 
+def startup(prefs):
+    """What Brave opens on start, if it was picked in its settings (else None)."""
+    mode = get(prefs, "session.restore_on_startup")
+    if not isinstance(mode, int):
+        return None
+    out = {"restore_on_startup": mode}
+    urls = get(prefs, "session.startup_urls")
+    if mode in (4, 6) and urls:
+        out["startup_urls"] = urls
+    return out
+
+
+def extensions(prefs):
+    """The extensions and themes installed from the Chrome Web Store, sorted by name."""
+    out = []
+    for ext_id, e in (get(prefs, "extensions.settings") or {}).items():
+        m = e.get("manifest") or {}
+        if e.get("from_webstore") and e.get("location") == 1 and m.get("name") \
+                and not e.get("was_installed_by_default") and not e.get("was_installed_by_oem"):
+            item = {"id": ext_id, "name": m["name"]}
+            if "theme" in m:
+                item["theme"] = True
+            out.append(item)
+    return sorted(out, key=lambda x: (x["name"].lower(), x["id"]))
+
+
+def missing(saved_file, prefs_file):
+    with open(saved_file) as f:
+        saved = json.load(f).get(EXTENSIONS) or []
+    have = set()
+    if os.path.exists(prefs_file):
+        with open(prefs_file) as f:
+            have = {e["id"] for e in extensions(json.load(f))}
+    for e in saved:
+        if e["id"] not in have:
+            print(e["id"], e["name"])
+
+
 def save(prefs_file, previous_file=None):
     with open(prefs_file) as f:
         prefs = json.load(f)
+    previous = {}
+    if previous_file and os.path.exists(previous_file):
+        with open(previous_file) as f:
+            previous = json.load(f)
     kept = {}
-    engine = search_engine(prefs)
-    if engine is None and previous_file and os.path.exists(previous_file):
-        with open(previous_file) as f:   # none picked here: keep the one saved before
-            engine = json.load(f).get(SEARCH)
-    if engine:
-        kept[SEARCH] = engine
+    # Picked here, or else the one saved before (Brave records none a policy chose)
+    for key, value in ((SEARCH, search_engine(prefs)), (STARTUP, startup(prefs))):
+        value = value if value is not None else previous.get(key)
+        if value:
+            kept[key] = value
+    exts = extensions(prefs)
+    if exts:
+        kept[EXTENSIONS] = exts
     for path in KEEP:
         v = get(prefs, path)
         if v is None:
@@ -133,9 +203,36 @@ def save(prefs_file, previous_file=None):
     print()
 
 
-def restore(saved_file, prefs_file):
+def own_background(saved, images_dir, profile_dir):
+    """Copy a new tab page background of your own into the profile, from images_dir. Drops
+    the background settings when its image isn't there (Brave would show nothing)."""
+    bg = saved.get("brave.new_tab_page.background") or {}
+    names = list(saved.get("brave.new_tab_page.custom_background_image_list") or [])
+    if bg.get("type") != "custom_image" and not names:
+        return
+    wanted = set(names) | ({bg.get("selected_value")} if bg.get("type") == "custom_image" else set())
+    have = set()
+    for name in sorted(n for n in wanted if n):
+        src = os.path.join(images_dir or "", os.path.basename(name))
+        dst = os.path.join(profile_dir, "sanitized_background_images", os.path.basename(name))
+        if os.path.exists(dst):
+            have.add(name)
+        elif images_dir and os.path.isfile(src):
+            os.makedirs(os.path.dirname(dst), mode=0o700, exist_ok=True)
+            with open(src, "rb") as a, open(os.open(dst, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "wb") as b:
+                b.write(a.read())
+            have.add(name)
+    saved["brave.new_tab_page.custom_background_image_list"] = [n for n in names if n in have]
+    if bg.get("type") == "custom_image" and bg.get("selected_value") not in have:
+        saved.pop("brave.new_tab_page.background", None)
+        print(f"brave-settings.py: {bg.get('selected_value')} isn't in {images_dir}; "
+              "the new tab page keeps Brave's background", file=sys.stderr)
+
+
+def restore(saved_file, prefs_file, images_dir=None):
     with open(saved_file) as f:
         saved = home_in(json.load(f))
+    own_background(saved, images_dir, os.path.dirname(prefs_file))
     prefs = {}
     if os.path.exists(prefs_file):
         with open(prefs_file) as f:
@@ -163,15 +260,23 @@ def restore(saved_file, prefs_file):
 
 def policy(saved_file):
     with open(saved_file) as f:
-        engine = json.load(f).get(SEARCH)
-    if not engine:
+        saved = json.load(f)
+    out = {}
+    engine = saved.get(SEARCH)
+    if engine:
+        out.update({"DefaultSearchProviderEnabled": True,
+                    "DefaultSearchProviderName": engine["name"],
+                    "DefaultSearchProviderKeyword": engine["keyword"],
+                    "DefaultSearchProviderSearchURL": engine["url"]})
+        if engine.get("suggest_url"):
+            out["DefaultSearchProviderSuggestURL"] = engine["suggest_url"]
+    start = saved.get(STARTUP)
+    if start:
+        out["RestoreOnStartup"] = start["restore_on_startup"]
+        if start.get("startup_urls"):
+            out["RestoreOnStartupURLs"] = start["startup_urls"]
+    if not out:
         return
-    out = {"DefaultSearchProviderEnabled": True,
-           "DefaultSearchProviderName": engine["name"],
-           "DefaultSearchProviderKeyword": engine["keyword"],
-           "DefaultSearchProviderSearchURL": engine["url"]}
-    if engine.get("suggest_url"):
-        out["DefaultSearchProviderSuggestURL"] = engine["suggest_url"]
     json.dump(out, sys.stdout, indent=2, sort_keys=True)
     print()
 
@@ -179,9 +284,11 @@ def policy(saved_file):
 if __name__ == "__main__":
     if len(sys.argv) in (3, 4) and sys.argv[1] == "save":
         save(*sys.argv[2:])
+    elif len(sys.argv) == 4 and sys.argv[1] == "missing":
+        missing(sys.argv[2], sys.argv[3])
     elif len(sys.argv) == 3 and sys.argv[1] == "policy":
         policy(sys.argv[2])
-    elif len(sys.argv) == 4 and sys.argv[1] == "restore":
-        restore(sys.argv[2], sys.argv[3])
+    elif len(sys.argv) in (4, 5) and sys.argv[1] == "restore":
+        restore(*sys.argv[2:])
     else:
         sys.exit(__doc__)

@@ -67,20 +67,28 @@ If a maker changes its download link, update the script; the table shows the man
 
 To change one, edit the file and run `dot apps`; `dot check` shows ✘ until the computer has the saved version. `dot uninstall --apps` removes the file with Brave.
 
-### Your search engines
+### Your search engines and what opens on start
 
 The search engines you pick in Brave's settings (**Settings → Search engine**, for normal and for private windows) are saved by `dot push` with your other Brave settings, and follow you to a new computer:
 
 - **Private windows:** saved and put back like the settings below. Brave's built-in engines (Google, Brave, DuckDuckGo, Bing and the rest) have the same ID on every computer; one you added yourself is only on this one, so another computer would use Brave's default there.
 - **Normal windows:** Brave guards this one against changes from outside (written into its settings file, it's replaced with Google), so `dot push` saves the engine itself (its name and addresses, as Brave has them) and `dot apps` makes it a *recommended* policy in `/etc/brave/policies/recommended/`: Brave starts with it, and you can still change it. Brave shows "Your administrator recommends a specific value" next to it. A computer where you haven't picked one keeps the saved one when you `dot push`.
 
+**What Brave opens on start** (**Settings → Get started → On startup**: the new tab page, where you left off, or pages of your choice) is guarded the same way, so it's saved by `dot push` and made a recommended policy (`RestoreOnStartup`) by `dot apps` too. If you choose pages, their addresses are saved as well (`RestoreOnStartupURLs`), and so go in this repo, which is public.
+
 Suggestions as you type go to the engine you picked (turn off **Improve search suggestions** to keep them on the computer).
+
+### Your extensions and themes
+
+`dot push` saves which extensions and themes you added from the Chrome Web Store: their names and IDs only, never what they store (your Bitwarden vault stays in Bitwarden). They go in this repo, which is public. They aren't installed for you, so nothing is forced on: on a computer that doesn't have them, `dot check` lists them ("Brave extensions you saved that aren't added here") and offers to open their store pages in Brave, where you click **Add to Brave**. A theme applies as soon as it's added. Their pinned icons come back by themselves once they're added.
+
+If you remove one, the next `dot push` shows it leaving the list. On a computer without them, don't `dot push` before adding them, or the list is saved without them (its preview shows that too).
 
 ### Your own Brave settings
 
 What you change in Brave's own settings (not the locked ones above) is saved by `dot push`, like your desktop settings, into [`setup/apps/brave-settings.json`](../setup/apps/brave-settings.json). `dot check` and the weekly reminder show it as unsaved when Brave's settings differ from the saved ones, and `install.sh` puts them back on a new computer, or after `dot pull`.
 
-Only an allowlist is saved, in [`scripts/brave-settings.py`](../scripts/brave-settings.py): the bookmarks bar, light or dark mode and theme colour, vertical tabs, the address bar and toolbar buttons, the sidebar's on/off (not its items), the new tab page's clock, background and stats, closing-window and last-tab behaviour, address bar suggestions, the home button, spell check and languages, translation, downloads (where to, and whether to ask), HTTPS mode, fonts, and the defaults for every site (for example, block notifications). Nothing else in Brave's settings file is: your account and sync details, open and pinned tabs, history, and the settings you've changed for single sites (which list sites you visit) stay on the computer. Counters and records Brave keeps for itself are left out too, so they don't show as changes.
+Only an allowlist is saved, in [`scripts/brave-settings.py`](../scripts/brave-settings.py): the bookmarks bar, light or dark mode and theme colour, vertical tabs, the address bar and toolbar buttons, the sidebar's on/off (not its items), the new tab page's clock, stats and background (Brave's images, a colour, or one of yours: the file name is saved, and `install.sh` copies the image itself from the dotfiles' [`setup/wallpaper/`](../setup/wallpaper/), so pick one of those for it to follow you; with any other, a new computer keeps Brave's background), closing-window and last-tab behaviour, address bar suggestions, the toolbar (the home and forward buttons, what's pinned in **Customize toolbar**, which extensions' icons are pinned, tab search and the split-tab button), rounded corners, the new tab page's shortcuts, the home button, spell check and languages, translation, downloads (where to, and whether to ask), HTTPS mode, fonts, and the defaults for every site (for example, block notifications). Nothing else in Brave's settings file is: your account and sync details, open and pinned tabs, history, and the settings you've changed for single sites (which list sites you visit) stay on the computer. Counters and records Brave keeps for itself are left out too, so they don't show as changes.
 
 Brave rewrites its settings file while it's open and when it closes, so `install.sh` puts them back only when Brave is closed (it says so if not). They apply from Brave's next start. The first time, the file Brave had is kept as `Preferences.orig` next to it.
 

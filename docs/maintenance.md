@@ -101,7 +101,7 @@ The fixes, in order:
 2. Missing tools
 3. `dot apps`, `dot install`, `dot ssh`
 4. Adding unsaved Ubuntu apps to `setup/apt-packages.txt`
-5. Opening Backups
+5. Opening the Chrome Web Store pages of Brave extensions you saved but haven't added on this computer, and opening Backups
 6. `dot push`, for the snapshots and anything not saved to GitHub
 
 A summary shows what was fixed. Run `dot check` again to confirm.

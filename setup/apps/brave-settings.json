@@ -5,17 +5,52 @@
  },
  "brave.default_private_search_provider_guid": "485bf7d3-0215-45af-87dc-538868000001",
  "brave.enable_window_closing_confirm": false,
+ "brave.new_tab_page.background": {
+  "random": false,
+  "selected_value": "catppuccin-tropic-island-night-16x10.jpg",
+  "type": "custom_image"
+ },
+ "brave.new_tab_page.custom_background_image_list": [
+  "catppuccin-tropic-island-night-16x10.jpg"
+ ],
+ "brave.new_tab_page.show_background_image": true,
  "brave.new_tab_page.show_clock": false,
  "brave.new_tab_page.show_stats": false,
  "brave.sidebar.sidebar_show_option": 3,
  "brave.tabs": {
   "always_hide_tab_close_button": false,
+  "tree_tabs_enabled": false,
   "vertical_tabs_collapsed": true,
-  "vertical_tabs_enabled": false
+  "vertical_tabs_enabled": true,
+  "vertical_tabs_expanded_state_per_window": false,
+  "vertical_tabs_hide_completely_when_collapsed": false,
+  "vertical_tabs_show_scrollbar": false,
+  "vertical_tabs_show_title_on_window": false
  },
+ "brave.web_view_rounded_corners": true,
+ "browser.pin_split_tab_button": false,
+ "browser.show_forward_button": true,
+ "browser.theme": {
+  "follows_system_colors": false
+ },
+ "extensions": [
+  {
+   "id": "nngceckbapebfimnlniiiahkandclblb",
+   "name": "Bitwarden Password Manager"
+  },
+  {
+   "id": "ldfofogdaicbefckdloiahgnajmcicnc",
+   "name": "Ride the Wave",
+   "theme": true
+  }
+ ],
+ "extensions.pinned_extensions": [
+  "nngceckbapebfimnlniiiahkandclblb"
+ ],
  "https_first_balanced_mode_enabled": true,
  "https_only_mode_enabled": false,
  "intl.selected_languages": "en-US,en",
+ "ntp.custom_links_visible": true,
  "search_engine": {
   "keyword": ":g",
   "name": "Google",
@@ -24,6 +59,14 @@
  },
  "spellcheck.dictionaries": [
   "en-US"
+ ],
+ "startup": {
+  "restore_on_startup": 5
+ },
+ "tab_search.pinned_to_tabstrip": false,
+ "toolbar.pinned_actions": [
+  "kActionShowChromeLabs",
+  "kActionShowDownloads"
  ],
  "webkit.webprefs": {
   "fonts": {

@@ -327,6 +327,53 @@ assert d["brave"]["default_private_search_provider_guid"].endswith("501")' "$T/b
 echo '{"brave": {"dark_mode": 1}}' > "$T/brave/none-picked.json"
 t "a profile that picked none keeps the saved engine" same \
   "$(bs save "$T/brave/none-picked.json" "$T/brave/search-saved.json" | python3 -c 'import json, sys; print(json.load(sys.stdin)["search_engine"]["name"])')" Brave
+# What opens on start: like the search engine, a policy. A background of your own: its image
+# is copied from the dotfiles' wallpapers, or the background left as Brave's.
+cat > "$T/brave/start.json" <<JSON
+{"session": {"restore_on_startup": 4, "startup_urls": ["https://example.org/"]},
+ "brave": {"new_tab_page": {"background": {"type": "custom_image", "selected_value": "mine.jpg", "random": false},
+                            "custom_background_image_list": ["mine.jpg"]}}}
+JSON
+bs save "$T/brave/start.json" > "$T/brave/start-saved.json"
+t "saves what opens on start, with its pages" python3 -c '
+import json, sys; d = json.load(open(sys.argv[1]))
+assert d["startup"] == {"restore_on_startup": 4, "startup_urls": ["https://example.org/"]}, d
+assert d["brave.new_tab_page.background"]["selected_value"] == "mine.jpg"' "$T/brave/start-saved.json"
+t "puts it back as a recommended policy" python3 -c '
+import json, sys; p = json.load(sys.stdin)
+assert p == {"RestoreOnStartup": 4, "RestoreOnStartupURLs": ["https://example.org/"]}, p' < <(bs policy "$T/brave/start-saved.json")
+t "a profile that picked nothing keeps the saved start choice" same \
+  "$(bs save "$T/brave/none-picked.json" "$T/brave/start-saved.json" | python3 -c 'import json, sys; print(json.load(sys.stdin)["startup"]["restore_on_startup"])')" 4
+mkdir -p "$T/brave/walls"; echo "an image" > "$T/brave/walls/mine.jpg"
+bs restore "$T/brave/start-saved.json" "$T/brave/bg/Default/Preferences" "$T/brave/walls"
+t "copies your background image into the profile" same "$(cat "$T/brave/bg/Default/sanitized_background_images/mine.jpg")" "an image"
+t "the image is readable by you only" same "$(stat -c %a "$T/brave/bg/Default/sanitized_background_images/mine.jpg")" 600
+t "and sets it as the background" python3 -c '
+import json, sys; d = json.load(open(sys.argv[1]))["brave"]["new_tab_page"]
+assert d["background"]["selected_value"] == "mine.jpg" and d["custom_background_image_list"] == ["mine.jpg"]
+assert "session" not in json.load(open(sys.argv[1]))' "$T/brave/bg/Default/Preferences"
+bs restore "$T/brave/start-saved.json" "$T/brave/nobg/Default/Preferences" "$T/brave/empty-walls" 2>/dev/null
+t "without the image, the background stays Brave's" python3 -c '
+import json, sys; d = json.load(open(sys.argv[1])).get("brave", {}).get("new_tab_page", {})
+assert "background" not in d and d.get("custom_background_image_list") == [], d' "$T/brave/nobg/Default/Preferences"
+# Extensions and themes: Chrome Web Store ones only, as IDs and names.
+cat > "$T/brave/ext.json" <<JSON
+{"extensions": {"pinned_extensions": ["bbbb"], "settings": {
+   "bbbb": {"from_webstore": true, "location": 1, "manifest": {"name": "Bitwarden"}, "preferences": {"secret": "x"}},
+   "tttt": {"from_webstore": true, "location": 1, "manifest": {"name": "A Theme", "theme": {"colors": {}}}},
+   "cccc": {"from_webstore": false, "location": 5, "manifest": {"name": "Chrome PDF Viewer"}},
+   "dddd": {"from_webstore": true, "location": 1, "was_installed_by_default": true, "manifest": {"name": "Default one"}},
+   "eeee": {}}},
+ "toolbar": {"pinned_actions": ["kActionShowDownloads"]}}
+JSON
+bs save "$T/brave/ext.json" > "$T/brave/ext-saved.json"
+t "saves Web Store extensions and themes, by name" python3 -c '
+import json, sys; d = json.load(open(sys.argv[1]))
+assert d["extensions"] == [{"id": "tttt", "name": "A Theme", "theme": True}, {"id": "bbbb", "name": "Bitwarden"}], d["extensions"]
+assert d["toolbar.pinned_actions"] == ["kActionShowDownloads"] and d["extensions.pinned_extensions"] == ["bbbb"]' "$T/brave/ext-saved.json"
+t "never their data" not grep -q secret "$T/brave/ext-saved.json"
+t "lists the ones a profile is missing" same "$(bs missing "$T/brave/ext-saved.json" "$T/brave/start.json")" "$(printf 'tttt A Theme\nbbbb Bitwarden')"
+t "and none when it has them" same "$(bs missing "$T/brave/ext-saved.json" "$T/brave/ext.json")" ""
 t "a profile saved, put back and saved again is the same" same "$(bs save "$T/brave/new/Default/Preferences")" "$(cat "$T/brave/saved.json")"
 
 echo "Signing-key files (install-apps.sh key_ok)"

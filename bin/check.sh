@@ -50,6 +50,7 @@ fix_hint() {
       else echo "Ubuntu hasn't published it yet; meanwhile start ${NV_OLD:-the previous kernel} (boot menu: Advanced options for Ubuntu), later run sudo apt update && sudo apt full-upgrade"; fi ;;
     ghkeys)  echo "gh auth refresh -h github.com --remove-scopes $GH_KEY_SCOPES" ;;
     record)  echo "the fixes ask which ones the dotfiles installed" ;;
+    braveext) echo "the fixes open their Chrome Web Store pages in Brave, to add them" ;;
   esac
 }
 # Backups (Déjà Dup): is "Back Up Automatically" on?
@@ -313,6 +314,17 @@ fi
 if (( ${#unsaved[@]} )); then
   bad "Ubuntu apps you installed that a new computer wouldn't get: ${unsaved[*]}" addapt
 else ok "every Ubuntu app you installed is in setup/apt-packages.txt"; fi
+# Extensions and themes saved from Brave (setup/apps/brave-settings.json) that this
+# computer's Brave doesn't have: they aren't installed for you, so the fix opens their pages.
+brave_missing=()
+if chosen app:brave-origin && installed brave-origin && [[ -f "$SETUP/apps/brave-settings.json" ]]; then
+  mapfile -t brave_missing < <(python3 -I "$DOTFILES/scripts/brave-settings.py" missing "$SETUP/apps/brave-settings.json" "$BRAVE_PREFS")
+  if (( ${#brave_missing[@]} )); then
+    bad "Brave extensions you saved that aren't added here: $(printf '%s, ' "${brave_missing[@]#* }" | sed 's/, $//')" braveext
+  elif python3 -I -c 'import json, sys; sys.exit(0 if json.load(open(sys.argv[1])).get("extensions") else 1)' "$SETUP/apps/brave-settings.json"; then
+    ok "Brave extensions: all the saved ones are added"
+  fi
+fi
 mapfile -t stale < <(stale_snapshots)
 if (( ${#stale[@]} )); then
   bad "snapshots out of date: $(printf '%s, ' "${stale[@]}" | sed 's/, $//')" save
@@ -438,6 +450,12 @@ adopt_record() {
   added_write ${keep[@]+"${keep[@]}"}
   note "recorded ${#keep[@]} of ${#items[@]}: dot uninstall --apps offers only those"
 }
+open_brave_extensions() {   # their Chrome Web Store pages, as tabs in Brave
+  local urls=() e
+  for e in "${brave_missing[@]}"; do urls+=("https://chromewebstore.google.com/detail/${e%% *}"); done
+  setsid brave-origin-stable "${urls[@]}" >/dev/null 2>&1 < /dev/null &
+  note "Brave is opening ${#urls[@]} page(s): click Add to Brave on each, then run dot check again"
+}
 open_backups() {
   setsid deja-dup >/dev/null 2>&1 < /dev/null &
   note "Backups is opening: connect Google Drive if asked, turn on Back Up Automatically, then run dot push"
@@ -455,6 +473,7 @@ has_fix addapt  && fix_step addapt "Ubuntu apps not saved" "Add ${unsaved[*]} to
 # Apps from other sources can't go in apt-packages.txt (a new computer lacks their source).
 has_fix addother && warn "Not added: ${unsaved_other[*]} only come from their makers' own sources. Add each to install-apps.sh with its source (docs/apps.md), or write -name in setup/apt-packages.txt."
 has_fix record  && fix_step record "What the dotfiles added" "Say which apps the dotfiles installed (so uninstall keeps yours)?" adopt_record
+has_fix braveext && fix_step braveext "Brave extensions" "Open their Chrome Web Store pages in Brave?" open_brave_extensions
 has_fix backups && fix_step backups "Automatic backups" "Open Backups to turn them on?" open_backups
 has_fix ghkeys  && fix_step ghkeys "GitHub CLI permissions" "Remove its permission to add SSH keys (approve in the browser)?" \
                      gh auth refresh -h github.com --remove-scopes "$GH_KEY_SCOPES"

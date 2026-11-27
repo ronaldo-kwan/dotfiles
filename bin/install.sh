@@ -370,7 +370,7 @@ restore_app_settings() {
       echo "    would put back Brave Origin's saved settings in ${BRAVE_PREFS/#$HOME/\~}"
     else
       [[ -f "$BRAVE_PREFS" && ! -f "$BRAVE_PREFS.orig" ]] && cp "$BRAVE_PREFS" "$BRAVE_PREFS.orig"
-      python3 -I "$DOTFILES/scripts/brave-settings.py" restore "$saved/brave-settings.json" "$BRAVE_PREFS" \
+      python3 -I "$DOTFILES/scripts/brave-settings.py" restore "$saved/brave-settings.json" "$BRAVE_PREFS" "$SETUP/wallpaper" \
         && did "Brave Origin's settings put back (from its next start)"
     fi
   fi
