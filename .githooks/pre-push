@@ -49,8 +49,11 @@ while read -r _ local_id _ remote_id; do
   # empties the node_modules it's given.
   git archive "$local_id" | tar -x -C "$tmp"
   (
-    # The checks make git repos of their own: none of this repo's git settings for them.
-    unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX
+    # The checks make git repos of their own: none of this repo's git settings for them. Nor
+    # the settings of whatever is pushing (dot push from dot check's fixes: its answers and
+    # its progress panel), so they check the same way however the push started.
+    unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX \
+      YES_ALL UI_DEPTH UI_PANEL_FILE UI_LOG DRY_RUN DOTFILES_CHOICES DOTFILES_SKIP
     cd "$tmp" && git init -q && git add -A   # lint.sh lists the website's scripts with git
     echo "Checking what you're pushing (${local_id:0:7}):"
     # Both at once (lint.sh spreads shellcheck over the cores too); each one's output goes to
@@ -58,6 +61,12 @@ while read -r _ local_id _ remote_id; do
     checks=(scripts/test-helpers.sh)
     if (( lint )); then checks=(scripts/lint.sh "${checks[@]}")
     else echo "  – scripts/lint.sh: nothing it checks has changed"; fi
+    # failures <output>: what failed. The tests' ✘ lines, each with the two lines before it
+    # (a check's "expected" and "got"); for lint.sh, which says why above its ✘ line, the end.
+    failures() {
+      if grep -q '^  ✘ ' "$1"; then grep -B2 '^  ✘ ' "$1" | grep -v '^--$' | head -40; tail -1 "$1"
+      else tail -40 "$1"; fi
+    }
     declare -A pid
     for c in "${checks[@]}"; do bash "$c" > "$tmp.${c##*/}.out" 2>&1 & pid[$c]=$!; done
     [[ -t 1 ]] && printf '  … %s' "${checks[*]}"   # in a terminal, replaced by the results
@@ -66,7 +75,7 @@ while read -r _ local_id _ remote_id; do
       wait "${pid[$c]}"; rc=$?
       (( first )) && [[ -t 1 ]] && printf '\r\e[K'; first=0
       if (( rc == 0 )); then printf '  ✔ %s\n' "$c"
-      else printf '  ✘ %s\n' "$c"; tail -40 "$tmp.${c##*/}.out" | sed 's/^/      /'; ok=1; fi
+      else printf '  ✘ %s\n' "$c"; failures "$tmp.${c##*/}.out" | sed 's/^/      /'; ok=1; fi
     done
     exit "$ok"
   ) || rc=1

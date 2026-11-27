@@ -13,7 +13,10 @@ export HOME="$T/home" NO_COLOR=1 DOT_PLAIN=1 UI_LOG="$T/ui.log"   # no saved cho
 # UTF-8 whatever the terminal's locale: the spinner and panel count their ✔ ⠋ … as one
 # character each, which they only are in UTF-8 (without a locale set, they're bytes).
 export LC_ALL=C.UTF-8
-unset DOTFILES_CHOICES DOTFILES_SKIP DRY_RUN
+# Nothing from whatever started this, either: its answers (YES_ALL) and its progress panel
+# (UI_PANEL_FILE, UI_DEPTH), which the terminal tests below would draw too: run from dot
+# check's fixes (a dot push and its checks), that panel made a 40-column test 161 wide.
+unset DOTFILES_CHOICES DOTFILES_SKIP DRY_RUN YES_ALL UI_DEPTH UI_PANEL_FILE
 mkdir -p "$HOME"
 # shellcheck source=bin/lib.sh
 source "$ROOT/bin/lib.sh"
