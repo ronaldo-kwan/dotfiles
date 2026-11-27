@@ -1,31 +1,19 @@
 [/]
-custom-keybindings=['/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/chrome/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/claude/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/terminal/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vscode/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/files/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/obsidian/']
+custom-keybindings=['/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/claude/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vscode/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/obsidian/']
+home=['<Super>f']
 rotate-video-lock-static=['XF86RotationLockToggle']
-
-[custom-keybindings/chrome]
-binding='<Super>c'
-command='google-chrome'
-name='Chrome'
+terminal=['<Super>t']
+www=['<Super>b']
 
 [custom-keybindings/claude]
 binding='<Super>x'
 command='claude-desktop'
 name='Claude'
 
-[custom-keybindings/files]
-binding='<Super>f'
-command='nautilus --new-window'
-name='Files'
-
 [custom-keybindings/obsidian]
 binding='<Super>o'
 command='flatpak run md.obsidian.Obsidian'
 name='Obsidian'
-
-[custom-keybindings/terminal]
-binding='<Super>t'
-command='xdg-terminal-exec'
-name='Terminal'
 
 [custom-keybindings/vscode]
 binding='<Super>e'
