@@ -3,6 +3,7 @@
   "show_on_all_tabs": false,
   "visibility_state": 2
  },
+ "brave.cosmetic_filtering_migration": true,
  "brave.default_private_search_provider_guid": "485bf7d3-0215-45af-87dc-538868000001",
  "brave.enable_window_closing_confirm": false,
  "brave.new_tab_page.background": {
@@ -56,6 +57,13 @@
   "name": "Google",
   "suggest_url": "{google:baseSuggestURL}{google:suggestPath}?{google:searchFieldtrialParameter}client={google:suggestClient}&gs_ri={google:suggestRid}&xssi=t&q={searchTerms}&{google:inputType}{google:omniboxFocusType}{google:cursorPosition}{google:currentPageUrl}{google:pageClassification}{google:clientCacheTimeToLive}{google:searchVersion}{google:sessionToken}{google:prefetchQuery}sugkey={google:suggestAPIKeyParameter}",
   "url": "{google:baseURL}search?q={searchTerms}&{google:RLZ}{google:originalQueryForSuggestion}{google:assistedQueryStats}{google:searchFieldtrialParameter}{google:language}{google:prefetchSource}{google:searchClient}{google:sourceId}{google:searchSource}{google:contextualSearchVersion}ie={inputEncoding}"
+ },
+ "shields": {
+  "cosmeticFilteringV2": {
+   "cosmeticFilteringV2": 1
+  },
+  "shieldsAds": 2,
+  "trackers": 2
  },
  "spellcheck.dictionaries": [
   "en-US"
