@@ -374,6 +374,27 @@ assert d["toolbar.pinned_actions"] == ["kActionShowDownloads"] and d["extensions
 t "never their data" not grep -q secret "$T/brave/ext-saved.json"
 t "lists the ones a profile is missing" same "$(bs missing "$T/brave/ext-saved.json" "$T/brave/start.json")" "$(printf 'tttt A Theme\nbbbb Bitwarden')"
 t "and none when it has them" same "$(bs missing "$T/brave/ext-saved.json" "$T/brave/ext.json")" ""
+# Shields' levels for every site: only the "*,*" entries, never a site's own.
+cat > "$T/brave/shields.json" <<JSON
+{"brave": {"cosmetic_filtering_migration": true},
+ "profile": {"content_settings": {"exceptions": {
+   "shieldsAds": {"*,*": {"last_modified": "1", "setting": 2}, "https://secret.example,*": {"setting": 1}},
+   "cosmeticFilteringV2": {"*,*": {"setting": {"cosmeticFilteringV2": 1}}},
+   "cookies": {"https://secret.example,*": {"setting": 1}}}}}}
+JSON
+bs save "$T/brave/shields.json" > "$T/brave/shields-saved.json"
+t "saves every site's Shields levels" python3 -c '
+import json, sys; d = json.load(open(sys.argv[1]))
+assert d["shields"] == {"cosmeticFilteringV2": {"cosmeticFilteringV2": 1}, "shieldsAds": 2}, d["shields"]
+assert d["brave.cosmetic_filtering_migration"] is True' "$T/brave/shields-saved.json"
+t "and not a single site's" not grep -q secret "$T/brave/shields-saved.json"
+echo '{"profile": {"content_settings": {"exceptions": {"shieldsAds": {"https://mine.example,*": {"setting": 1}}}}}}' > "$T/brave/shields-old.json"
+bs restore "$T/brave/shields-saved.json" "$T/brave/shields-old.json"
+t "puts them back, keeping a site's own and the marker Brave needs" python3 -c '
+import json, sys; d = json.load(open(sys.argv[1])); ex = d["profile"]["content_settings"]["exceptions"]
+assert ex["shieldsAds"] == {"https://mine.example,*": {"setting": 1}, "*,*": {"setting": 2}}, ex
+assert ex["cosmeticFilteringV2"]["*,*"] == {"setting": {"cosmeticFilteringV2": 1}}
+assert d["brave"]["cosmetic_filtering_migration"] is True' "$T/brave/shields-old.json"
 t "a profile saved, put back and saved again is the same" same "$(bs save "$T/brave/new/Default/Preferences")" "$(cat "$T/brave/saved.json")"
 
 echo "Signing-key files (install-apps.sh key_ok)"

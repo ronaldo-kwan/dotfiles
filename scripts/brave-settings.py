@@ -36,6 +36,11 @@ which is public), and both are put back as recommended policies. Brave records n
 only a policy chose it, so a profile without its own choice keeps the saved one. Private
 windows' engine isn't guarded, so it's an ordinary setting.
 
+Shields' levels for every site (trackers and ads: standard or aggressive; fingerprinting)
+are kept with the per-site ones, as entries for the pattern "*,*" (every site), so they're
+saved apart, as "shields": only those entries, never a site's own. Brave clears the ads one
+on a profile without its migration marker, so that's kept too.
+
 Extensions (and themes, which are extensions) from the Chrome Web Store are saved as a list
 of their IDs and names, "extensions", never their data. They aren't installed for you: dot
 check lists the ones a computer is missing and offers to open their store pages, to add them.
@@ -90,10 +95,13 @@ KEEP = [
     "https_first_balanced_mode_enabled",
     "webkit.webprefs",                       # fonts and font sizes
     "profile.default_content_setting_values",  # the defaults for every site (not per site)
+    "brave.cosmetic_filtering_migration",    # (without it Brave clears the ads level below)
     "brave.default_private_search_provider_guid",  # private windows' engine (built-in ones
                                                    # have the same ID on every computer)
 ]
 SEARCH = "search_engine"   # normal windows' engine: put back as a policy, not into Preferences
+SHIELDS = "shields"        # every site's Shields levels: {"<type>": <setting>} for "*,*"
+EVERY_SITE = "*,*"
 EXTENSIONS = "extensions"  # Chrome Web Store extensions and themes: IDs and names only
 STARTUP = "startup"        # what opens on start (1 last session, 4 pages, 5 new tab, 6 both):
                            # the same
@@ -189,6 +197,11 @@ def save(prefs_file, previous_file=None):
         value = value if value is not None else previous.get(key)
         if value:
             kept[key] = value
+    shields = {t: e[EVERY_SITE]["setting"]
+               for t, e in (get(prefs, "profile.content_settings.exceptions") or {}).items()
+               if isinstance(e, dict) and isinstance(e.get(EVERY_SITE), dict) and "setting" in e[EVERY_SITE]}
+    if shields:
+        kept[SHIELDS] = dict(sorted(shields.items()))
     exts = extensions(prefs)
     if exts:
         kept[EXTENSIONS] = exts
@@ -249,6 +262,13 @@ def restore(saved_file, prefs_file, images_dir=None):
         else:
             d[last] = v
     # Readable by you only, as Brave writes it (it holds more than these settings).
+    shields = saved.get(SHIELDS) or {}
+    if shields:   # only the "*,*" entries: a site's own stay as they are
+        ex = prefs.setdefault("profile", {}).setdefault("content_settings", {}).setdefault("exceptions", {})
+        for t, setting in shields.items():
+            ex.setdefault(t, {})[EVERY_SITE] = {"setting": setting}
+        if "cosmeticFilteringV2" in shields:
+            prefs.setdefault("brave", {})["cosmetic_filtering_migration"] = True
     os.makedirs(os.path.dirname(prefs_file), mode=0o700, exist_ok=True)
     tmp = prefs_file + ".dotfiles-new"
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
