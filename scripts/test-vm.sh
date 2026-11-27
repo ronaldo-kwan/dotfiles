@@ -142,12 +142,23 @@ wait_until() {
   done
   printf '%s(%s)%s\n' "$C_DIM" "$(fmt_time $((SECONDS - t0)))" "$C_N"
 }
+boot_id() { guest exec "cat /proc/sys/kernel/random/boot_id" 15; }   # new on every start
 session_ready() { guest_session "systemctl --user show-environment" 20 | grep -q '^WAYLAND_DISPLAY='; }
 shut_off() { [[ "$(state)" == "shut off" ]]; }
+# Closing the Boxes window saves every running machine (it's then "shut off", with its
+# state kept): resume_if_saved starts it again from there, so watching in Boxes and
+# closing it doesn't end a test.
+saved() { vsh dominfo "$VM" 2>/dev/null | grep -q '^Managed save: *yes'; }
+resume_if_saved() {
+  shut_off && saved || return 1
+  printf '\n'; warn "Boxes saved the machine when its window closed; starting it again from there"
+  vsh start "$VM" >/dev/null
+}
+answers_ping() { resume_if_saved; guest ping; }   # the agent answers (resuming a saved machine first)
 # boot: start the machine and wait until you're signed in to the desktop.
 boot() {
-  shut_off && { vsh start "$VM" >/dev/null || die "the machine didn't start"; }
-  wait_until "$BOOT_TIMEOUT" "starting" guest ping || die "no answer from the machine after $(fmt_time "$BOOT_TIMEOUT"); look at it in Boxes"
+  shut_off && ! saved && { vsh start "$VM" >/dev/null || die "the machine didn't start"; }
+  wait_until "$BOOT_TIMEOUT" "starting" answers_ping || die "no answer from the machine after $(fmt_time "$BOOT_TIMEOUT"); look at it in Boxes"
   wait_until "$BOOT_TIMEOUT" "signing in to the desktop" session_ready || die "the desktop didn't start; look at it in Boxes"
 }
 power_off() {
@@ -307,8 +318,9 @@ create() {
   note "Installing Ubuntu: open \"Dotfiles test\" in Boxes to watch (bash scripts/test-vm.sh open)"
   local asked=0
   answered() { grep -q 'GET /user-data' "$WORK/answers.log"; }
-  installed_and_off() {
+  installed_and_off() {   # (off because Boxes saved it isn't finished: resumed instead)
     (( asked )) || ! answered || { asked=1; printf '%s(answers read)%s ' "$C_DIM" "$C_N"; }
+    resume_if_saved && return 1
     shut_off
   }
   wait_until "$INSTALL_TIMEOUT" "installing" installed_and_off || {
@@ -364,9 +376,11 @@ test_run() {
   (( unpushed )) && warn "$unpushed commit(s) here aren't on GitHub, so they aren't tested (dot push first)"
   [[ -n "$(git -C "$ROOT" status --porcelain 2>/dev/null)" ]] && warn "uncommitted changes here aren't tested"
   run="$WORK/runs/$(date +%Y-%m-%d_%H%M%S)"; mkdir -p "$run"
+  plain_log() { sed -E 's/\x1b\[[0-9;?]*[A-Za-z]//g; s/\r$//; s/.*\r//' "$run/setup.log" > "$run/setup.txt"; }
 
   note "Back to the fresh Ubuntu (snapshot \"clean\")"
   shut_off || vsh destroy "$VM" >/dev/null 2>&1
+  vsh managedsave-remove "$VM" >/dev/null 2>&1   # a state Boxes saved: the snapshot replaces it
   vsh snapshot-revert "$VM" clean >/dev/null || die "couldn't go back to the snapshot"
   boot
 
@@ -375,23 +389,35 @@ test_run() {
   printf '%s\n' "$cmd" > "$run/command.txt"
   # In a terminal of its own (script gives it one, 120 by 40), as when you paste it, logged
   # to ~/dotfiles-test.log in the machine. The last line says how it ended.
-  local inner="stty cols 120 rows 40 2>/dev/null; $cmd"
+  local inner="stty cols 120 rows 40 2>/dev/null; $cmd" boot0
+  boot0="$(boot_id)"; [[ -n "$boot0" ]] || die "no answer from the machine"   # to tell when it has restarted
   guest_session "systemd-run --user --unit=dotfiles-test --collect --quiet --working-directory=/home/$GUEST_USER \
 bash -c $(printf '%q' "script -qefc $(printf '%q' "$inner") ~/dotfiles-test.log; echo \"==> dotfiles-test: exit \$?\" >> ~/dotfiles-test.log")" \
     >/dev/null || die "couldn't start the command in the machine"
   echo
-  guest follow "/home/$GUEST_USER/dotfiles-test.log" "$run/setup.log" "$SETUP_TIMEOUT"; rc=$?
+  # The machine goes quiet when it restarts at the end, or when Boxes saved it: then it's
+  # started again from where it was, and the output carries on.
+  while :; do
+    guest follow "/home/$GUEST_USER/dotfiles-test.log" "$run/setup.log" "$SETUP_TIMEOUT"; rc=$?
+    (( rc == 100 )) && resume_if_saved || break
+    wait_until "$BOOT_TIMEOUT" "carrying on" guest ping || die "no answer after starting it again; look at it in Boxes"
+  done
   echo
-  case "$rc" in
-    100) note "The machine is restarting (the setup ends with a restart)"
-         wait_until "$BOOT_TIMEOUT" "starting again" guest ping || die "no answer after the restart; look at it in Boxes"
-         wait_until "$BOOT_TIMEOUT" "signing in to the desktop" session_ready || die "the desktop didn't start after the restart"
-         # The whole log, with what was written in the last seconds before the restart.
-         guest exec "cat /home/$GUEST_USER/dotfiles-test.log" > "$run/setup.log" ;;
-    124) die "the setup didn't finish in $(fmt_time "$SETUP_TIMEOUT"); look at it in Boxes" ;;
-    *)   warn "the setup stopped without restarting (exit code $rc)" ;;
-  esac
-  sed -E 's/\x1b\[[0-9;?]*[A-Za-z]//g; s/\r$//; s/.*\r//' "$run/setup.log" > "$run/setup.txt"
+  (( rc == 124 )) && die "the setup didn't finish in $(fmt_time "$SETUP_TIMEOUT"); look at it in Boxes"
+  (( rc == 100 )) && shut_off && die "the machine stopped instead of restarting; look at it in Boxes"
+  plain_log
+  # It ends with sudo reboot, which returns at once: its last lines can come before the
+  # restart has even begun, so wait for a new boot, not just for the machine to answer.
+  if (( rc == 100 )) || grep -q 'Restarting in' "$run/setup.txt"; then
+    note "The machine is restarting (the setup ends with a restart)"
+    restarted() { local b; resume_if_saved; b="$(boot_id)" && [[ -n "$b" && "$b" != "$boot0" ]]; }
+    wait_until "$BOOT_TIMEOUT" "starting again" restarted || die "no answer after the restart; look at it in Boxes"
+    wait_until "$BOOT_TIMEOUT" "signing in to the desktop" session_ready || die "the desktop didn't start after the restart"
+    # The whole log, with what was written in the last seconds before the restart.
+    guest exec "cat /home/$GUEST_USER/dotfiles-test.log" > "$run/setup.log"; plain_log
+  else
+    warn "the setup stopped without restarting (exit code $rc)"
+  fi
   grep -q '✔ All done' "$run/setup.txt" && setup_ok=1
 
   if (( setup_ok || rc == 100 )); then
