@@ -399,6 +399,10 @@ echo '{"translate_allowlists": {"de": "en"}, "translate_blocked_languages": ["fr
 t "saves the languages to always and never translate, not sites or counts" python3 -c '
 import json, sys; d = json.load(sys.stdin)
 assert d == {"translate_allowlists": {"de": "en"}, "translate_blocked_languages": ["fr"], "translate_recent_target": "en"}, d' < <(bs save "$T/brave/tr.json")
+echo '{"custom_links": {"initialized": true, "list": [{"isMostVisited": false, "title": "Mine", "url": "https://example.org/"}, {"isMostVisited": true, "title": "From history", "url": "https://secret.example/"}]}}' > "$T/brave/links.json"
+t "saves the new tab shortcuts you added, not ones from your history" python3 -c '
+import json, sys; d = json.load(sys.stdin)["custom_links"]
+assert d == {"initialized": True, "list": [{"isMostVisited": False, "title": "Mine", "url": "https://example.org/"}]}, d' < <(bs save "$T/brave/links.json")
 t "a profile saved, put back and saved again is the same" same "$(bs save "$T/brave/new/Default/Preferences")" "$(cat "$T/brave/saved.json")"
 
 echo "Signing-key files (install-apps.sh key_ok)"

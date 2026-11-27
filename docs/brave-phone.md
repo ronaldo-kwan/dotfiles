@@ -86,6 +86,7 @@ Suggestions as you type go to Google, as on the laptop. To keep them on the phon
 | **Show Sponsored Images** | Off | Not on Origin (there's nothing to turn off) |
 | **Show Brave stats** (if listed) | Off | Off |
 | **Show top sites** / shortcuts | On | On |
+| Your shortcuts | Add the same ones by hand: on a new tab, long-press a tile, or **Add shortcut** | Saved by `dot push` (`custom_links` in `setup/apps/brave-settings.json`) |
 
 The laptop's background is the dotfiles' Catppuccin island wallpaper. The phone shows Brave's own images; to use the same one, copy `setup/wallpaper/catppuccin-tropic-island-night-16x9.jpg` to the phone, and pick it on a new tab's customise button if your version offers your own photo.
 

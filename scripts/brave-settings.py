@@ -82,6 +82,9 @@ KEEP = [
     "extensions.pinned_extensions",          # which extensions' icons are on the toolbar
     "brave.web_view_rounded_corners",
     "ntp.custom_links_visible",              # shortcuts on the new tab page
+    "ntp.shortcust_visible",                 # (Chromium's own spelling)
+    "custom_links",                          # the new tab page's shortcuts you added: their
+                                             # titles and addresses go in the repo (public)
     "homepage_is_newtabpage",
     "browser.enable_spellchecking",
     "spellcheck.dictionaries",
@@ -213,6 +216,9 @@ def save(prefs_file, previous_file=None):
         if v is None:
             continue
         v = clean(v)
+        if path == "custom_links" and isinstance(v.get("list"), list):
+            # Only shortcuts you added: one Brave filled in from your history isn't saved
+            v["list"] = [x for x in v["list"] if isinstance(x, dict) and not x.get("isMostVisited")]
         if v != {}:   # a group with nothing left but counters and the like
             kept[path] = v
     json.dump(home_out(kept), sys.stdout, indent=1, sort_keys=True)
