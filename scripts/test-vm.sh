@@ -4,9 +4,10 @@
 # then dot check. Nothing to click; watch it in Boxes if you like.
 #
 #   dot vm            test (makes the fresh Ubuntu first, if there isn't one)
+#   dot vm --no-cache test, downloading everything again (see "The download cache" below)
 #   dot vm create     make the fresh Ubuntu again (about 15 minutes)
 #   dot vm open       show the machine in Boxes
-#   dot vm delete     remove the machine and its disk
+#   dot vm delete     remove the machine, its disk and the download cache
 # (dot vm runs this script; bash scripts/test-vm.sh works the same.)
 #
 # The website's choices go in front, like on the website:
@@ -16,6 +17,13 @@
 # Exits 0 if the setup finished and dot check found nothing wrong except what a new
 # computer can't have yet (EXPECTED below), 1 if not. Each run's output and a screenshot
 # are kept in ~/.cache/dotfiles-vm/runs/.
+#
+# The download cache: each test starts from a fresh Ubuntu, so it would download the same
+# 2.5 GB of packages every time (the connection is the slow part). A second disk that isn't
+# part of the snapshot, dotfiles-test-cache.qcow2, keeps apt's downloads between tests. apt
+# still gets the signed package lists and checks every file against them, so the setup is
+# the same; only new versions download. --no-cache leaves it out (the makers' servers
+# themselves are checked by GitHub's weekly check either way).
 #
 # How: the Ubuntu installer answers itself (autoinstall), with the answers served from this
 # computer for the length of the install. The machine is then kept as a snapshot ("clean"),
@@ -35,6 +43,8 @@ VM=dotfiles-test
 GUEST_USER=tester GUEST_PASS=dotfiles
 BOXES="$HOME/.var/app/org.gnome.Boxes/data/gnome-boxes"   # where Boxes keeps its disks and ISOs
 DISK="$BOXES/images/$VM.qcow2"
+CACHE_DISK="$BOXES/images/$VM-cache.qcow2" CACHE_SIZE=40G   # sparse: only what's in it
+NO_CACHE=0
 WORK="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles-vm"        # kernel, answers, runs
 UBUNTU_RELEASES=https://releases.ubuntu.com/26.04
 # Cores and memory apply to each test (see test_run). 8 cores measured no faster than 4:
@@ -351,6 +361,48 @@ create() {
   ok "Test machine ready in $(fmt_time $((SECONDS - t0))): $VM, snapshot \"clean\""
 }
 
+# --- The download cache ------------------------------------------------------------------
+# cache_attach: the cache disk (made the first time) as the machine's second disk, from its
+# next start. The snapshot doesn't have it, so this comes after each revert.
+cache_attach() {
+  if [[ ! -f "$CACHE_DISK" ]]; then
+    in_boxes qemu-img create -q -f qcow2 "$CACHE_DISK" "$CACHE_SIZE" || return 1
+  fi
+  vsh attach-disk "$VM" "$CACHE_DISK" vdb --config --driver qemu --subdriver qcow2 --targetbus virtio >/dev/null
+}
+# cache_mount_script / cache_prune_script: what runs in the machine, as root (text, so the
+# tests can read it). Mount: the disk (formatted the first time) and apt's download folder
+# on it, until the setup's restart; prints how many bytes it holds. Prune (after the test):
+# apt autoclean drops what can't be downloaded any more (old versions), so it doesn't grow.
+cache_mount_script() {
+  cat <<'EOF'
+set -e
+blkid /dev/vdb >/dev/null 2>&1 || mkfs.ext4 -q -L dotfiles-cache /dev/vdb
+mkdir -p /mnt/dotfiles-cache
+mountpoint -q /mnt/dotfiles-cache || mount /dev/vdb /mnt/dotfiles-cache
+install -d -o _apt -g root -m 700 /mnt/dotfiles-cache/apt/partial
+mountpoint -q /var/cache/apt/archives || mount --bind /mnt/dotfiles-cache/apt /var/cache/apt/archives
+du -sb /mnt/dotfiles-cache/apt | cut -f1
+EOF
+}
+cache_prune_script() {
+  cat <<'EOF'
+set -e
+mkdir -p /mnt/dotfiles-cache
+mountpoint -q /mnt/dotfiles-cache || mount /dev/vdb /mnt/dotfiles-cache
+apt-get -q autoclean -o Dir::Cache::archives=/mnt/dotfiles-cache/apt/ >/dev/null
+du -sb /mnt/dotfiles-cache/apt | cut -f1
+umount /mnt/dotfiles-cache
+EOF
+}
+# in_machine <script text> [seconds]: run it in the machine as root; prints its last line.
+in_machine() {
+  local out
+  out="$(guest exec "echo $(base64 -w0 <<< "$1") | base64 -d | bash" "${2:-120}")" || return 1
+  printf '%s\n' "${out##*$'\n'}"
+}
+mb() { echo "$(( ${1:-0} / 1000000 )) MB"; }
+
 delete_vm() {
   exists || return 0
   shut_off || vsh destroy "$VM" >/dev/null 2>&1
@@ -395,7 +447,18 @@ test_run() {
   # The snapshot brings back the cores and memory it was made with: these settings win, so
   # changing them above needs no new machine.
   fit_machine || warn "couldn't set the machine to $CPUS cores and $MEMORY_MIB MiB; testing with the snapshot's"
+  local cache=0 bytes
+  if (( NO_CACHE )); then note "No download cache (--no-cache): everything downloads"
+  elif cache_attach; then cache=1
+  else warn "couldn't attach the download cache; everything downloads"; fi
   boot
+  if (( cache )); then
+    if bytes="$(in_machine "$(cache_mount_script)")" && [[ "$bytes" =~ ^[0-9]+$ ]]; then
+      note "Download cache: $(mb "$bytes") from earlier tests (dot vm --no-cache downloads everything)"
+    else
+      warn "couldn't use the download cache; everything downloads"; cache=0
+    fi
+  fi
 
   cmd="$(website_command)"
   note "In the machine's terminal: $cmd"
@@ -447,6 +510,9 @@ bash -c $(printf '%q' "script -qefc $(printf '%q' "$inner") ~/dotfiles-test.log;
     bad+=("dot check not run: the setup stopped early")
   fi
   vsh screenshot "$VM" --file "$run/screen.png" >/dev/null 2>&1 || true
+  if (( cache )) && bytes="$(in_machine "$(cache_prune_script)" 300)"; then
+    note "Download cache: $(mb "$bytes") kept for the next test"
+  fi
 
   echo
   if (( setup_ok )); then ok "the setup finished (✔ All done)"
@@ -461,15 +527,20 @@ bash -c $(printf '%q' "script -qefc $(printf '%q' "$inner") ~/dotfiles-test.log;
 }
 
 [[ "${BASH_SOURCE[0]}" == "$0" ]] || return 0   # sourced (scripts/test-helpers.sh): only the functions
+args=()
+for a in "$@"; do
+  if [[ "$a" == --no-cache ]]; then NO_CACHE=1; else args+=("$a"); fi
+done
+set -- ${args[@]+"${args[@]}"}
 case "${1:-test}" in
   test)   test_run ;;
   create) create ;;
   open)   exists || die "no test machine yet: dot vm"
           shut_off && vsh start "$VM" >/dev/null
           flatpak run org.gnome.Boxes --open-uuid "$(vsh domuuid "$VM" | head -1)" >/dev/null 2>&1 & disown ;;
-  delete) exists || { echo "There's no test machine."; exit 0; }
-          ask "Delete the test machine $VM and its disk ($(du -h "$DISK" 2>/dev/null | cut -f1))?" || exit 0
-          delete_vm; ok "Deleted $VM" ;;
-  -h|--help|help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//' ;;
-  *) echo "Unknown: $1 (test, create, open or delete)"; exit 2 ;;
+  delete) exists || [[ -f "$CACHE_DISK" ]] || { echo "There's no test machine."; exit 0; }
+          ask "Delete the test machine $VM, its disk ($(du -h "$DISK" 2>/dev/null | cut -f1)) and the download cache ($(du -h "$CACHE_DISK" 2>/dev/null | cut -f1))?" || exit 0
+          delete_vm; rm -f "$CACHE_DISK"; ok "Deleted $VM and its download cache" ;;
+  -h|--help|help) sed -n '2,/^set -uo/p' "$0" | sed '$d; s/^# \{0,1\}//' ;;
+  *) echo "Unknown: $1 (test, create, open or delete; and --no-cache)"; exit 2 ;;
 esac

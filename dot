@@ -151,9 +151,11 @@ passes if the setup finishes and dot check finds only what a new laptop does by 
 (signed commits, the notes, Backups, Brave's extensions). About 10 minutes.
 
   dot vm                   test (makes the fresh Ubuntu first, if there isn't one)
+  dot vm --no-cache        test, downloading everything again (normally the packages from
+                           earlier tests are reused from a cache disk: faster, same setup)
   dot vm open              show the machine in Boxes (user tester, password dotfiles)
   dot vm create            make the fresh Ubuntu again (a new Ubuntu ISO, say)
-  dot vm delete            remove the machine and its disk
+  dot vm delete            remove the machine, its disk and the download cache
   DOTFILES_CHOICES='terminal desktop' dot vm    what you'd pick on the website
 EOF
     ;;

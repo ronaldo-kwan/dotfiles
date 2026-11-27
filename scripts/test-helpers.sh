@@ -850,6 +850,14 @@ assert a["identity"]["username"] == "tester" and a["shutdown"] == "poweroff", a
 assert any("qemu-guest-agent" in c for c in a["late-commands"]) and len(a["late-commands"]) == 4, a["late-commands"]' "$T/vm/answers/user-data"
 fi
 
+# The download cache: the disk is formatted only when blank, and apt's folder goes on it.
+mount_script="$(vm cache_mount_script)"
+t "test-vm: the cache disk is formatted only when it's blank" grep -qx 'blkid /dev/vdb >/dev/null 2>&1 || mkfs.ext4 -q -L dotfiles-cache /dev/vdb' <<< "$mount_script"
+t "test-vm: apt's download folder goes on the cache disk (owned as apt needs)" bash -c \
+  'grep -q "mount --bind /mnt/dotfiles-cache/apt /var/cache/apt/archives" <<< "$1" && grep -q "install -d -o _apt -g root -m 700" <<< "$1"' _ "$mount_script"
+t "test-vm: --no-cache is an option, not an unknown command" same \
+  "$(bash "$ROOT/scripts/test-vm.sh" --no-cache frobnicate 2>&1; echo "rc=$?")" $'Unknown: frobnicate (test, create, open or delete; and --no-cache)\nrc=2'
+
 echo "App table (install-apps.sh)"
 t "every app: entry has its APP_PARTS" bash -c '
   for e in "${@:2}"; do c="${e%%|*}"; [[ "$c" != app:* ]] || [[ " $1 " == *" $c "* ]] || { echo "      missing APP_PARTS for $c"; exit 1; }; done' \
