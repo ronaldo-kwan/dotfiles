@@ -61,6 +61,7 @@ Everything goes through one command, `dot`. On its own, **`dot` opens a menu** t
 | `dot cd` · `dot edit` | Go to `~/code/github/dotfiles` · open it in VS Code |
 | `dot install` · `dot apps` · `dot fresh` | Run the setup scripts again (each is safe to rerun) |
 | `dot uninstall` | Undo it: your own config files back, Ubuntu's desktop look, extensions and fonts removed. `--apps` also removes the apps you pick ([details](docs/new-computer.md#undoing-it)) |
+| `dot vm` | Test the whole setup like a new laptop, in a GNOME Boxes virtual machine: a fresh Ubuntu, the website's command, the restart, then `dot check` (what's on GitHub: push first). About 10 minutes ([details](docs/maintenance.md#a-test-in-a-virtual-machine)) |
 | `update` | Update Ubuntu packages now (it also happens weekly by itself) |
 
 > [!NOTE]

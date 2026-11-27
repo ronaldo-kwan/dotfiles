@@ -154,6 +154,7 @@ _dot() {
       check)        words="--fix --help" ;;
       install|apps) words="--yes --help" ;;
       uninstall)    words="--apps --help" ;;
+      vm)           words="open create delete --help" ;;
       *)            words="--help" ;;
     esac
   fi

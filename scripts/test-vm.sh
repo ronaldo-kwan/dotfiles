@@ -3,13 +3,14 @@
 # 26.04, the website's command (what's on GitHub: push first), the restart it ends with,
 # then dot check. Nothing to click; watch it in Boxes if you like.
 #
-#   bash scripts/test-vm.sh           test (makes the fresh Ubuntu first, if there isn't one)
-#   bash scripts/test-vm.sh create    make the fresh Ubuntu again (about 20 minutes)
-#   bash scripts/test-vm.sh open      show the machine in Boxes
-#   bash scripts/test-vm.sh delete    remove the machine and its disk
+#   dot vm            test (makes the fresh Ubuntu first, if there isn't one)
+#   dot vm create     make the fresh Ubuntu again (about 15 minutes)
+#   dot vm open       show the machine in Boxes
+#   dot vm delete     remove the machine and its disk
+# (dot vm runs this script; bash scripts/test-vm.sh works the same.)
 #
 # The website's choices go in front, like on the website:
-#   DOTFILES_CHOICES='terminal desktop' bash scripts/test-vm.sh
+#   DOTFILES_CHOICES='terminal desktop' dot vm
 # (also DOTFILES_SKIP, DOTFILES_REF, DOTFILES_GIT_NAME and DOTFILES_GIT_EMAIL).
 #
 # Exits 0 if the setup finished and dot check found nothing wrong except what a new
@@ -324,7 +325,7 @@ create() {
   in_boxes qemu-img create -q -f qcow2 "$DISK" "$DISK_SIZE" || die "couldn't make the disk"
   domain_xml install > "$WORK/install.xml"; define "$WORK/install.xml"
   vsh start "$VM" >/dev/null || die "the machine didn't start"
-  note "Installing Ubuntu: open \"Dotfiles test\" in Boxes to watch (bash scripts/test-vm.sh open)"
+  note "Installing Ubuntu: open \"Dotfiles test\" in Boxes to watch (dot vm open)"
   local asked=0
   answered() { grep -q 'GET /user-data' "$WORK/answers.log"; }
   installed_and_off() {   # (off because Boxes saved it isn't finished: resumed instead)
@@ -455,7 +456,7 @@ bash -c $(printf '%q' "script -qefc $(printf '%q' "$inner") ~/dotfiles-test.log;
   elif (( ${#bad[@]} == 0 )); then ok "dot check: nothing wrong but what a new computer can't have yet"
   else printf '%s✘%s dot check found:\n' "$C_ERR" "$C_N"; printf '      %s\n' "${bad[@]}"; fi
   note "Output and a screenshot: ${run/#$HOME/\~}  (took $(fmt_time $((SECONDS - t0))))"
-  note "The machine is still running as the test left it: bash scripts/test-vm.sh open"
+  note "The machine is still running as the test left it: dot vm open"
   (( setup_ok && ${#bad[@]} == 0 ))
 }
 
@@ -463,7 +464,7 @@ bash -c $(printf '%q' "script -qefc $(printf '%q' "$inner") ~/dotfiles-test.log;
 case "${1:-test}" in
   test)   test_run ;;
   create) create ;;
-  open)   exists || die "no test machine yet: bash scripts/test-vm.sh"
+  open)   exists || die "no test machine yet: dot vm"
           shut_off && vsh start "$VM" >/dev/null
           flatpak run org.gnome.Boxes --open-uuid "$(vsh domuuid "$VM" | head -1)" >/dev/null 2>&1 & disown ;;
   delete) exists || { echo "There's no test machine."; exit 0; }

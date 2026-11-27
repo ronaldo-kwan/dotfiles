@@ -632,15 +632,18 @@ group_end; } > "$GROUPS_OUT/2" 2>&1 &
 { group_start 3
 echo "The dot command"
 mkdir -p "$T/dotcopy/bin"; cp "$ROOT/dot" "$T/dotcopy/"; cp "$ROOT/bin/lib.sh" "$T/dotcopy/bin/"
-for s in install.sh install-apps.sh fresh-install.sh post-upgrade.sh uninstall.sh check.sh; do
-  printf '#!/bin/sh\ntouch "%s/ran"\n' "$T/dotcopy" > "$T/dotcopy/bin/$s"; chmod +x "$T/dotcopy/bin/$s"
+mkdir -p "$T/dotcopy/scripts"
+for s in bin/install.sh bin/install-apps.sh bin/fresh-install.sh bin/post-upgrade.sh bin/uninstall.sh bin/check.sh scripts/test-vm.sh; do
+  printf '#!/bin/sh\ntouch "%s/ran"\n' "$T/dotcopy" > "$T/dotcopy/$s"; chmod +x "$T/dotcopy/$s"
 done
 dot_rc() { local rc=0; "$T/dotcopy/dot" "$@" >/dev/null 2>&1 || rc=$?; echo "$rc"; }
-for c in install apps fresh upgrade uninstall check; do
+for c in install apps fresh upgrade uninstall check vm; do
   t "dot $c --help explains it without starting the script" \
     same "$(dot_rc "$c" --yes --help)|$(test -e "$T/dotcopy/ran" && echo ran)" "0|"
 done
-t "dot help lists every command" same "$("$T/dotcopy/dot" help | grep -cE '^  (push|pull|check|edit|cd|install|apps|ssh|upgrade|fresh|uninstall|help)\b')" 12
+t "dot help lists every command" same "$("$T/dotcopy/dot" help | grep -cE '^  (push|pull|check|edit|cd|install|apps|ssh|upgrade|fresh|uninstall|vm|help)\b')" 13
+t "dot vm runs the virtual machine test" bash -c '"$1/dot" vm >/dev/null 2>&1; test -e "$1/ran"' _ "$T/dotcopy"
+rm -f "$T/dotcopy/ran"
 t "an unknown command exits 2" same "$(dot_rc frobnicate)" 2
 t "an unknown option exits 2" same "$(dot_rc push --frobnicate)" 2
 t "an old name says what replaced it" grep -q "dot push" < <("$T/dotcopy/dot" notes 2>&1)

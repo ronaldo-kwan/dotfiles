@@ -32,6 +32,7 @@ COMMANDS=(
   "upgrade||setup|After an Ubuntu upgrade|Put things back after upgrading Ubuntu to a new release"
   "fresh||setup||Set up a freshly installed Ubuntu from scratch"
   "uninstall|[--apps]|setup||Undo the dotfiles (--apps: remove the apps too)"
+  "vm|[action]|other||Test the setup like a new laptop, in a GNOME Boxes virtual machine"
   "help|[command]|other||List the commands, or explain one"
 )
 declare -A GROUP_TITLES=([daily]="Everyday" [setup]="Set up and repair" [other]="More")
@@ -139,6 +140,20 @@ look. Asks first.
 
   dot uninstall
   dot uninstall --apps     the apps the dotfiles added too (you pick which)
+EOF
+    ;;
+    vm) cat <<'EOF'
+Runs scripts/test-vm.sh: a fresh Ubuntu 26.04 in a GNOME Boxes virtual machine (made
+once, about 15 minutes, then kept as a snapshot), the website's command for what's on
+GitHub (push first), the restart it ends with, then dot check. Nothing to click. It
+passes if the setup finishes and dot check finds only what a new laptop does by hand
+(signed commits, the notes, Backups, Brave's extensions). About 10 minutes.
+
+  dot vm                   test (makes the fresh Ubuntu first, if there isn't one)
+  dot vm open              show the machine in Boxes (user tester, password dotfiles)
+  dot vm create            make the fresh Ubuntu again (a new Ubuntu ISO, say)
+  dot vm delete            remove the machine and its disk
+  DOTFILES_CHOICES='terminal desktop' dot vm    what you'd pick on the website
 EOF
     ;;
     help) echo "  dot help push            what dot push does" ;;
@@ -489,6 +504,7 @@ case "$cmd" in
   upgrade) exec "$DOTFILES/bin/post-upgrade.sh" "$@" ;;
   ssh)     exec "$DOTFILES/scripts/ssh-setup.sh" "$@" ;;
   uninstall) exec "$DOTFILES/bin/uninstall.sh" "$@" ;;
+  vm)      exec "$DOTFILES/scripts/test-vm.sh" "$@" ;;
   edit)
     if have code; then exec code "$DOTFILES"; fi
     ed="${VISUAL:-${EDITOR:-}}"
