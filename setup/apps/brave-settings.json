@@ -88,6 +88,9 @@
  "intl.selected_languages": "en-US,en",
  "ntp.custom_links_visible": true,
  "ntp.shortcust_visible": true,
+ "profile.default_content_setting_values": {
+  "notifications": 2
+ },
  "search_engine": {
   "keyword": ":g",
   "name": "Google",
