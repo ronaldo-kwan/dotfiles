@@ -2,7 +2,8 @@
 # Set up this computer from ~/code/github/dotfiles. Safe to run more than once.
 #
 # Needs (install first, see README):
-#   sudo apt install git gh gum curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit flatpak
+#   sudo apt install git gh gum curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit flatpak \
+#     nodejs npm pyflakes3 shellcheck
 #
 # Does NOT use sudo. Steps that need sudo or a sign-in are listed at the end.
 # If one step fails, the others still run, and failures are listed at the end.

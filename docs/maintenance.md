@@ -168,7 +168,7 @@ It names the file, line and commit. A secret it finds there has been on GitHub: 
 - [`scripts/test-helpers.sh`](../scripts/test-helpers.sh), every time (about 6 seconds)
 - [`scripts/lint.sh`](../scripts/lint.sh) (shellcheck and the rest), when the push changes something it looks at: the scripts, `.bashrc`, the cron jobs, the Python and the website's scripts (about 20 seconds). Saved settings and docs alone, like most `dot push`es, skip it
 
-If a check fails, the push stops and shows its output. `lint.sh` needs its tools on this computer (`sudo apt install shellcheck pyflakes3 nodejs npm`); without them it fails and says so. The notes repo uses the same hooks folder for the secret check, but this doesn't run there. [The virtual machine test](#a-test-in-a-virtual-machine) isn't part of it: it tests what's on GitHub, so it comes after the push.
+If a check fails, the push stops and shows its output. `lint.sh`'s tools (shellcheck, pyflakes, Node.js) are terminal tools, so the setup installs them, and `dot check` offers them on a computer set up before they were added; without them `lint.sh` fails and says so. The notes repo uses the same hooks folder for the secret check, but this doesn't run there. [The virtual machine test](#a-test-in-a-virtual-machine) isn't part of it: it tests what's on GitHub, so it comes after the push.
 
 > [!TIP]
 > To push anyway (say, to share a work in progress): `git push --no-verify`.
@@ -211,7 +211,7 @@ Then restart. If an extension is still off, switch it on in the Extensions app.
 [`.github/workflows/check.yml`](../.github/workflows/check.yml) runs on every push to `main`, every pull request, and every Monday (a newer push to the same pull request cancels the run it replaces; each job also stops after a time limit, so a stuck download can't hold it for hours). The Monday run catches a maker that moved a download or changed a signing key within a week, and GitHub emails you when it fails. (GitHub pauses scheduled runs in a repo with no activity for 60 days; **Actions → check → Enable workflow** starts them again.) Every job runs on the `ubuntu-26.04` runner rather than `ubuntu-latest`, so a new runner image only comes in when `check.yml` says so. Before setting up a new computer, run it by hand (`gh workflow run check.yml --repo ronaldo-kwan/dotfiles`, or **Actions → check → Run workflow**), so a maker changing a download link or signing key shows up as a failed run rather than halfway through the setup; see [New computer](new-computer.md#first-check-the-dotfiles-still-work). In a clean Ubuntu 26.04 container it runs:
 
 - [`actionlint`](https://github.com/rhysd/actionlint) on the workflow files themselves (mistyped keys, wrong job names in `needs:`, bad `${{ }}` expressions), so a broken workflow fails here instead of on the day it's needed; one fixed version, checked against its checksum like the fonts below (`ACTIONLINT_VERSION` and `ACTIONLINT_SHA256` in `check.yml`)
-- [`scripts/lint.sh`](../scripts/lint.sh): a syntax check of every script, `shellcheck` at every level (with the settings in [`.shellcheckrc`](../.shellcheckrc)), `pyflakes` on `scripts/build-site.py` and `node --check` on the website's scripts, with Ubuntu 26.04's own versions of each, and [ESLint](https://eslint.org) on the website's scripts (the versions in `package-lock.json`, with the rules in [`eslint.config.mjs`](../eslint.config.mjs)). Run it yourself after `sudo apt install shellcheck pyflakes3 nodejs npm`; the first run puts ESLint in `node_modules/`
+- [`scripts/lint.sh`](../scripts/lint.sh): a syntax check of every script, `shellcheck` at every level (with the settings in [`.shellcheckrc`](../.shellcheckrc)), `pyflakes` on `scripts/build-site.py` and `node --check` on the website's scripts, with Ubuntu 26.04's own versions of each, and [ESLint](https://eslint.org) on the website's scripts (the versions in `package-lock.json`, with the rules in [`eslint.config.mjs`](../eslint.config.mjs)). Run it yourself with `bash scripts/lint.sh` (the setup installs its tools); the first run puts ESLint in `node_modules/`
 - that actionlint and the Nerd Font are their newest releases: a newer one is a warning on the run, and fails the Monday run, since Dependabot can't update these two
 - the system check (both copies must agree), and [`scripts/test-helpers.sh`](../scripts/test-helpers.sh): quick checks of the shared helpers in `lib.sh` and of the app table in `install-apps.sh` (run it yourself with `bash scripts/test-helpers.sh`)
 - dry runs of `fresh-install.sh` (every step of setting up a new computer, including `install.sh` and `install-apps.sh`), `post-upgrade.sh` on test files, `install.sh` (which also checks the pinned downloads) and `uninstall.sh --apps`; none may change anything
@@ -268,10 +268,9 @@ actionlint is pinned the same way as the fonts: `ACTIONLINT_VERSION` and `ACTION
 
 GitHub also guards the repo itself (**Settings → Rules → Rulesets**): `main` can't be force-pushed or deleted, and release tags (`v*`) can't be moved or deleted, so `DOTFILES_REF=v2.0.0` always sets up the same code. Dependabot alerts and security updates are on, so a security advisory for anything Dependabot watches shows up under **Security** with a pull request that fixes it.
 
-The result shows on the repo's [Actions](https://github.com/ronaldo-kwan/dotfiles/actions) tab. To run the lint checks locally:
+The result shows on the repo's [Actions](https://github.com/ronaldo-kwan/dotfiles/actions) tab. To run the lint checks locally (the setup installs their tools; [before each push](#checks-before-pushing) they run by themselves):
 
 ```bash
-sudo apt install shellcheck pyflakes3 nodejs npm
 bash ~/code/github/dotfiles/scripts/lint.sh
 ```
 

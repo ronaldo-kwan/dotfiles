@@ -17,8 +17,10 @@ DEFAULT_DOTFILES="$HOME/code/github/dotfiles"
 SETUP="$DOTFILES/setup"
 STOW_DIR="$DOTFILES/home"   # the Stow packages: folders whose files are linked into your home folder
 FAILED=()
-# Terminal tools from apt (installed by fresh-install.sh, checked by check.sh)
-TOOLS=(git gh gum curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit flatpak)
+# Terminal tools from apt (installed by fresh-install.sh, checked by check.sh). The last
+# four check the dotfiles' own scripts (scripts/lint.sh, and so the checks before each push).
+TOOLS=(git gh gum curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit flatpak
+       shellcheck pyflakes3 nodejs npm)
 # Stow packages: folders here whose files are linked into your home folder
 PACKAGES=(bash git starship ghostty btop lazygit bat eza fzf fastfetch terminal-default vscode claude systemd fontconfig)
 
