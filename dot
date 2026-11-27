@@ -284,7 +284,7 @@ save_repo() {
   local d="$1" name
   name="$(repo_name "$d")"
   if [[ -n "$(git -C "$d" status --porcelain)" ]]; then
-    git -C "$d" add -A && git -C "$d" commit -q -m "$2" || { err "$name: couldn't commit (see above)"; return 1; }
+    { git -C "$d" add -A && git -C "$d" commit -q -m "$2"; } || { err "$name: couldn't commit (see above)"; return 1; }
   fi
   git -C "$d" push -q || { err "$name: couldn't push (see above)"; return 1; }
   ok "$name saved to GitHub: $(git -C "$d" log --format='%h %s' -1)"
@@ -422,6 +422,7 @@ menu() {
   mapfile -t daily < <(menu_items daily)
   mapfile -t setup < <(menu_items setup)
   # What GitHub has, once: the status lines and the suggested step need it.
+  # shellcheck disable=SC2016  # the script in quotes is expanded by the bash it starts
   gum spin --title "Checking GitHub…" -- bash -c '
     for d in "$@"; do [ -d "$d/.git" ] && GIT_TERMINAL_PROMPT=0 timeout 5 git -C "$d" fetch --quiet; done; true' \
     _ "$DOTFILES" "$VAULT"

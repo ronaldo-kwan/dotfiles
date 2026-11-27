@@ -13,6 +13,9 @@ notify() {
     notify-send -u "$1" -i system-software-update "$2" "$3"
 }
 
+# Keeps the log small: past 1 MB it becomes $LOG.1 (replacing the one before), so it
+# holds the last few months, not years.
+if [ -f "$LOG" ] && [ "$(stat -c %s "$LOG")" -gt 1048576 ]; then mv -f "$LOG" "$LOG.1"; fi
 echo "=== $(date) ===" >> "$LOG"
 
 # Packages installed only as dependencies that nothing needs now (old kernels, ...).

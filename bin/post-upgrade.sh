@@ -51,6 +51,7 @@ reenable_sources() {
      && ! compgen -G "$SOURCES_DIR/obsproject-*-$CODENAME.sources" >/dev/null; then
     run $SUDO rm -f "$SOURCES_DIR"/obsproject-*
     if have add-apt-repository && [[ "$SOURCES_DIR" == /etc/apt/sources.list.d ]]; then
+      # shellcheck disable=SC2086  # $SUDO is sudo, or empty in the tests (no word at all)
       if run_quiet $SUDO add-apt-repository -y ppa:obsproject/obs-studio; then
         did "OBS's PPA added again for $CODENAME"
       else

@@ -4,6 +4,7 @@
 # Run by GitHub's checks (.github/workflows/check.yml), or by hand:
 #   bash scripts/test-helpers.sh
 # shellcheck disable=SC2034  # DOTFILES_CHOICES and DOTFILES_SKIP are set here for chosen (lib.sh)
+# shellcheck disable=SC2016  # many tests pass a literal $NAME on purpose, for the code under test to expand
 
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -14,9 +15,9 @@ export HOME="$T/home" NO_COLOR=1 DOT_PLAIN=1 UI_LOG="$T/ui.log"   # no saved cho
 export LC_ALL=C.UTF-8
 unset DOTFILES_CHOICES DOTFILES_SKIP DRY_RUN
 mkdir -p "$HOME"
-# shellcheck source=../bin/lib.sh
+# shellcheck source=bin/lib.sh
 source "$ROOT/bin/lib.sh"
-# shellcheck source=../bin/install-apps.sh
+# shellcheck source=bin/install-apps.sh
 source "$ROOT/bin/install-apps.sh"   # only loads APPS, APP_PARTS and the checks
 
 fails=0 n=0
@@ -199,6 +200,22 @@ g30="$(printf 'Ab1_-%.0s' {1..7})"
 t "stops a Google access token (rclone's, say)" not hook_on "x {\"access\":\"ya29.$g30\"}"
 t "stops a Google refresh token" not hook_on "refresh: 1//0$g30"
 t "lets a URL with 1// in it through" hook_on "see https://example.com/v1//$g30"
+a24="$(printf 'Ab1x%.0s' {1..6})" a36="$(printf 'Ab1x%.0s' {1..9})"
+t "stops a Stripe live key" not hook_on "STRIPE=sk_live_$a24"
+t "stops an npm token" not hook_on "NPM=npm_$a36"
+t "stops a Hugging Face token" not hook_on "HF=hf_${a36:2}"
+t "lets a Stripe test key through" hook_on "STRIPE_KEY_FOR_TESTS: sk_test_"
+t "checks a line that isn't valid UTF-8" not hook_on "$(printf '\xff\xfe ')TOKEN=$gh36"
+# --history: a token committed with --no-verify, then removed, is still found.
+git init -q "$T/hist"
+printf 'TOKEN=%s\n' "$gh36" > "$T/hist/a.txt"
+git -C "$T/hist" add a.txt && git -C "$T/hist" -c user.name=t -c user.email=t@t commit -qm add --no-verify
+echo clean > "$T/hist/a.txt"
+git -C "$T/hist" -c user.name=t -c user.email=t@t commit -qam remove --no-verify
+hist_out="$(cd "$T/hist" && bash "$ROOT/.githooks/pre-commit" --history 2>&1)"; hist_rc=$?
+t "--history finds a token a later commit removed" same "$hist_rc" 1
+t "--history names the file, line and commit" same "$(grep -c 'a.txt:1 (commit [0-9a-f]*) looks like a token' <<< "$hist_out")" 1
+t "--history shows nothing of the value" same "$(grep -c "$gh36" <<< "$hist_out")" 0
 # hook_file <name>: does the secret check stop a commit that adds a file with this name?
 hook_file() {
   mkdir -p "$T/secrets/$(dirname "$1")"; echo "harmless" > "$T/secrets/$1"

@@ -1,0 +1,26 @@
+# How editors should write the files here (VS Code needs the EditorConfig extension;
+# most other editors read it themselves). https://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.py]
+indent_size = 4
+
+# git's own files are indented with tabs, and `helper = ` (empty, on purpose) ends in a space.
+[home/git/.gitconfig]
+indent_style = tab
+trim_trailing_whitespace = false
+
+# Saved as the apps and themes wrote them: left as they are.
+[{setup/**,home/**/themes/**,licenses/**}]
+indent_style = unset
+indent_size = unset
+trim_trailing_whitespace = unset
+insert_final_newline = unset

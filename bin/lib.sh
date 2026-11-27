@@ -67,7 +67,10 @@ if [[ -z "${DOTFILES_CHOICES:-}${DOTFILES_SKIP:-}" && -r "$CHOICES_FILE" ]]; the
   DOTFILES_CHOICES="$(grep -v '^#' "$CHOICES_FILE" | grep -v '^-' | tr '\n' ' ')"
   DOTFILES_SKIP="$(grep '^-' "$CHOICES_FILE" | sed 's/^-//' | tr '\n' ' ')"
 fi
-DOTFILES_CHOICES="$(echo ${DOTFILES_CHOICES:-})" DOTFILES_SKIP="$(echo ${DOTFILES_SKIP:-})"   # tidy spacing
+# Tidy spacing: the words, one space between. (read -a splits without expanding * or ?.)
+read -ra _words <<< "${DOTFILES_CHOICES:-}"; DOTFILES_CHOICES="${_words[*]}"
+read -ra _words <<< "${DOTFILES_SKIP:-}"; DOTFILES_SKIP="${_words[*]}"
+unset _words
 export DOTFILES_CHOICES DOTFILES_SKIP
 chosen() {
   [[ " $DOTFILES_SKIP " == *" $1 "* ]] && return 1

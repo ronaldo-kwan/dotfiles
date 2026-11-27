@@ -8,7 +8,7 @@
 set -uo pipefail
 [[ "${CI:-}" == true ]] || { echo "Only for GitHub's checks: this changes the desktop settings."; exit 1; }
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# shellcheck source=../bin/lib.sh
+# shellcheck source=bin/lib.sh
 source "$ROOT/bin/lib.sh"   # DCONF_FILES, fill_home, WALLPAPER, SETUP
 export NO_COLOR=1 DOT_PLAIN=1 DOTFILES_CHOICES=desktop
 

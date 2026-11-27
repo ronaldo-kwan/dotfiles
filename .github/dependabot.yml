@@ -1,0 +1,17 @@
+# Opens a pull request when an action the workflows use has a new release. The workflows
+# name each action by its commit ID (see docs/maintenance.md), and Dependabot updates both
+# the ID and the version comment after it. The check workflow runs on each pull request.
+# (actionlint's version in check.yml, the Nerd Font and the apps' keys are updated by hand.)
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # One pull request for all of them, so a release that moves several actions at once
+    # (configure-pages, upload-pages-artifact and deploy-pages often do) lands together.
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: CI

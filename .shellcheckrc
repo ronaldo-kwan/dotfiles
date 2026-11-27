@@ -1,0 +1,8 @@
+# shellcheck settings for every script here (it finds this file from the script's folder up).
+#
+# SC2317/SC2329 ("command appears unreachable" / "function is never invoked"): the scripts
+# call most of their functions by name from tables (run_steps "Title|function", the APPS
+# list in install-apps.sh, check_* and setup_* looked up per app), which shellcheck can't
+# follow, so it reports nearly every function. A function that's really unused still shows
+# up in the tests (scripts/test-helpers.sh checks every name in APPS exists).
+disable=SC2317,SC2329

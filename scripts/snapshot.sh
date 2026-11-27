@@ -9,7 +9,7 @@
 
 set -uo pipefail
 
-# shellcheck source=../bin/lib.sh
+# shellcheck source=bin/lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/bin/lib.sh"   # DOTFILES, have, chosen
 d="${1:-$DOTFILES/setup}"
 [[ -d "$d" ]] || { echo "snapshot.sh: $d not found" >&2; exit 1; }

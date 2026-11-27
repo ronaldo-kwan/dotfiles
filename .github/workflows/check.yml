@@ -1,5 +1,6 @@
-# Checks every push: script mistakes (shellcheck), and that install.sh works on a
-# clean Ubuntu 26.04 (a container without a desktop, so desktop steps are skipped).
+# Checks every push to main and every pull request: script mistakes (scripts/lint.sh),
+# and that install.sh works on a clean Ubuntu 26.04 (a container without a desktop, so
+# desktop steps are skipped).
 # Before setting up a new computer, run it by hand (docs/new-computer.md), so a maker
 # changing a download link or signing key (Chrome, VS Code, Claude, ChatGPT, Proton VPN,
 # ONLYOFFICE) shows up as a failed run, not halfway through the setup:
@@ -7,22 +8,56 @@
 name: check
 
 on:
+  # main only: a branch with a pull request is checked once, by pull_request, not twice.
+  # (A branch without one can be checked by hand: gh workflow run check.yml --ref <branch>)
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  # A newer push to the same pull request cancels the run it makes outdated. On main every
+  # commit keeps its own run, so each one's result stays.
+  group: check-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   lint:
-    name: shellcheck
+    name: shellcheck, pyflakes, node --check (scripts/lint.sh)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Ubuntu 26.04's own shellcheck, pyflakes and node: the versions `sudo apt install` gives
+    # on the computers, so scripts/lint.sh finds the same things there as here.
+    container: ubuntu:26.04
+    steps:
+      - name: Tools
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            git ca-certificates shellcheck pyflakes3 nodejs >/dev/null
+          git config --system --add safe.directory '*'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false   # nothing here pushes, so the token isn't kept in .git/config
+      - name: scripts/lint.sh
+        shell: bash   # a container's default is sh
+        run: bash scripts/lint.sh
+
+  quick:
+    name: quick checks (workflows, helpers, secrets, website)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false   # nothing here pushes, so the token isn't kept in .git/config
+          fetch-depth: 0               # every commit and branch, for the secret check on the history
       - name: Workflow files (actionlint)
         # One fixed version, used only if its checksum matches (from the release's checksums.txt).
-        # -shellcheck= : the scripts get their own shellcheck step below.
+        # -shellcheck= : the scripts get their own shellcheck run (the lint job).
         env:
           ACTIONLINT_VERSION: 1.7.12
           ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
@@ -32,14 +67,6 @@ jobs:
           echo "$ACTIONLINT_SHA256  /tmp/$f" | sha256sum -c -
           tar -xzf "/tmp/$f" -C /tmp actionlint
           /tmp/actionlint -color -shellcheck=
-      - name: Syntax check (bash -n)
-        run: |
-          for f in bootstrap.sh bin/*.sh dot scripts/*.sh .githooks/pre-commit home/bash/.bashrc; do bash -n "$f"; done
-          for f in system/etc/cron.*/*; do sh -n "$f"; done
-      - name: shellcheck (warnings and errors)
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
-          shellcheck -x -S warning bootstrap.sh bin/*.sh dot scripts/*.sh .githooks/pre-commit system/etc/cron.*/*
       - name: Shared helpers and the app table (scripts/test-helpers.sh)
         run: bash scripts/test-helpers.sh
       - name: No secrets in any file (the pre-commit secret check, on the whole repo)
@@ -50,12 +77,11 @@ jobs:
           git ls-files -z | xargs -0 cp --parents -t "$d"
           cd "$d" && git init -q && git add -A
           bash "$GITHUB_WORKSPACE/.githooks/pre-commit"
+      - name: No secrets anywhere in the history (the secret check with --history)
+        # A secret a later commit removed is still in the history, and on GitHub.
+        run: bash .githooks/pre-commit --history
       - name: The website's options build from the repo's lists
         run: python3 scripts/build-site.py
-      - name: The website's script has no syntax errors (node --check)
-        # Nothing else runs site/app.js before it's published, so a typo would put a
-        # broken installer page live. (node comes with GitHub's runners.)
-        run: node --check site/app.js
       - name: The system check (bootstrap.sh's copy and lib.sh's agree)
         run: |
           d=$(mktemp -d)
@@ -85,6 +111,7 @@ jobs:
   install:
     name: install.sh on a clean Ubuntu 26.04
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     container: ubuntu:26.04
     defaults:
       run:
@@ -98,6 +125,8 @@ jobs:
           # System-wide, because install.sh replaces ~/.gitconfig with the one in this repo
           git config --system --add safe.directory '*'
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false   # nothing here pushes, so the token isn't kept in .git/config
       - name: install.sh dry run (checks the pinned downloads, changes nothing)
         run: |
           DRY_RUN=1 ./bin/install.sh --yes | tee dry.txt
@@ -183,6 +212,7 @@ jobs:
   desktop:
     name: desktop settings go on and come off (no screen)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     container: ubuntu:26.04
     defaults:
       run:
@@ -197,6 +227,8 @@ jobs:
             gsettings-desktop-schemas gnome-shell-common >/dev/null
           git config --system --add safe.directory '*'
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false   # nothing here pushes, so the token isn't kept in .git/config
       - name: install.sh loads every saved setting, uninstall.sh resets them (scripts/test-desktop.sh)
         env:
           CI: true
@@ -205,6 +237,7 @@ jobs:
   choices:
     name: install.sh follows the website's choices
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     container: ubuntu:26.04
     defaults:
       run:
@@ -217,6 +250,8 @@ jobs:
             git stow curl ca-certificates python3 fontconfig xz-utils gpg >/dev/null
           git config --system --add safe.directory '*'
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false   # nothing here pushes, so the token isn't kept in .git/config
       - name: How the choices are read (DOTFILES_CHOICES, DOTFILES_SKIP, the choices file)
         run: |
           DOTFILES_SKIP='claude-md app:steam' bash -c 'source bin/lib.sh

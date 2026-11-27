@@ -233,7 +233,7 @@ if has_nvidia && have nvidia-smi; then
     # The newest other installed kernel that has a module: start that one meanwhile.
     while read -r k; do
       [[ "$k" != "$NV_KERNEL" ]] && nvidia_module_for "$k" && { NV_OLD="$k"; break; }
-    done < <(ls /boot | sed -n 's/^vmlinuz-//p' | sort -rV)
+    done < <(find /boot -maxdepth 1 -name 'vmlinuz-*' -printf '%f\n' | sed 's/^vmlinuz-//' | sort -rV)
     # Has Ubuntu published the module for this kernel yet? (the installed driver series,
     # e.g. linux-modules-nvidia-595-open-, with this kernel's version)
     NV_PKG="$(dpkg-query -W -f='${Package}\n' 'linux-modules-nvidia-*' 2>/dev/null \
@@ -272,11 +272,11 @@ if ! chosen notes; then info "Obsidian vault: not chosen"
 elif [[ -d "$VAULT/.git" ]]; then ok "Obsidian vault: ${VAULT/#$HOME/\~}"
 else bad "Obsidian vault not cloned" install; fi
 for d in "$DOTFILES" "$VAULT"; do
-  [[ -d "$d/.git" ]] && chosen safety || continue
+  { [[ -d "$d/.git" ]] && chosen safety; } || continue
   hp="$(git -C "$d" config core.hooksPath)"
-  [[ -n "$hp" && -x "$(cd "$d" && readlink -f "$hp")/pre-commit" ]] \
-    && ok "secret check before commits: ${d/#$HOME/\~}" \
-    || bad "secret check not switched on for ${d/#$HOME/\~}" install
+  if [[ -n "$hp" && -x "$(cd "$d" && readlink -f "$hp")/pre-commit" ]]; then
+    ok "secret check before commits: ${d/#$HOME/\~}"
+  else bad "secret check not switched on for ${d/#$HOME/\~}" install; fi
 done
 if [[ -n "$(git config --get user.email 2>/dev/null)" ]]; then ok "git name and email set ($(git config --get user.name))"
 else bad "git doesn't know your name and email" install; fi
@@ -293,9 +293,9 @@ case "$(backups_state)" in
   off) bad "automatic backups are off" backups ;;
 esac
 if have systemctl && chosen safety; then
-  systemctl --user is-enabled dotfiles-reminder.timer >/dev/null 2>&1 \
-    && ok "weekly reminder to save settings (dotfiles-reminder.timer)" \
-    || bad "weekly reminder not switched on" install
+  if systemctl --user is-enabled dotfiles-reminder.timer >/dev/null 2>&1; then
+    ok "weekly reminder to save settings (dotfiles-reminder.timer)"
+  else bad "weekly reminder not switched on" install; fi
 fi
 
 # Set up before install.sh kept a record of what it added: dot uninstall --apps can't tell
@@ -319,8 +319,8 @@ else ok "snapshots match this computer"; fi
 for d in "$DOTFILES" "$VAULT"; do
   [[ -d "$d/.git" ]] || continue
   s="$(repo_state "$d")"
-  [[ -z "$s" ]] && ok "${d/#$HOME/\~}: everything committed and pushed" \
-    || bad "${d/#$HOME/\~}: $s changes" push
+  if [[ -z "$s" ]]; then ok "${d/#$HOME/\~}: everything committed and pushed"
+  else bad "${d/#$HOME/\~}: $s changes" push; fi
   n="$(repo_behind "$d")"
   if (( n > 0 )); then bad "${d/#$HOME/\~}: GitHub has $n new commit$( ((n > 1)) && echo s) from another computer" pull
   else ok "${d/#$HOME/\~}: nothing new on GitHub"; fi

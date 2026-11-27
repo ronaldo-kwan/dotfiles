@@ -156,7 +156,7 @@ remove_copies() {
     [[ -f "$f" ]] || continue
     local saved="$conf"
     [[ "$f" == */autostart/* ]] && saved="$SETUP/apps/autostart/$(basename "$f")"
-    [[ -f "$saved" ]] && cmp -s <(fill_home "$saved") "$f" || continue
+    { [[ -f "$saved" ]] && cmp -s <(fill_home "$saved") "$f"; } || continue
     run rm -f "$f"; n=$((n + 1))
     if [[ -f "$f.orig" ]]; then run mv "$f.orig" "$f"; fi
   done
@@ -195,7 +195,7 @@ app_items() {
   # Apps from their makers (APPS and APP_PARTS in install-apps.sh), if one of their packages is installed
   for entry in "${APPS[@]}"; do
     IFS='|' read -r choice name _ <<< "$entry"
-    [[ -n "${APP_PARTS[$choice]:-}" ]] && was_added "$choice" || continue
+    { [[ -n "${APP_PARTS[$choice]:-}" ]] && was_added "$choice"; } || continue
     pkgs="${APP_PARTS[$choice]%%|*}"
     # shellcheck disable=SC2086  # one word per package
     [[ -n "$(installed_of $pkgs)" ]] && echo "${name%% (*}|apt|${APP_PARTS[$choice]}"
@@ -265,9 +265,10 @@ chosen_of() { # chosen_of <kind>: the "what" and "files" fields of the chosen it
 }
 
 remove_apt_apps() {
-  local pkgs=() files=() what f line
+  local pkgs=() files=() names=() what f line
   while IFS='|' read -r what f; do
-    mapfile -t -O "${#pkgs[@]}" pkgs < <(installed_of $what)
+    read -ra names <<< "$what"   # what: the packages, space-separated
+    mapfile -t -O "${#pkgs[@]}" pkgs < <(installed_of "${names[@]}")
     for line in $f; do files+=("$line"); done
   done < <(chosen_of apt)
   (( ${#pkgs[@]} )) || { skip "none chosen"; return 0; }

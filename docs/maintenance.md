@@ -120,7 +120,7 @@ systemctl --user disable --now dotfiles-reminder.timer  # switch it off
 
 ## Weekly updates and monthly clean-up
 
-`install-apps.sh` installs these, with this computer's username filled in where the scripts say `@USER@`. anacron runs them, so a missed run happens at the next start.
+`install-apps.sh` installs these, with this computer's username filled in where the scripts say `@USER@`. anacron runs them, so a missed run happens at the next start. Each log is kept under 1 MB: past that, it's moved to the same name with `.1` added (`/var/log/system-update.log.1`) and a new one starts.
 
 | Job | What it does | Log |
 |---|---|---|
@@ -139,13 +139,21 @@ sudo install -m 755 /tmp/system-update /etc/cron.weekly/system-update
 [`.githooks/pre-commit`](../.githooks/pre-commit) runs before every commit in `~/code/github/dotfiles` and in your notes repo (`install.sh` points both at it with `git config core.hooksPath`). It stops the commit if something being committed looks like a secret:
 
 - **Files that hold keys or sign-ins:** `.env`, `*.pem`, `*.key`, SSH keys, `.git-credentials`, browser cookie and login files, password databases
-- **Token formats:** GitHub, Anthropic, OpenAI, AWS, Google, Slack, GitLab, and private keys
+- **Token formats:** GitHub, Anthropic, OpenAI, AWS, Google, Slack, GitLab, Stripe, npm, Hugging Face, and private keys
 - **Settings** like `password = …`, `token: …`, `stream_key = …` (values like `true`, `false`, empty or placeholders are fine). Not in Obsidian plugins' own program code (`.obsidian/plugins/*/main.js`), which copies its settings around in lines that look like key settings; tokens are still looked for there, and plugin settings (`data.json`) are checked in full
 
 It shows only the file and line, never the value.
 
 > [!TIP]
 > If it's a false alarm, commit with `git commit --no-verify`.
+
+`--no-verify` skips the check, and a secret a later commit removes is still in the history. So the [GitHub checks](#github-checks) also run it on every commit there is, on every branch. To do the same yourself:
+
+```bash
+bash ~/code/github/dotfiles/.githooks/pre-commit --history
+```
+
+It names the file, line and commit. A secret it finds there has been on GitHub: revoke it with whoever issued it, since deleting it in a new commit doesn't take it out of the history.
 
 ## Signed commits
 
@@ -182,13 +190,14 @@ Then restart. If an extension is still off, switch it on in the Extensions app.
 
 ## GitHub checks
 
-[`.github/workflows/check.yml`](../.github/workflows/check.yml) runs on every push and pull request. Before setting up a new computer, run it by hand (`gh workflow run check.yml --repo ronaldo-kwan/dotfiles`, or **Actions → check → Run workflow**), so a maker changing a download link or signing key shows up as a failed run rather than halfway through the setup; see [New computer](new-computer.md#first-check-the-dotfiles-still-work). In a clean Ubuntu 26.04 container it runs:
+[`.github/workflows/check.yml`](../.github/workflows/check.yml) runs on every push to `main` and every pull request (a newer push to the same pull request cancels the run it replaces; each job also stops after a time limit, so a stuck download can't hold it for hours). Before setting up a new computer, run it by hand (`gh workflow run check.yml --repo ronaldo-kwan/dotfiles`, or **Actions → check → Run workflow**), so a maker changing a download link or signing key shows up as a failed run rather than halfway through the setup; see [New computer](new-computer.md#first-check-the-dotfiles-still-work). In a clean Ubuntu 26.04 container it runs:
 
 - [`actionlint`](https://github.com/rhysd/actionlint) on the workflow files themselves (mistyped keys, wrong job names in `needs:`, bad `${{ }}` expressions), so a broken workflow fails here instead of on the day it's needed; one fixed version, checked against its checksum like the fonts below (`ACTIONLINT_VERSION` and `ACTIONLINT_SHA256` in `check.yml`)
-- `shellcheck` on all scripts, the system check (both copies must agree), and [`scripts/test-helpers.sh`](../scripts/test-helpers.sh): quick checks of the shared helpers in `lib.sh` and of the app table in `install-apps.sh` (run it yourself with `bash scripts/test-helpers.sh`)
+- [`scripts/lint.sh`](../scripts/lint.sh): a syntax check of every script, `shellcheck` at every level (with the settings in [`.shellcheckrc`](../.shellcheckrc)), `pyflakes` on `scripts/build-site.py` and `node --check` on the website's scripts, with Ubuntu 26.04's own versions of each. Run it yourself after `sudo apt install shellcheck pyflakes3 nodejs`
+- the system check (both copies must agree), and [`scripts/test-helpers.sh`](../scripts/test-helpers.sh): quick checks of the shared helpers in `lib.sh` and of the app table in `install-apps.sh` (run it yourself with `bash scripts/test-helpers.sh`)
 - dry runs of `fresh-install.sh` (every step of setting up a new computer, including `install.sh` and `install-apps.sh`), `post-upgrade.sh` on test files, `install.sh` (which also checks the pinned downloads) and `uninstall.sh --apps`; none may change anything
 - `install.sh` (twice), a dry run of `install-apps.sh`, `post-upgrade.sh` on test files, and `uninstall.sh --apps` (no links, test apps or jobs may be left)
-- the secret check and the website build
+- the secret check, on every file and on the whole history (`--history`), and the website build
 - the desktop settings, for real in a container without a screen ([`scripts/test-desktop.sh`](../scripts/test-desktop.sh)): `install.sh` must load every saved setting, the dock and the wallpaper, and `uninstall.sh` must put them all back to Ubuntu's defaults
 - the website's choices: `install.sh` with only some parts chosen must link only those, and `dot check` must show the rest as "not chosen"
 
@@ -211,7 +220,7 @@ curl -fsSL -o /tmp/f "<new address>" && sha256sum /tmp/f
 
 Nerd Fonts publishes its checksums with each release (`SHA-256.txt`), so you can compare. Then run `DRY_RUN=1 dot install --yes`: it downloads and checks the files without installing them. After the change, `dot check` shows ✘ on each computer until `dot install` has put the new version there.
 
-The workflows name each action by its commit ID, with the version as a comment (`actions/checkout@3d3c42e… # v7.0.1`), since a tag like `v7` can be moved to other code. Nothing updates them by itself, so update them by hand when a run warns that an action is old (GitHub retires old Node.js versions, for example) or fails because of one. For each action, find its newest release and that release's commit ID:
+The workflows name each action by its commit ID, with the version as a comment (`actions/checkout@3d3c42e… # v7.0.1`), since a tag like `v7` can be moved to other code. Dependabot ([`.github/dependabot.yml`](../.github/dependabot.yml)) looks for new releases every week and opens one pull request that moves them all, ID and comment; the check workflow runs on it, so merge it once it's green, after reading the release notes of any new major version. To update one by hand instead, find its newest release and that release's commit ID:
 
 ```bash
 gh release view --repo actions/checkout --json tagName --jq .tagName   # e.g. v7.0.1
@@ -220,11 +229,11 @@ gh api repos/actions/checkout/commits/v7.0.1 --jq .sha
 
 Then replace the commit ID and the version comment on every line that uses it (`grep -rn 'actions/checkout@' .github/workflows`), and read the release notes for a new major version. The actions are `actions/checkout`, `actions/configure-pages`, `actions/upload-pages-artifact` and `actions/deploy-pages`. Pushing runs both workflows on the new versions.
 
-The result shows on the repo's [Actions](https://github.com/ronaldo-kwan/dotfiles/actions) tab. To run shellcheck locally:
+The result shows on the repo's [Actions](https://github.com/ronaldo-kwan/dotfiles/actions) tab. To run the lint checks locally:
 
 ```bash
-sudo apt install shellcheck
-shellcheck -x -S warning *.sh scripts/*.sh .githooks/pre-commit
+sudo apt install shellcheck pyflakes3 nodejs
+bash ~/code/github/dotfiles/scripts/lint.sh
 ```
 
 ## The website and choices

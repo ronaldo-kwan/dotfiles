@@ -15,7 +15,7 @@ DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SETUP_DIR="${1:-$DOTFILES/setup}"   # optional argument: a different setup folder
 OUT="$SETUP_DIR/apps"
 # Only the parts this computer chose on the website (see snapshot.sh); everything otherwise.
-# shellcheck source=../bin/lib.sh
+# shellcheck source=bin/lib.sh
 source "$DOTFILES/bin/lib.sh"
 CFG="$HOME/.config"
 
@@ -27,7 +27,7 @@ mkdir -p "$OUT"
 if chosen desktop; then
   rm -rf "$OUT/autostart"
   for f in "$CFG"/autostart/*.desktop; do
-    [[ -f "$f" ]] && grep -qxF "$(basename "$f" .desktop)" "$SETUP_DIR/flatpaks.txt" 2>/dev/null || continue
+    { [[ -f "$f" ]] && grep -qxF "$(basename "$f" .desktop)" "$SETUP_DIR/flatpaks.txt" 2>/dev/null; } || continue
     mkdir -p "$OUT/autostart"
     cp "$f" "$OUT/autostart/"
   done

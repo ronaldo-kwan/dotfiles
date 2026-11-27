@@ -5,8 +5,18 @@
 #
 # It shows only file and line, never the value itself.
 # If it's a false alarm: git commit --no-verify
+#
+# With --history it checks every commit instead, on every branch: what was ever added,
+# including what a commit made with --no-verify got past it, and what a later commit took
+# out again (it's still in the history). The GitHub checks run it like that.
 
 set -uo pipefail
+# The patterns below are ASCII; with LC_ALL=C a line that isn't valid UTF-8 (a theme or
+# font file, say) is still checked, byte by byte, instead of quietly not matching.
+export LC_ALL=C
+shopt -s nocasematch   # for the quick [[ =~ ]] look below, like grep -i
+history=''
+[[ "${1:-}" == --history ]] && history=1
 found=0
 flag() { printf '  \033[31m✘\033[0m %s\n' "$*"; found=1; }
 
@@ -22,7 +32,11 @@ while IFS= read -r -d '' f; do
       flag "$f: this kind of file holds keys or sign-ins" ;;
   esac
 # --no-renames: a renamed file counts as new, so its contents are checked too.
-done < <(git diff --cached --no-renames --name-only --diff-filter=AMT -z)
+done < <(if [[ -n "$history" ]]; then
+           git log --all --no-renames --name-only --diff-filter=AMT --format= -z | sort -zu
+         else
+           git diff --cached --no-renames --name-only --diff-filter=AMT -z
+         fi)
 
 # 2. Lines being added that look like secrets
 # Known token formats (standing on their own, not inside a longer string such as an
@@ -34,9 +48,12 @@ done < <(git diff --cached --no-renames --name-only --diff-filter=AMT -z)
 # OpenAI keys: sk-<letters> (old), sk-proj-/sk-svcacct-/sk-admin- (with - and _ inside).
 # Google sign-ins (rclone's Google Drive one, for example): access tokens ya29.…, and
 # refresh tokens 1//…, which keep working until they're revoked.
+# Stripe secret and restricted keys (sk_live_, rk_live_), npm tokens (npm_) and Hugging
+# Face tokens (hf_).
 tokens='(^|[^A-Za-z0-9+/_-])(gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,}|sk-ant-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{32,}'
 tokens+='|sk-(proj|svcacct|admin)-[A-Za-z0-9_-]{20,}'
 tokens+='|ya29\.[A-Za-z0-9_-]{20,}|1//[A-Za-z0-9_-]{30,}'
+tokens+='|[sr]k_live_[A-Za-z0-9]{24,}|npm_[A-Za-z0-9]{36}|hf_[A-Za-z0-9]{34}'
 tokens+='|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[abprs]-[A-Za-z0-9-]{10,}|glpat-[A-Za-z0-9_-]{20})([^A-Za-z0-9_-]|$)'
 tokens+='|-----BEGIN [A-Z ]*PRIVATE KEY-----'
 settings='(password|passwd|secret|token|api[_-]?key|stream[_-]?key|auth[_-]?key)["'"'"']?[[:space:]]*[:=][[:space:]]*["'"'"']?[^"'"'"'[:space:],}]{6,}'
@@ -58,25 +75,41 @@ secret_in() {
 # Obsidian plugins' own program code (main.js, downloaded from Obsidian's plugin list)
 # copies its settings around in lines that look like key settings: only tokens and keys count
 # there. What you type into a plugin's settings goes to its data.json, checked in full.
-file='' line=0 tokens_only=''
+# Most lines can't match at all, and a quick look inside bash ([[ =~ ]], the same patterns)
+# says so without starting grep, so the whole history is checked in seconds.
+file='' line=0 tokens_only='' commit='' where=''
 while IFS= read -r l; do
   case "$l" in
+    'commit '*) [[ -n "$history" ]] && commit="${l#commit }"; continue ;;
     '+++ b/'*)
       file="${l#+++ b/}"
       case "$file" in .obsidian/plugins/*/main.js) tokens_only=1 ;; *) tokens_only='' ;; esac
       continue ;;
     '+++ '*|'--- '*) continue ;;
-    '@@ '*) line="$(sed -E 's/^@@ -[0-9,]+ \+([0-9]+).*/\1/' <<< "$l")"; continue ;;
+    '@@ '*) [[ "$l" =~ ^@@\ -[0-9,]+\ \+([0-9]+) ]] && line="${BASH_REMATCH[1]}"; continue ;;
     '+'*)
       text="${l:1}"
-      kind="$(secret_in "$text" "$tokens_only")"
-      [[ -n "$kind" ]] && flag "$file:$line looks like $kind"
+      if [[ "$text" =~ $tokens || ( -z "$tokens_only" && "$text" =~ $settings ) ]]; then
+        kind="$(secret_in "$text" "$tokens_only")"
+        where="$file:$line"; [[ -n "$commit" ]] && where+=" (commit $commit)"
+        [[ -n "$kind" ]] && flag "$where looks like $kind"
+      fi
       line=$((line + 1)) ;;
     ' '*) line=$((line + 1)) ;;
   esac
-done < <(git diff --cached --no-renames -U0 --no-color --diff-filter=AMT)
+done < <(if [[ -n "$history" ]]; then
+           git log --all -p --no-renames -U0 --no-color --diff-filter=AMT --format='commit %h'
+         else
+           git diff --cached --no-renames -U0 --no-color --diff-filter=AMT
+         fi)
 
-if (( found )); then
+if (( found )) && [[ -n "$history" ]]; then
+  echo
+  echo "The lines above, in these commits, look like passwords, tokens or keys."
+  echo "If one is real, revoke it with whoever issued it: it stays in the history (and on"
+  echo "GitHub) even after a later commit removes it."
+  exit 1
+elif (( found )); then
   echo
   echo "Commit stopped: the lines above look like passwords, tokens or keys."
   echo "Remove them (git restore --staged <file> to unstage a file),"
