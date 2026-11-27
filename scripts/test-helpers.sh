@@ -722,6 +722,21 @@ t "... and turns Markdown into the site's HTML" same "$(site_py $'## The `dot` m
 <div class="alert tip"><p class="alert-title">Tip</p><p>Use <kbd>Tab</kbd>.</p></div>
 <div class="tbl"><table><thead><tr><th>A</th><th>B</th></tr></thead><tbody><tr><td><code>x</code></td><td><a href="https://github.com/ronaldo-kwan/dotfiles/tree/main/setup">y</a></td></tr></tbody></table></div>'
 
+# The restart at the end of a new computer's setup: apt refuses it while another update
+# runs (the weekly one starts about 10 minutes after a new computer does).
+restarts() (   # restarts <times refused>: what restart_now does (stand-ins for sudo and the waits)
+  load_fn bin/fresh-install.sh restart_now
+  refused="$1" asked=0 waits=0
+  sudo() { asked=$((asked + 1)); (( asked > refused )); }
+  apt_wait() { waits=$((waits + 1)); }
+  sleep() { :; }; warn() { echo "! $*"; }; note() { :; }
+  restart_now; echo "rc=$? asked=$asked waits=$waits"
+)
+t "restart_now: refused twice (apt busy), restarts the third time, waiting for apt each time" \
+  same "$(restarts 2)" "rc=0 asked=3 waits=3"
+t "restart_now: still refused, says so (and the setup doesn't end in an error)" \
+  same "$(restarts 9 | tr '\n' ' ')" "! couldn't restart: something is still installing (systemd-inhibit --list shows what) rc=1 asked=3 waits=3 "
+
 group_end; } > "$GROUPS_OUT/3" 2>&1 &
 
 # (with the weekly reminder: it counts the backups this section leaves in the home folder)

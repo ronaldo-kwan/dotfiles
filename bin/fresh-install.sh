@@ -136,6 +136,22 @@ apply_look() {
   note "Applying your desktop look (theme, fonts, extensions, wallpaper)"
   "$DOTFILES/bin/install.sh" --desktop-only > /dev/null 2>&1 || warn "some of it didn't apply: run dot install"
 }
+# restart_now: restart, once no other software update is running. apt refuses a restart
+# while it installs, and on a new computer the weekly updates (set up in step 5) first run
+# about 10 minutes after it started: often right at the end of this. That job refreshes
+# the package lists, then upgrades, with apt free for a moment in between, so: up to three
+# tries, each after waiting for apt. If it still can't, say so, rather than end in an error.
+restart_now() {
+  local tries=0
+  while (( tries++ < 3 )); do
+    apt_wait
+    sudo reboot 2>/dev/null && return 0
+    sleep 5
+  done
+  warn "couldn't restart: something is still installing (systemd-inhibit --list shows what)"
+  note "Restart the computer yourself once it's done."
+  return 1
+}
 if ask "Restart now?"; then
   if [[ "$YES_ALL" == 1 ]]; then
     trap 'echo; apply_look; note "Not restarting: log out and back in to see your desktop look."; exit 0' INT
@@ -147,7 +163,7 @@ if ask "Restart now?"; then
     trap - INT
   fi
   apply_look
-  sudo reboot
+  restart_now || true   # the setup itself is done either way
 else
   apply_look
   note "Log out and back in (or restart) to see it fully, with the extensions running."

@@ -74,7 +74,7 @@ git clone https://github.com/ronaldo-kwan/dotfiles ~/code/github/dotfiles
 
 ### Yes to everything, or Let me choose
 
-- **Yes to everything** installs every app, updates the firmware if the charger is plugged in, accepts the Microsoft fonts licence the codecs need, and restarts at the end after a 15-second countdown (<kbd>Ctrl</kbd> + <kbd>C</kbd> to stay). The scripts it runs get the same answer and don't ask again.
+- **Yes to everything** installs every app, updates the firmware if the charger is plugged in, accepts the Microsoft fonts licence the codecs need, and restarts at the end after a 15-second countdown (<kbd>Ctrl</kbd> + <kbd>C</kbd> to stay). If another software update is running then (often the weekly updates, which first run about 10 minutes after a new computer starts), it waits for that to finish, since Ubuntu refuses to restart in the middle of one. The scripts it runs get the same answer and don't ask again.
 - **Let me choose** gives Yes/No buttons for each step, and one checklist of the apps: everything pre-ticked, <kbd>Space</kbd> unticks, <kbd>Enter</kbd> starts.
 - To skip even this question, run `~/code/github/dotfiles/bin/fresh-install.sh --yes`.
 
