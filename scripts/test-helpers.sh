@@ -237,6 +237,48 @@ undocumented="$(python3 -c 'import json, sys; [print(k) for k in json.load(open(
   | while read -r k; do grep -q "\`$k\`" "$ROOT/docs/apps.md" || echo "$k"; done)"
 t "every setting is in docs/apps.md" same "$undocumented" ""
 
+echo "Brave Origin's own settings (scripts/brave-settings.py)"
+bs() { python3 -I "$ROOT/scripts/brave-settings.py" "$@"; }
+mkdir -p "$T/brave"
+# A made-up profile: kept settings, things Brave changes by itself, and private parts.
+cat > "$T/brave/Preferences" <<JSON
+{"bookmark_bar": {"show_on_all_tabs": true, "visibility_state": 0, "rendered_on_ntp_count": 3},
+ "brave": {"dark_mode": 2, "tabs": {"vertical_tabs_enabled": true},
+           "new_tab_page": {"show_clock": true, "p3a_new_tabs_created_daily": [1]},
+           "sidebar": {"sidebar_show_option": 1, "sidebar_items": [{"url": "https://secret.example"}]}},
+ "download": {"default_directory": "$HOME/Downloads/web"},
+ "profile": {"default_content_setting_values": {"notifications": 2},
+             "content_settings": {"exceptions": {"cookies": {"https://secret.example,*": {}}}}},
+ "signin": {"allowed": true}, "brave_sync_v2": {"seed": "secret-seed"},
+ "session": {"startup_urls": ["https://secret.example"]}}
+JSON
+bs save "$T/brave/Preferences" > "$T/brave/saved.json"
+t "keeps the allowlisted settings" python3 -c '
+import json, sys; d = json.load(open(sys.argv[1]))
+assert d["brave.dark_mode"] == 2 and d["brave.tabs"] == {"vertical_tabs_enabled": True}
+assert d["bookmark_bar"] == {"show_on_all_tabs": True, "visibility_state": 0}
+assert d["brave.sidebar.sidebar_show_option"] == 1 and d["brave.new_tab_page.show_clock"] is True
+assert d["profile.default_content_setting_values"] == {"notifications": 2}' "$T/brave/saved.json"
+t "leaves out counters and Brave's own records" not grep -qE 'rendered_on_ntp|p3a' "$T/brave/saved.json"
+t "leaves out sites, sync and account details" not grep -qE 'secret|sync|signin|exceptions' "$T/brave/saved.json"
+t "stores the home folder as @HOME@" grep -q '"@HOME@/Downloads/web"' "$T/brave/saved.json"
+# Putting them back: into a new profile, and into one Brave already has (its other parts stay).
+bs restore "$T/brave/saved.json" "$T/brave/new/Default/Preferences"
+t "creates a profile Brave hasn't made yet" python3 -c '
+import json, os, sys; d = json.load(open(sys.argv[1]))
+assert d["brave"]["dark_mode"] == 2 and d["bookmark_bar"]["visibility_state"] == 0
+assert d["download"]["default_directory"] == os.path.expanduser("~/Downloads/web")' "$T/brave/new/Default/Preferences"
+echo '{"brave": {"dark_mode": 1, "stats": {"x": 1}}, "signin": {"allowed": false}}' > "$T/brave/old.json"
+bs restore "$T/brave/saved.json" "$T/brave/old.json"
+t "merges into a profile Brave already has" python3 -c '
+import json, sys; d = json.load(open(sys.argv[1]))
+assert d["brave"]["dark_mode"] == 2 and d["brave"]["stats"] == {"x": 1} and d["signin"] == {"allowed": False}' "$T/brave/old.json"
+echo '{"signin.allowed": true, "brave.dark_mode": 1}' > "$T/brave/odd.json"
+bs restore "$T/brave/odd.json" "$T/brave/odd-prefs.json"
+t "puts back only allowlisted settings from a saved file" python3 -c '
+import json, sys; d = json.load(open(sys.argv[1])); assert d == {"brave": {"dark_mode": 1}}, d' "$T/brave/odd-prefs.json"
+t "a profile saved, put back and saved again is the same" same "$(bs save "$T/brave/new/Default/Preferences")" "$(cat "$T/brave/saved.json")"
+
 echo "Signing-key files (install-apps.sh key_ok)"
 load_fn bin/install-apps.sh key_ok
 # Three throwaway keys, made here (no network): A and B are "the maker's", X is someone else's.
@@ -384,6 +426,7 @@ t "distance counts edits" same "$(distance kitten sitting)|$(distance push push)
 t "auto message: one area" same "$(printf 'setup/gnome-desktop.dconf\nsetup/desktop-settings.dconf\n' | auto_message)" "Update desktop settings"
 t "auto message: two areas" same "$(printf 'bash/.bashrc\nsetup/flatpaks.txt\n' | auto_message)" "Update bash config and Flatpak apps"
 t "auto message: many areas" same "$(printf 'bash/.bashrc\nsetup/flatpaks.txt\nsetup/dock-favorites.txt\nREADME.md\n' | auto_message)" "Update bash config, Flatpak apps and 2 more"
+t "auto message: Brave settings" same "$(printf 'setup/apps/brave-settings.json\n' | auto_message)" "Update Brave settings"
 t "auto message: nothing" same "$(auto_message </dev/null)" "Update settings"
 t "the menu lists only commands with a label" same "$(menu_items setup | cut -d'|' -f2 | tr '\n' ' ')" "install apps ssh upgrade "
 t ".bashrc's completion finds every command" same \

@@ -244,6 +244,7 @@ auto_message() {
       setup/flatpaks.txt) a="Flatpak apps" ;;
       setup/apt-packages.txt) a="app list" ;;
       setup/dock-favorites.txt) a="dock" ;;
+      setup/apps/brave-settings.json) a="Brave settings" ;;
       setup/apps/*) a="app settings" ;;
       setup/*) a="desktop settings" ;;
       docs/*|README.md) a="docs" ;;

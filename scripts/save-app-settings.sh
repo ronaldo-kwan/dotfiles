@@ -5,6 +5,7 @@
 #   - display settings (scale, resolution) (~/.config/monitors.xml, without serial numbers)
 #   - qBittorrent settings and theme   (~/.config/qBittorrent/)
 #   - Obsidian vault settings and theme (<vault>/.obsidian/, not the notes or plugin files)
+#   - Brave Origin's own settings      (an allowlist from its Preferences: scripts/brave-settings.py)
 #
 # Paths inside your home folder are stored as @HOME@ so they work for any username.
 # install.sh puts them back (restore_app_settings).
@@ -31,6 +32,15 @@ if chosen desktop; then
     mkdir -p "$OUT/autostart"
     cp "$f" "$OUT/autostart/"
   done
+fi
+
+# 1b. Brave Origin: only the settings scripts/brave-settings.py names (appearance, tabs, new
+#     tab page, languages, downloads, HTTPS mode, fonts, the defaults for every site), not
+#     the rest of its Preferences: account, sync, open tabs and the per-site lists stay here.
+if chosen app:brave-origin && [[ -f "$BRAVE_PREFS" ]]; then
+  python3 -I "$DOTFILES/scripts/brave-settings.py" save "$BRAVE_PREFS" > "$OUT/brave-settings.json.new" \
+    && mv "$OUT/brave-settings.json.new" "$OUT/brave-settings.json"
+  rm -f "$OUT/brave-settings.json.new"
 fi
 
 # 2. Default apps

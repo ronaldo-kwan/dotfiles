@@ -67,6 +67,14 @@ If a maker changes its download link, update the script; the table shows the man
 
 To change one, edit the file and run `dot apps`; `dot check` shows ✘ until the computer has the saved version. `dot uninstall --apps` removes the file with Brave.
 
+### Your own Brave settings
+
+What you change in Brave's own settings (not the locked ones above) is saved by `dot push`, like your desktop settings, into [`setup/apps/brave-settings.json`](../setup/apps/brave-settings.json). `dot check` and the weekly reminder show it as unsaved when Brave's settings differ from the saved ones, and `install.sh` puts them back on a new computer, or after `dot pull`.
+
+Only an allowlist is saved, in [`scripts/brave-settings.py`](../scripts/brave-settings.py): the bookmarks bar, light or dark mode and theme colour, vertical tabs, the address bar and toolbar buttons, the sidebar's on/off (not its items), the new tab page's clock, background and stats, closing-window and last-tab behaviour, address bar suggestions, the home button, spell check and languages, translation, downloads (where to, and whether to ask), HTTPS mode, fonts, and the defaults for every site (for example, block notifications). Nothing else in Brave's settings file is: your account and sync details, open and pinned tabs, history, and the settings you've changed for single sites (which list sites you visit) stay on the computer. Counters and records Brave keeps for itself are left out too, so they don't show as changes.
+
+Brave rewrites its settings file while it's open and when it closes, so `install.sh` puts them back only when Brave is closed (it says so if not). They apply from Brave's next start. The first time, the file Brave had is kept as `Preferences.orig` next to it.
+
 ## What else it sets up
 
 | Part | What it does |

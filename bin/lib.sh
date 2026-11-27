@@ -27,6 +27,7 @@ VAULT="$HOME/Documents/Obsidian Vault"   # your notes: the private GitHub repo o
 WALLPAPER="$HOME/Pictures/Wallpapers/current/catppuccin-tropic-island-night-16x9.jpg"
 NERD_FONT_DIR="$HOME/.local/share/fonts/RobotoMonoNerdFont"   # the terminal's font
 MONO_FONT_DIR="$HOME/.local/share/fonts/RobotoMono"           # the desktop's monospace font
+BRAVE_PREFS="$HOME/.config/BraveSoftware/Brave-Origin/Default/Preferences"   # Brave Origin's settings (scripts/brave-settings.py)
 # Only when the dotfiles are somewhere else (not DEFAULT_DOTFILES): points the weekly reminder there
 REMINDER_DROPIN="$HOME/.config/systemd/user/dotfiles-reminder.service.d/dotfiles-folder.conf"
 # The desktop settings in setup/ and where in dconf each goes: install.sh loads them,

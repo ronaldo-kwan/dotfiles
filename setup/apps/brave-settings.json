@@ -1,0 +1,9 @@
+{
+ "brave.enable_window_closing_confirm": false,
+ "https_first_balanced_mode_enabled": true,
+ "https_only_mode_enabled": false,
+ "intl.selected_languages": "en-US,en",
+ "spellcheck.dictionaries": [
+  "en-US"
+ ]
+}

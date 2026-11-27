@@ -85,6 +85,7 @@ The folders in `home/` are laid out for [GNU Stow](https://www.gnu.org/software/
 | `scripts/dump-desktop-settings.sh` | Writes `setup/desktop-settings.dconf` |
 | `scripts/save-app-settings.sh` | Writes `setup/apps/` |
 | `scripts/test-helpers.sh` | Quick checks of the helpers in `lib.sh` and the app table in `install-apps.sh`; GitHub's checks run it |
+| `scripts/brave-settings.py` | Saves and puts back Brave Origin's own settings: an allowlist from its profile, never the account, tabs or per-site parts (used by `dot push`, `dot check` and `install.sh`) |
 | `scripts/lint.sh` | Looks for mistakes in the scripts without running them: syntax, `shellcheck`, `pyflakes`, `node --check` and ESLint; GitHub's checks run it |
 | `scripts/test-desktop.sh` | Loads the saved desktop settings and resets them again, checking each one; only runs in GitHub's checks (it changes desktop settings) |
 
@@ -110,7 +111,7 @@ Written by `dot push` and restored by `install.sh`, except `apt-packages.txt`, w
 | `gnome-extension-settings.dconf` | Settings for Caffeine, Clipboard Indicator, Ubuntu Dock, Tiling Assistant |
 | `dock-favorites.txt` | Apps pinned to the dock, in order |
 | `gnome-extensions.txt` | GNOME extensions that `install.sh` installs from extensions.gnome.org |
-| `apps/` | Display settings (`monitors.xml`: scale and resolution, without the screen's serial number; put back only on a computer with the same screen), apps that start at login (only Flatpak apps from `flatpaks.txt`, since only those are put back), default apps (Brave Origin as browser, Showtime for video, Calendar), qBittorrent settings and theme, Obsidian vault settings, theme and the list of community plugins (not the notes or the plugins themselves). Cookies and window sizes are left out, and home-folder paths are stored as `@HOME@` |
+| `apps/` | Display settings (`monitors.xml`: scale and resolution, without the screen's serial number; put back only on a computer with the same screen), apps that start at login (only Flatpak apps from `flatpaks.txt`, since only those are put back), default apps (Brave Origin as browser, Showtime for video, Calendar), qBittorrent settings and theme, Obsidian vault settings, theme and the list of community plugins (not the notes or the plugins themselves), Brave Origin's own settings (`brave-settings.json`: an allowlist, see [Apps](apps.md#your-own-brave-settings)). Cookies and window sizes are left out, and home-folder paths are stored as `@HOME@` |
 | `wallpaper/` | The wallpaper (`tropic_island_night.jpg` from [catppuccin-wallpapers](https://github.com/zhichaoh/catppuccin-wallpapers); its MIT licence is in `licenses/wallpaper.txt`); `install.sh` copies it to `~/Pictures/Wallpapers/current`. `catppuccin-tropic-island-night-16x10.jpg` is a 16:10 crop of it for 16:10 screens (not set by `install.sh`). `login-blurred.jpg` is a blurred, darkened copy for the login screen (`install-apps.sh`) |
 | `keys/chatgpt.asc` | OpenAI's public signing key for the ChatGPT app's update source (OpenAI doesn't publish it at an address of its own); `install-apps.sh` checks its fingerprint |
 
