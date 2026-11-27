@@ -1,4 +1,4 @@
-[README](../README.md) · [New computer](new-computer.md) · [Apps](apps.md) · [Maintenance](maintenance.md) · **Files**
+[README](../README.md) · [New computer](new-computer.md) · [Apps](apps.md) · [Brave on your phone](brave-phone.md) · [Maintenance](maintenance.md) · **Files**
 
 # What's in this repo
 
@@ -85,6 +85,7 @@ The folders in `home/` are laid out for [GNU Stow](https://www.gnu.org/software/
 | `scripts/dump-desktop-settings.sh` | Writes `setup/desktop-settings.dconf` |
 | `scripts/save-app-settings.sh` | Writes `setup/apps/` |
 | `scripts/test-helpers.sh` | Quick checks of the helpers in `lib.sh` and the app table in `install-apps.sh`; GitHub's checks run it |
+| `docs/brave-phone.md` | How to set Brave on Android the same as the laptop (a phone can't get it from the dotfiles) |
 | `scripts/brave-settings.py` | Saves and puts back Brave Origin's own settings: an allowlist from its profile, never the account, tabs or per-site parts (used by `dot push`, `dot check` and `install.sh`) |
 | `scripts/lint.sh` | Looks for mistakes in the scripts without running them: syntax, `shellcheck`, `pyflakes`, `node --check` and ESLint; GitHub's checks run it |
 | `scripts/test-desktop.sh` | Loads the saved desktop settings and resets them again, checking each one; only runs in GitHub's checks (it changes desktop settings) |

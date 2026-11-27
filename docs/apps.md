@@ -1,4 +1,4 @@
-[README](../README.md) · [New computer](new-computer.md) · **Apps** · [Maintenance](maintenance.md) · [Files](files.md)
+[README](../README.md) · [New computer](new-computer.md) · **Apps** · [Brave on your phone](brave-phone.md) · [Maintenance](maintenance.md) · [Files](files.md)
 
 # Apps
 
@@ -62,6 +62,7 @@ If a maker changes its download link, update the script; the table shows the man
 | `WebRtcIPHandling` | `default_public_interface_only` | Video calls still work, but sites can't see your local network addresses (with Proton VPN on, only the VPN's) |
 | `BackgroundModeEnabled` | off | Closing Brave quits it, instead of leaving it running |
 | `AutofillCreditCardEnabled` | off | Card numbers aren't saved in the browser |
+| `BraveAIChatEnabled`, `BraveLocalAIEnabled`, `BraveRewardsDisabled`, `BraveWalletDisabled`, `BraveVPNDisabled`, `BraveNewsDisabled`, `BraveTalkDisabled`, `BravePlaylistEnabled` | all off | Leo (AI), Rewards and its ads, the crypto wallet and Web3, the VPN, Brave News, Brave Talk and Playlist. Origin leaves these out already (only Web3, Leo and AI innovations are left as empty entries in its settings menu); this keeps them off if an update brings one back, and in regular Brave too, which reads the same folder |
 
 `brave://policy` lists `AutofillCreditCardEnabled` as deprecated: Chromium is moving it into a newer `AutofillSettings` policy. It still applies (cards aren't saved). Once `AutofillSettings`' format is documented, switch to it; if a future Brave drops the old one, `brave://policy` shows it as unknown.
 
@@ -85,6 +86,9 @@ Suggestions as you type go to the engine you picked (turn off **Improve search s
 If you remove one, the next `dot push` shows it leaving the list. On a computer without them, don't `dot push` before adding them, or the list is saved without them (its preview shows that too).
 
 ### Your own Brave settings
+
+For Brave on your phone, which can't get these from the dotfiles, see [Brave on your phone](brave-phone.md).
+
 
 What you change in Brave's own settings (not the locked ones above) is saved by `dot push`, like your desktop settings, into [`setup/apps/brave-settings.json`](../setup/apps/brave-settings.json). `dot check` and the weekly reminder show it as unsaved when Brave's settings differ from the saved ones, and `install.sh` puts them back on a new computer, or after `dot pull`.
 

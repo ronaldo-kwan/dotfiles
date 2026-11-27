@@ -111,6 +111,7 @@ The same pages, with search, are also on the [docs website](https://ronaldo-kwan
 |---|---|
 | [Setting up a new computer](docs/new-computer.md) | Before installing, both install options, what the setup does, after the restart, disk encryption, the RTX 5060, manual setup |
 | [Apps](docs/apps.md) | `install-apps.sh`, where each app comes from, Steam, Obsidian, GNOME extensions |
+| [Brave on your phone](docs/brave-phone.md) | Setting Brave on Android the same as the laptop: Shields, turning off the extras, search, translation, new tab page, Bitwarden |
 | [Keeping things up to date](docs/maintenance.md) | `dot push`, `dot pull`, `dot check`, `dot ssh`, the reminder, the secret check, updates, upgrading Ubuntu, GitHub checks, the website |
 | [What's in this repo](docs/files.md) | Every file and folder |
 

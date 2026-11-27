@@ -608,7 +608,7 @@ else:                    # Markdown, as a page in docs/ called t.md
     print(m.blocks(what.split("\n"), page, {"docs/t.md": {"id": "t", "readme_slugs": set()}}))
 PY
 }
-t "build-site.py builds every docs page, with no broken links" same "$(site_py pages 2>&1)" "start dot new-computer apps maintenance files"
+t "build-site.py builds every docs page, with no broken links" same "$(site_py pages 2>&1)" "start dot new-computer apps brave-phone maintenance files"
 t "... and the dot page has every command in dot's table" same "$(site_py commands)" \
   "$(sed -n 's/^  "\([a-z]\{1,\}\)|.*/\1/p' "$ROOT/dot" | tr '\n' ' ' | sed 's/ $//')"
 t "... and turns Markdown into the site's HTML" same "$(site_py $'## The `dot` menu\n\n- [ ] Run **dot ssh** ([how](#signed-commits))\n\n> [!TIP]\n> Use <kbd>Tab</kbd>.\n\n| A | B |\n|---|---|\n| `x` | [y](../setup/) |')" \

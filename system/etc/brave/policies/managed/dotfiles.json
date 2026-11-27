@@ -11,5 +11,13 @@
   "BlockThirdPartyCookies": true,
   "WebRtcIPHandling": "default_public_interface_only",
   "BackgroundModeEnabled": false,
-  "AutofillCreditCardEnabled": false
+  "AutofillCreditCardEnabled": false,
+  "BraveAIChatEnabled": false,
+  "BraveLocalAIEnabled": false,
+  "BraveRewardsDisabled": true,
+  "BraveWalletDisabled": true,
+  "BraveVPNDisabled": true,
+  "BraveNewsDisabled": true,
+  "BraveTalkDisabled": true,
+  "BravePlaylistEnabled": false
 }

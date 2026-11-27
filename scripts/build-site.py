@@ -114,6 +114,7 @@ DOC_PAGES = [
     ("dot", "dot", "The dot command", "dot"),
     ("new-computer", "New computer", None, "docs/new-computer.md"),
     ("apps", "Apps", None, "docs/apps.md"),
+    ("brave-phone", "Phone", None, "docs/brave-phone.md"),
     ("maintenance", "Maintenance", None, "docs/maintenance.md"),
     ("files", "Files", None, "docs/files.md"),
 ]

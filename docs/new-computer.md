@@ -1,4 +1,4 @@
-[README](../README.md) · **New computer** · [Apps](apps.md) · [Maintenance](maintenance.md) · [Files](files.md)
+[README](../README.md) · **New computer** · [Apps](apps.md) · [Brave on your phone](brave-phone.md) · [Maintenance](maintenance.md) · [Files](files.md)
 
 # Setting up a new computer
 
