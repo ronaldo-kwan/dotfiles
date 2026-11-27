@@ -361,7 +361,13 @@ pull_repo() {
   local dir="$1" before after name
   name="$(repo_name "$dir")"
   before="$(git -C "$dir" rev-parse HEAD 2>/dev/null)" || return 2
-  if ! git -C "$dir" -c advice.diverging=false pull --ff-only --quiet; then
+  # Fetched already (both repos at once, cmd_pull), so only the fast-forward is left here.
+  [[ -n "${FETCH_PID[$dir]:-}" ]] || FETCH_TIMEOUT=120 repo_prefetch "$dir"
+  if ! repo_wait "$dir"; then
+    err "couldn't reach GitHub for $name (offline?)"
+    return 2
+  fi
+  if ! git -C "$dir" -c advice.diverging=false merge --ff-only --quiet '@{u}'; then
     err "couldn't get the changes for $name (see above)"
     hint "If this computer has its own new commits too: git -C ${dir/#$HOME/\~} pull --rebase, then dot push"
     return 2
@@ -384,6 +390,7 @@ cmd_pull() {
   start="$(git -C "$DOTFILES" rev-parse HEAD)"
   # Set up from a release by an older bootstrap.sh (not on a branch): back to main.
   git -C "$DOTFILES" symbolic-ref -q HEAD >/dev/null || git -C "$DOTFILES" checkout --quiet main || return 1
+  FETCH_TIMEOUT=120 repo_prefetch "$DOTFILES" "$VAULT"   # both at once (lib.sh)
   pull_repo "$DOTFILES"; rc=$?
   [[ -d "$VAULT/.git" ]] && pull_repo "$VAULT"
   (( rc == 2 )) && return 1

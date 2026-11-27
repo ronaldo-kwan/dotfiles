@@ -36,6 +36,8 @@ BOXES="$HOME/.var/app/org.gnome.Boxes/data/gnome-boxes"   # where Boxes keeps it
 DISK="$BOXES/images/$VM.qcow2"
 WORK="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles-vm"        # kernel, answers, runs
 UBUNTU_RELEASES=https://releases.ubuntu.com/26.04
+# Cores and memory apply to each test (see test_run). 8 cores measured no faster than 4:
+# the setup waits on downloads, not on the processor.
 MEMORY_MIB=8192 CPUS=4 DISK_SIZE=64G
 INSTALL_TIMEOUT=$((90 * 60)) BOOT_TIMEOUT=$((10 * 60)) SETUP_TIMEOUT=$((3 * 60 * 60))
 # dot check's ✘ lines a new computer always has, until you do these by hand (the setup's
@@ -160,6 +162,10 @@ boot() {
   shut_off && ! saved && { vsh start "$VM" >/dev/null || die "the machine didn't start"; }
   wait_until "$BOOT_TIMEOUT" "starting" answers_ping || die "no answer from the machine after $(fmt_time "$BOOT_TIMEOUT"); look at it in Boxes"
   wait_until "$BOOT_TIMEOUT" "signing in to the desktop" session_ready || die "the desktop didn't start; look at it in Boxes"
+}
+fit_machine() {   # this script's cores and memory, from the machine's next start
+  vsh setvcpus "$VM" "$CPUS" --config --maximum >/dev/null && vsh setvcpus "$VM" "$CPUS" --config >/dev/null &&
+    vsh setmaxmem "$VM" "${MEMORY_MIB}M" --config >/dev/null && vsh setmem "$VM" "${MEMORY_MIB}M" --config >/dev/null
 }
 power_off() {
   shut_off && return 0
@@ -385,6 +391,9 @@ test_run() {
   shut_off || vsh destroy "$VM" >/dev/null 2>&1
   vsh managedsave-remove "$VM" >/dev/null 2>&1   # a state Boxes saved: the snapshot replaces it
   vsh snapshot-revert "$VM" clean >/dev/null || die "couldn't go back to the snapshot"
+  # The snapshot brings back the cores and memory it was made with: these settings win, so
+  # changing them above needs no new machine.
+  fit_machine || warn "couldn't set the machine to $CPUS cores and $MEMORY_MIB MiB; testing with the snapshot's"
   boot
 
   cmd="$(website_command)"

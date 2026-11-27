@@ -29,7 +29,28 @@ t() {
 }
 same() { [[ "$1" == "$2" ]] || { printf '      expected: %q\n      got:      %q\n' "$2" "$1"; return 1; }; }
 not() { ! "$@"; }
+# load_fn <script> <function>: just that function, from a script that runs as soon as it
+# starts if sourced.
+# shellcheck source=/dev/null  # (a function cut from the script; shellcheck checks the script itself)
+load_fn() { source <(sed -n "/^$2() {/,/^}/p" "$ROOT/$1"); }
 
+# The sections run in five groups at once (about 2 seconds instead of 6): each group in
+# the background, in a folder and home of its own (lib.sh loaded again for that home), its
+# output kept and shown afterwards, in order. A section can use what an earlier section of
+# its own group set up, not another group's.
+group_start() {
+  T="$T/group$1"; export HOME="$T/home" UI_LOG="$T/ui.log"
+  mkdir -p "$HOME" "$T/bin" "$T/state"   # home, stand-in commands, records
+  # shellcheck source=bin/lib.sh
+  source "$ROOT/bin/lib.sh"
+  # shellcheck source=bin/install-apps.sh
+  source "$ROOT/bin/install-apps.sh"
+  fails=0 n=0
+}
+group_end() { printf '##counts %s %s\n' "$n" "$fails"; }
+GROUPS_OUT="$T/groups"; mkdir -p "$GROUPS_OUT"
+
+{ group_start 1
 echo "Choices"
 DOTFILES_CHOICES="" DOTFILES_SKIP=""
 t "nothing chosen means everything" chosen app:steam
@@ -44,12 +65,11 @@ t "a skipped app" not chosen app:steam
 t "everything else with a skip list" chosen app:chrome
 
 echo "Lists in setup/"
-SETUP_REAL="$SETUP" SETUP="$T/setup"; mkdir -p "$SETUP"
-printf '# a comment\nvlc   # the player\n\n-snapd   # kept off on purpose\n  gimp\n' > "$SETUP/apt-packages.txt"
-t "list_of drops comments, blanks and -name" same "$(list_of apt-packages.txt | tr '\n' ' ')" "vlc gimp "
+mkdir -p "$T/setup"   # a sample setup/, given as SETUP to each command that reads it
+printf '# a comment\nvlc   # the player\n\n-snapd   # kept off on purpose\n  gimp\n' > "$T/setup/apt-packages.txt"
+t "list_of drops comments, blanks and -name" same "$(SETUP="$T/setup" list_of apt-packages.txt | tr '\n' ' ')" "vlc gimp "
 DOTFILES_CHOICES="pkg:gimp" DOTFILES_SKIP=""
-t "chosen_from keeps only chosen entries" same "$(chosen_from apt-packages.txt pkg:)" "gimp"
-SETUP="$SETUP_REAL"
+t "chosen_from keeps only chosen entries" same "$(SETUP="$T/setup" chosen_from apt-packages.txt pkg:)" "gimp"
 DOTFILES_CHOICES="" DOTFILES_SKIP=""
 
 echo "Config files (stow packages)"
@@ -208,10 +228,9 @@ profile_ok() { [[ ! -f /usr/share/dconf/profile/gdm || "$(login_profile | grep -
 t "its profile is Ubuntu's plus system-db:gdm (where Ubuntu's exists)" profile_ok
 t "its background is in the repo" test -f "$SETUP/wallpaper/login-blurred.jpg"
 
-# Functions from scripts that run as soon as they start: load just the function.
-# shellcheck source=/dev/null  # (a function cut from the script; shellcheck checks the script itself)
-load_fn() { source <(sed -n "/^$2() {/,/^}/p" "$ROOT/$1"); }
+group_end; } > "$GROUPS_OUT/1" 2>&1 &
 
+{ group_start 2
 echo "Secret check (.githooks/pre-commit)"
 git init -q "$T/secrets"
 # hook_on "line": does the secret check stop a commit that adds this line?
@@ -608,6 +627,9 @@ t "dotfiles elsewhere: the reminder's drop-in runs them there" \
 reminder_in "$DEFAULT_DOTFILES"
 t "back in the default folder: the drop-in is removed" not test -e "$REMINDER_DROPIN"
 
+group_end; } > "$GROUPS_OUT/2" 2>&1 &
+
+{ group_start 3
 echo "The dot command"
 mkdir -p "$T/dotcopy/bin"; cp "$ROOT/dot" "$T/dotcopy/"; cp "$ROOT/bin/lib.sh" "$T/dotcopy/bin/"
 for s in install.sh install-apps.sh fresh-install.sh post-upgrade.sh uninstall.sh check.sh; do
@@ -700,6 +722,10 @@ t "... and turns Markdown into the site's HTML" same "$(site_py $'## The `dot` m
 <div class="alert tip"><p class="alert-title">Tip</p><p>Use <kbd>Tab</kbd>.</p></div>
 <div class="tbl"><table><thead><tr><th>A</th><th>B</th></tr></thead><tbody><tr><td><code>x</code></td><td><a href="https://github.com/ronaldo-kwan/dotfiles/tree/main/setup">y</a></td></tr></tbody></table></div>'
 
+group_end; } > "$GROUPS_OUT/3" 2>&1 &
+
+# (with the weekly reminder: it counts the backups this section leaves in the home folder)
+{ group_start 4
 echo "dot check: the record and backups"
 load_fn bin/check.sh adopt_record
 ADDED_FILE="$T/state/adopt"; printf 'legacy\n' > "$ADDED_FILE"
@@ -725,12 +751,12 @@ backups_with() (   # backups_with <periodic> <last-backup, as gsettings shows it
   gsettings() {    # ( ): this stand-in stays in here
     case "$1 ${3:-}" in
       "list-keys "*) return 0 ;;
-      "get periodic") echo "$P" ;;
-      "get last-backup") echo "$L" ;;
-      "get periodic-period") echo "${I:-7}" ;;
+      "get periodic") echo "$bk_periodic" ;;
+      "get last-backup") echo "$bk_last" ;;
+      "get periodic-period") echo "${bk_interval:-7}" ;;
     esac
   }
-  P="$1" L="$2" I="${3:-}"
+  bk_periodic="$1" bk_last="$2" bk_interval="${3:-}"
   backups_state
 )
 days_ago() { printf "'%s'" "$(date -d "-$1 days" --iso-8601=seconds)"; }
@@ -756,6 +782,9 @@ reminder="$(remind "$T/state/remind-answered")"
 t "... but not once the record is answered" not grep -q "which apps you had before" <<< "$reminder"
 t "... nor for a few backups (3)" not grep -q "backups of files the dotfiles replaced" <<< "$reminder"
 
+group_end; } > "$GROUPS_OUT/4" 2>&1 &
+
+{ group_start 5
 echo "The virtual machine test (scripts/test-vm.sh)"
 # Only its pieces that need no machine: the command it pastes, the machine's description
 # and the installer's answers. (Run in a bash of their own: sourcing it redefines ok().)
@@ -797,6 +826,14 @@ t "every check and install function in APPS exists" bash -c '
   _ "$ROOT/bin/install-apps.sh" "${APPS[@]}"
 t "APP_PACKAGES has each app's packages" bash -c '[[ " $* " == *" google-chrome-stable "* && " $* " == *" steam-launcher "* ]]' _ "${APP_PACKAGES[@]}"
 t "every DCONF_FILES file is in setup/" bash -c 'for e in "${@:2}"; do [[ -f "$1/${e%%|*}" ]] || exit 1; done' _ "$SETUP" "${DCONF_FILES[@]}"
+group_end; } > "$GROUPS_OUT/5" 2>&1 &
+
+wait
+for g in 1 2 3 4 5; do
+  grep -v '^##counts ' "$GROUPS_OUT/$g"
+  read -r _ gn gfails < <(grep '^##counts ' "$GROUPS_OUT/$g") || { echo "  ✘ group $g stopped before its end"; gn=0 gfails=1; }
+  n=$((n + gn)) fails=$((fails + gfails))
+done
 
 echo
 if (( fails )); then echo "✘ $fails of $n checks failed"; exit 1; fi

@@ -2,9 +2,9 @@
 # Checks before each push to GitHub, so a mistake shows up here rather than in GitHub's
 # checks after it's public: the quick tests (scripts/test-helpers.sh), and when the push
 # changes anything lint.sh looks at, scripts/lint.sh too (shellcheck and the rest), side
-# by side: about 7 seconds. It checks the commits being pushed, unpacked into a temporary
-# folder, not the files as they are now, so edits you haven't committed don't count either
-# way. Stops the push if a check fails.
+# by side: about 7 seconds (2 for settings or docs). It checks the commits being pushed,
+# unpacked into a temporary folder, not the files as they are now, so edits you haven't
+# committed don't count either way. Stops the push if a check fails.
 #
 # install.sh points the Obsidian vault at this folder too (for the secret check): for any
 # repo but the dotfiles this does nothing. scripts/test-vm.sh isn't run: it tests what's on

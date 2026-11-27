@@ -583,12 +583,14 @@ repo_behind() {
   [[ -n "${FETCH_PID[$1]:-}" ]] || repo_fetch "$1"
   git -C "$1" rev-list --count 'HEAD..@{u}' 2>/dev/null || echo 0
 }
-repo_fetch() { GIT_TERMINAL_PROMPT=0 timeout 10 git -C "$1" fetch --quiet >/dev/null 2>&1 || true; }
+# repo_fetch <dir>: git fetch, quietly; fails if it couldn't (offline, say). At most
+# FETCH_TIMEOUT seconds (10: dot check and dot push only need to know what's new).
+repo_fetch() { GIT_TERMINAL_PROMPT=0 timeout "${FETCH_TIMEOUT:-10}" git -C "$1" fetch --quiet >/dev/null 2>&1; }
 # repo_prefetch <dir>...: start fetching each repo in the background, all at once, so the
 # waits on GitHub overlap with each other and with the rest of the work. Call repo_wait
 # <dir> before repo_state or repo_behind on it (in this shell, not in a $(...): a subshell
 # can't wait for it).
-declare -A FETCH_PID=()
+declare -A FETCH_PID=() FETCH_RC=()
 repo_prefetch() {
   local d
   for d in "$@"; do
@@ -596,7 +598,12 @@ repo_prefetch() {
     repo_fetch "$d" & FETCH_PID[$d]=$!
   done
 }
-repo_wait() { [[ -z "${FETCH_PID[$1]:-}" ]] || wait "${FETCH_PID[$1]}" 2>/dev/null || true; }
+# repo_wait <dir>: until its fetch is done; fails if the fetch did (asked again: the same answer).
+repo_wait() {
+  [[ -n "${FETCH_PID[$1]:-}" ]] || return 0
+  [[ -n "${FETCH_RC[$1]:-}" ]] || { wait "${FETCH_PID[$1]}" 2>/dev/null; FETCH_RC[$1]=$?; }
+  return "${FETCH_RC[$1]}"
+}
 
 # gh_key_admin: can the GitHub CLI's sign-in add or remove SSH keys on your account?
 # dot ssh needs that briefly; left in place, a leaked gh token could add someone else's key.

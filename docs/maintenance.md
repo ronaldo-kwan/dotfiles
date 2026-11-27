@@ -165,10 +165,10 @@ It names the file, line and commit. A secret it finds there has been on GitHub: 
 
 [`.githooks/pre-push`](../.githooks/pre-push) runs before every push of `~/code/github/dotfiles` (also from `dot push`), so a mistake shows up on this computer rather than in the [GitHub checks](#github-checks) after it's public. It checks the commits being pushed, unpacked into a temporary folder, so edits you haven't committed don't count either way:
 
-- [`scripts/test-helpers.sh`](../scripts/test-helpers.sh), every time (about 6 seconds)
+- [`scripts/test-helpers.sh`](../scripts/test-helpers.sh), every time (about 2 seconds: its sections run in five groups at once)
 - [`scripts/lint.sh`](../scripts/lint.sh) (shellcheck and the rest), when the push changes something it looks at: the scripts, `.bashrc`, the cron jobs, the Python and the website's scripts. Saved settings and docs alone, like most `dot push`es, skip it
 
-The two run side by side, and `lint.sh` runs shellcheck on every script at once, so a push waits about 7 seconds for them either way.
+The two run side by side, and `lint.sh` runs shellcheck on every script at once: a push waits about 7 seconds when `lint.sh` runs, and about 2 for settings and docs.
 
 If a check fails, the push stops and shows its output. `lint.sh`'s tools (shellcheck, pyflakes, Node.js) are terminal tools, so the setup installs them, and `dot check` offers them on a computer set up before they were added; without them `lint.sh` fails and says so. The notes repo uses the same hooks folder for the secret check, but this doesn't run there. [The virtual machine test](#a-test-in-a-virtual-machine) isn't part of it: it tests what's on GitHub, so it comes after the push.
 
