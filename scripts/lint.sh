@@ -45,8 +45,12 @@ eslint() {
 }
 
 step "syntax (bash -n, sh -n)" syntax
-step "shellcheck $(shellcheck --version | sed -n 's/^version: //p')" \
-  shellcheck -x -S style "${bash_files[@]}" "${sh_files[@]}"
+# One shellcheck per file, all at once (it uses one core, and the scripts that read lib.sh
+# each go through it again): about a third of the time of one shellcheck for them all.
+shellcheck_all() {
+  printf '%s\0' "${bash_files[@]}" "${sh_files[@]}" | xargs -0 -n 1 -P "$(nproc)" shellcheck -x -S style
+}
+step "shellcheck $(shellcheck --version | sed -n 's/^version: //p')" shellcheck_all
 step "pyflakes (scripts/*.py)" pyflakes3 scripts/*.py
 step "node --check (site/**/*.js)" node_check
 step "ESLint (site/**/*.js)" eslint

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Checks before each push to GitHub, so a mistake shows up here rather than in GitHub's
-# checks after it's public: the quick tests (scripts/test-helpers.sh, about 6 seconds),
-# and when the push changes anything lint.sh looks at, scripts/lint.sh too (shellcheck
-# and the rest, about 20 seconds). It checks the commits being pushed, unpacked into a
-# temporary folder, not the files as they are now, so edits you haven't committed don't
-# count either way. Stops the push if a check fails.
+# checks after it's public: the quick tests (scripts/test-helpers.sh), and when the push
+# changes anything lint.sh looks at, scripts/lint.sh too (shellcheck and the rest), side
+# by side: about 7 seconds. It checks the commits being pushed, unpacked into a temporary
+# folder, not the files as they are now, so edits you haven't committed don't count either
+# way. Stops the push if a check fails.
 #
 # install.sh points the Obsidian vault at this folder too (for the secret check): for any
 # repo but the dotfiles this does nothing. scripts/test-vm.sh isn't run: it tests what's on
@@ -31,7 +31,7 @@ DOTFILES="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd -P)"
 
 zero=0000000000000000000000000000000000000000
 checked=" " rc=0 tmp=""
-trap '[[ -n "$tmp" ]] && rm -rf "$tmp"' EXIT
+trap '[[ -n "$tmp" ]] && rm -rf "$tmp" "$tmp".*.out' EXIT
 # Git passes one line per branch being pushed: <local ref> <local id> <remote ref> <remote id>.
 while read -r _ local_id _ remote_id; do
   [[ "$local_id" == "$zero" || "$checked" == *" $local_id "* ]] && continue   # deleting a branch, or done
@@ -52,20 +52,25 @@ while read -r _ local_id _ remote_id; do
     # The checks make git repos of their own: none of this repo's git settings for them.
     unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX
     cd "$tmp" && git init -q && git add -A   # lint.sh lists the website's scripts with git
-    run() {   # run "what" <script>: quiet if it passes, its output if not
-      local out cr=''
-      [[ -t 1 ]] && { printf '  … %s' "$1"; cr=$'\r'; }   # in a terminal, replaced by the result
-      if out="$(bash "$2" 2>&1)"; then printf '%s  ✔ %s \n' "$cr" "$1"
-      else printf '%s  ✘ %s \n' "$cr" "$1"; printf '%s\n' "$out" | tail -40 | sed 's/^/      /'; return 1; fi
-    }
     echo "Checking what you're pushing (${local_id:0:7}):"
-    ok=0
-    if (( lint )); then run "scripts/lint.sh" scripts/lint.sh || ok=1
+    # Both at once (lint.sh spreads shellcheck over the cores too); each one's output goes to
+    # a file beside the copy, shown only if it fails.
+    checks=(scripts/test-helpers.sh)
+    if (( lint )); then checks=(scripts/lint.sh "${checks[@]}")
     else echo "  – scripts/lint.sh: nothing it checks has changed"; fi
-    run "scripts/test-helpers.sh" scripts/test-helpers.sh || ok=1
+    declare -A pid
+    for c in "${checks[@]}"; do bash "$c" > "$tmp.${c##*/}.out" 2>&1 & pid[$c]=$!; done
+    [[ -t 1 ]] && printf '  … %s' "${checks[*]}"   # in a terminal, replaced by the results
+    ok=0 first=1
+    for c in "${checks[@]}"; do
+      wait "${pid[$c]}"; rc=$?
+      (( first )) && [[ -t 1 ]] && printf '\r\e[K'; first=0
+      if (( rc == 0 )); then printf '  ✔ %s\n' "$c"
+      else printf '  ✘ %s\n' "$c"; tail -40 "$tmp.${c##*/}.out" | sed 's/^/      /'; ok=1; fi
+    done
     exit "$ok"
   ) || rc=1
-  rm -rf "$tmp"; tmp=""
+  rm -rf "$tmp" "$tmp".*.out; tmp=""
 done
 
 if (( rc )); then
