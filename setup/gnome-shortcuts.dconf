@@ -6,7 +6,7 @@ terminal=['<Super>t']
 www=['<Super>b']
 
 [custom-keybindings/claude]
-binding='<Super>x'
+binding='<Super>c'
 command='claude-desktop'
 name='Claude'
 
