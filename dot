@@ -321,7 +321,8 @@ cmd_push() {
     esac
   done
   [[ -d "$VAULT/.git" ]] && repos+=("$VAULT")
-  for d in "${repos[@]}"; do repo_ready "$d" || return 1; done
+  repo_prefetch "${repos[@]}"   # both at once; repo_ready needs them
+  for d in "${repos[@]}"; do repo_wait "$d"; repo_ready "$d" || return 1; done
   snapshot
   for d in "${repos[@]}"; do [[ -n "$(repo_state "$d")" ]] && todo+=("$d"); done
   if (( ${#todo[@]} == 0 )); then ok "Nothing to save: everything is on GitHub"; return 0; fi
@@ -432,10 +433,11 @@ menu() {
   local pick daily setup default header
   mapfile -t daily < <(menu_items daily)
   mapfile -t setup < <(menu_items setup)
-  # What GitHub has, once: the status lines and the suggested step need it.
+  # What GitHub has, once: the status lines and the suggested step need it. Both repos at
+  # once, in the background.
   # shellcheck disable=SC2016  # the script in quotes is expanded by the bash it starts
   gum spin --title "Checking GitHub…" -- bash -c '
-    for d in "$@"; do [ -d "$d/.git" ] && GIT_TERMINAL_PROMPT=0 timeout 5 git -C "$d" fetch --quiet; done; true' \
+    for d in "$@"; do [ -d "$d/.git" ] && GIT_TERMINAL_PROMPT=0 timeout 5 git -C "$d" fetch --quiet & done; wait; true' \
     _ "$DOTFILES" "$VAULT"
   while true; do
     clear

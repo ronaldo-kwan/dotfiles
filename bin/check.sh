@@ -229,6 +229,9 @@ if chosen terminal && have batcat; then
 fi
 
 section "Apps and system jobs (install-apps.sh)"
+# Each check runs in a $(...), which can't keep what it learns: ask for the graphics card
+# and the package list here once, so they don't each run lspci and dpkg-query again.
+has_nvidia || true; installed dpkg || true
 for entry in "${APPS[@]}"; do
   IFS='|' read -r choice name check _ <<< "$entry"
   if ! entry_chosen "$choice"; then info "$name: not chosen"; continue; fi

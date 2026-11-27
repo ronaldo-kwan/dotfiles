@@ -157,6 +157,34 @@ chmod +x "$T/bin/nvidia-smi"
 major="$(PATH="$T/bin:$PATH" nvidia_major)"
 t "nvidia_major ignores nvidia-smi's error text (got: ${major:-empty})" bash -c '[[ -z "$1" || "$1" =~ ^[0-9]+$ ]]' _ "$major"
 
+echo "Installed packages (lib.sh installed)"
+# One dpkg-query for all of them, read again only once dpkg's database has changed. Faked
+# here: dpkg-query prints $T/dpkg/list, and $T/dpkg/status stands in for the database.
+mkdir -p "$T/dpkg"
+printf '#!/bin/sh\ncat "%s"\n' "$T/dpkg/list" > "$T/dpkg/dpkg-query"; chmod +x "$T/dpkg/dpkg-query"
+printf 'install ok installed\tgum\tamd64\ndeinstall ok config-files\tvlc\tamd64\ninstall ok installed\tnvidia-driver-580\tamd64\ninstall ok installed\tlibnvidia-gl-580\ti386\n' > "$T/dpkg/list"
+pkg_ask() (   # pkg_ask <expected answer: 1 installed, 0 not> <package>...
+  PATH="$T/dpkg:$PATH" DPKG_STATUS_FILE="$T/dpkg/status" DPKG_READ_FD=""
+  want="$1"; shift
+  for p in "$@"; do got=0; installed "$p" && got=1; [[ "$got" == "$want" ]] || { echo "      $p: got $got"; exit 1; }; done
+)
+: > "$T/dpkg/status"
+t "installed: by name, name:arch and pattern" pkg_ask 1 gum gum:amd64 libnvidia-gl-580:i386 'nvidia-driver-*'
+t "installed: removed (config files left), unknown, other arch, no match" pkg_ask 0 vlc nosuch gum:i386 'steam*'
+# In one shell: answers come from the list until the database changes, then it's read again.
+pkg_change() (
+  PATH="$T/dpkg:$PATH" DPKG_STATUS_FILE="$T/dpkg/status" DPKG_READ_FD=""
+  : > "$DPKG_STATUS_FILE"; sleep 0.05
+  installed gum || exit 1
+  printf 'install ok installed\tvlc\tamd64\n' > "$T/dpkg/list"   # the database not touched: still the old list
+  installed gum && ! installed vlc || { echo "      read again without a change"; exit 1; }
+  sleep 0.05; : > "$DPKG_STATUS_FILE"                              # an install: read again
+  installed vlc && ! installed gum || { echo "      not read again after a change"; exit 1; }
+  ( sleep 0.05; : > "$DPKG_STATUS_FILE"; printf 'install ok installed\tgum\tamd64\n' > "$T/dpkg/list"; installed gum )
+  installed gum || { echo "      a subshell's read hid the change from this shell"; exit 1; }
+)
+t "installed: read again only after dpkg's database changes, also seen past a subshell" pkg_change
+
 echo "Login screen"
 # Its theme, accent and font come from setup/gnome-desktop.dconf; if a name there changed,
 # they'd silently go missing.

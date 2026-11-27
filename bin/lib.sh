@@ -51,7 +51,15 @@ config_files() { local p; for p in "$@"; do find "$STOW_DIR/$p" -type f -printf 
 has_user_systemd() { have systemctl && systemctl --user show-environment >/dev/null 2>&1; }
 
 # Does this computer have an NVIDIA graphics card?
-has_nvidia() { grep -qiE '(vga|3d|display).*nvidia' <<< "$(lspci 2>/dev/null)"; }
+# Asked once per run (lspci takes about 45 ms, and dot check asks 13 times): the card
+# can't change while a script runs.
+HAS_NVIDIA=""
+has_nvidia() {
+  if [[ -z "$HAS_NVIDIA" ]]; then
+    if grep -qiE '(vga|3d|display).*nvidia' <<< "$(lspci 2>/dev/null)"; then HAS_NVIDIA=yes; else HAS_NVIDIA=no; fi
+  fi
+  [[ "$HAS_NVIDIA" == yes ]]
+}
 
 # --- Choices: what to set up (picked on the website, or everything) ----------------------
 # DOTFILES_CHOICES lists what to set up, separated by spaces. Groups: terminal desktop
@@ -372,9 +380,37 @@ keep_sudo() {
 }
 
 # installed <package>: is this apt package installed? (A pattern like 'nvidia-driver-*'
-# means any package it matches.)
-# (Not `dpkg-query | grep -q`: with pipefail that can fail when grep stops reading early.)
-installed() { [[ "$(dpkg-query -W -f='${Status}\n' "$1" 2>/dev/null)" == *"install ok installed"* ]]; }
+# means any package it matches; name:arch, like libnvidia-gl-580:i386, works too.)
+# Looked up in DPKG_INSTALLED: every installed package, read with one dpkg-query (about
+# 40 ms; one dpkg-query per package was 12 ms each, and dot check asks about 100). It's
+# read again whenever dpkg's database has changed since, so installs and removals show
+# up at once, whether these scripts made them, a subshell did, or you did by hand.
+# DPKG_STATUS_FILE is for tests.
+declare -A DPKG_INSTALLED=()
+DPKG_READ_FD=""   # a stamp file from just before the last read (see dpkg_read)
+DPKG_STATUS_FILE="${DPKG_STATUS_FILE:-/var/lib/dpkg/status}"   # dpkg's database
+installed() {
+  # A tie counts as changed: file times only move every few milliseconds.
+  [[ -n "$DPKG_READ_FD" && /dev/fd/$DPKG_READ_FD -nt "$DPKG_STATUS_FILE" ]] || dpkg_read
+  if [[ "$1" != *[*?[]* ]]; then [[ -n "${DPKG_INSTALLED[$1]:-}" ]]; return; fi
+  local k
+  # shellcheck disable=SC2053  # $1 is a pattern on purpose
+  for k in "${!DPKG_INSTALLED[@]}"; do [[ "$k" == $1 ]] && return 0; done
+  return 1
+}
+# The stamp is an empty file, deleted at once but kept open (bash reads its time through
+# /dev/fd), so nothing is left behind. A new one per read: a subshell that reads again
+# mustn't move the stamp of the shell it came from, whose list it can't update.
+dpkg_read() {
+  local f k list
+  [[ -n "$DPKG_READ_FD" ]] && exec {DPKG_READ_FD}>&-
+  DPKG_READ_FD=""
+  f="$(mktemp)" && exec {DPKG_READ_FD}>"$f"; rm -f "$f"
+  DPKG_INSTALLED=()
+  mapfile -t list < <(dpkg-query -W -f='${Status}\t${Package}\t${Architecture}\n' 2>/dev/null \
+    | awk -F'\t' '$1 ~ /install ok installed/ { print $2; print $2 ":" $3 }')
+  for k in "${list[@]}"; do DPKG_INSTALLED[$k]=1; done
+}
 
 # --- Dry runs and changes ----------------------------------------------------------------
 # DRY_RUN=1 (install.sh, install-apps.sh, uninstall.sh): show what would change, change
