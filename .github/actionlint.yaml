@@ -1,0 +1,7 @@
+# actionlint's settings (the check workflow runs it on the workflow files).
+self-hosted-runner:
+  # GitHub's own ubuntu-26.04 runner, which the workflows use. actionlint 1.7.12 predates it
+  # and calls it unknown; this list tells it otherwise. Remove it once a newer actionlint
+  # knows the label (the check run warns when there's a newer actionlint).
+  labels:
+    - ubuntu-26.04
