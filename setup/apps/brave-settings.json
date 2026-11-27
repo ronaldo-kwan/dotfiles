@@ -76,6 +76,7 @@
   "kActionShowChromeLabs",
   "kActionShowDownloads"
  ],
+ "translate.enabled": true,
  "webkit.webprefs": {
   "fonts": {
    "fixed": {
