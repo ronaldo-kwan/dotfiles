@@ -89,6 +89,9 @@ KEEP = [
     "intl.selected_languages",
     "intl.accept_languages",
     "translate.enabled",
+    "translate_allowlists",                  # always translate these languages (into which)
+    "translate_blocked_languages",           # never offer to translate these
+    "translate_recent_target",               # translate into (not the sites never translated)
     "download.prompt_for_download",
     "download.default_directory",
     "https_only_mode_enabled",               # always use HTTPS: strict or balanced

@@ -395,6 +395,10 @@ import json, sys; d = json.load(open(sys.argv[1])); ex = d["profile"]["content_s
 assert ex["shieldsAds"] == {"https://mine.example,*": {"setting": 1}, "*,*": {"setting": 2}}, ex
 assert ex["cosmeticFilteringV2"]["*,*"] == {"setting": {"cosmeticFilteringV2": 1}}
 assert d["brave"]["cosmetic_filtering_migration"] is True' "$T/brave/shields-old.json"
+echo '{"translate_allowlists": {"de": "en"}, "translate_blocked_languages": ["fr"], "translate_recent_target": "en", "translate_site_blocklist_with_time": {"secret.example": "1"}, "translate_accepted_count": {"de": 3}}' > "$T/brave/tr.json"
+t "saves the languages to always and never translate, not sites or counts" python3 -c '
+import json, sys; d = json.load(sys.stdin)
+assert d == {"translate_allowlists": {"de": "en"}, "translate_blocked_languages": ["fr"], "translate_recent_target": "en"}, d' < <(bs save "$T/brave/tr.json")
 t "a profile saved, put back and saved again is the same" same "$(bs save "$T/brave/new/Default/Preferences")" "$(cat "$T/brave/saved.json")"
 
 echo "Signing-key files (install-apps.sh key_ok)"
