@@ -85,7 +85,7 @@ The folders in `home/` are laid out for [GNU Stow](https://www.gnu.org/software/
 | `scripts/dump-desktop-settings.sh` | Writes `setup/desktop-settings.dconf` |
 | `scripts/save-app-settings.sh` | Writes `setup/apps/` |
 | `scripts/test-helpers.sh` | Quick checks of the helpers in `lib.sh` and the app table in `install-apps.sh`; GitHub's checks run it |
-| `scripts/lint.sh` | Looks for mistakes in the scripts without running them: syntax, `shellcheck`, `pyflakes` and `node --check`; GitHub's checks run it |
+| `scripts/lint.sh` | Looks for mistakes in the scripts without running them: syntax, `shellcheck`, `pyflakes`, `node --check` and ESLint; GitHub's checks run it |
 | `scripts/test-desktop.sh` | Loads the saved desktop settings and resets them again, checking each one; only runs in GitHub's checks (it changes desktop settings) |
 
 ### Shared
@@ -121,9 +121,10 @@ Written by `dot push` and restored by `install.sh`, except `apt-packages.txt`, w
 | `system/etc/` | The weekly update and monthly clean-up jobs; `@USER@` is replaced by your username when installed |
 | `.githooks/pre-commit` | The [secret check](maintenance.md#secret-check-before-commits) |
 | `.shellcheckrc` | `shellcheck`'s settings for every script (and why each one is there) |
+| `package.json`, `package-lock.json`, `eslint.config.mjs` | ESLint for the website's scripts (`scripts/lint.sh` runs it; `node_modules/` isn't saved). Nothing here goes on the computers |
 | `.editorconfig` | How editors write the files: UTF-8, Unix line endings, spaces, a newline at the end |
 | `.github/workflows/check.yml` | The [GitHub checks](maintenance.md#github-checks) |
 | `.github/workflows/pages.yml` | Builds and publishes the website |
 | `.github/dependabot.yml` | Opens a pull request each week when the workflows' actions have new releases |
-| `site/` | The [website](https://ronaldo-kwan.github.io/dotfiles/): pick options and get your own command (`index.html`, `app.js`). `docs/` is the [docs site](https://ronaldo-kwan.github.io/dotfiles/docs/) with these pages (`docs/index.html`, `docs/docs.js`, `docs/docs.css`). Both use `style.css` and `common.js`. `options.json` and `docs/docs.json` are generated |
+| `site/` | The [website](https://ronaldo-kwan.github.io/dotfiles/): pick options and get your own command (`index.html`, `index.css`, `app.js`). `docs/` is the [docs site](https://ronaldo-kwan.github.io/dotfiles/docs/) with these pages (`docs/index.html`, `docs/docs.js`, `docs/docs.css`). Both use `style.css`, `common.js` and `theme.js` (the saved light/dark choice, before the page is drawn). `options.json` and `docs/docs.json` are generated |
 | `scripts/build-site.py` | Writes `site/options.json` from `install-apps.sh` and the lists in `setup/`, and `site/docs/docs.json` from `README.md`, `docs/` and `dot`'s own help, so the site matches the scripts |

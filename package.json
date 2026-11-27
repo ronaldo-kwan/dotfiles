@@ -1,0 +1,13 @@
+{
+  "name": "dotfiles-site-lint",
+  "private": true,
+  "description": "Only the linter for the website's scripts (scripts/lint.sh runs it). Nothing here is installed on the computers.",
+  "scripts": {
+    "lint": "eslint"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.15.0",
+    "globals": "17.14.0"
+  }
+}

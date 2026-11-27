@@ -25,3 +25,6 @@ site/docs/docs.json
 # Obsidian community plugins: program files and their own settings (which can hold API
 # keys). Only the list of plugins (community-plugins.json) is saved. See save-app-settings.sh.
 setup/apps/obsidian/plugins/
+
+# The website linter's packages (npm ci installs them from package-lock.json)
+node_modules/

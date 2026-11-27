@@ -1,6 +1,9 @@
 # Checks every push to main and every pull request: script mistakes (scripts/lint.sh),
 # and that install.sh works on a clean Ubuntu 26.04 (a container without a desktop, so
-# desktop steps are skipped).
+# desktop steps are skipped). Also every Monday, so a maker that moved a download or
+# changed a signing key, or a pinned tool with a newer release, shows up within a week.
+# Every job runs on ubuntu-26.04 (not ubuntu-latest), so a new runner image only comes
+# in when this file says so.
 # Before setting up a new computer, run it by hand (docs/new-computer.md), so a maker
 # changing a download link or signing key (Chrome, VS Code, Claude, ChatGPT, Proton VPN,
 # ONLYOFFICE) shows up as a failed run, not halfway through the setup:
@@ -14,6 +17,8 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "23 4 * * 1"   # Mondays, 04:23 UTC; GitHub emails you if it fails
 
 permissions:
   contents: read
@@ -26,18 +31,19 @@ concurrency:
 
 jobs:
   lint:
-    name: shellcheck, pyflakes, node --check (scripts/lint.sh)
-    runs-on: ubuntu-latest
+    name: shellcheck, pyflakes, ESLint (scripts/lint.sh)
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     # Ubuntu 26.04's own shellcheck, pyflakes and node: the versions `sudo apt install` gives
-    # on the computers, so scripts/lint.sh finds the same things there as here.
+    # on the computers, so scripts/lint.sh finds the same things there as here. (ESLint comes
+    # from package-lock.json, which Dependabot keeps up to date.)
     container: ubuntu:26.04
     steps:
       - name: Tools
         run: |
           apt-get update -qq
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
-            git ca-certificates shellcheck pyflakes3 nodejs >/dev/null
+            git ca-certificates shellcheck pyflakes3 nodejs npm >/dev/null
           git config --system --add safe.directory '*'
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -48,25 +54,44 @@ jobs:
 
   quick:
     name: quick checks (workflows, helpers, secrets, website)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
+    env:
+      # actionlint: one fixed version, used only if its checksum matches (from the release's
+      # checksums.txt). Dependabot can't update it; the "Pinned versions" step says when to.
+      ACTIONLINT_VERSION: 1.7.12
+      ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false   # nothing here pushes, so the token isn't kept in .git/config
           fetch-depth: 0               # every commit and branch, for the secret check on the history
       - name: Workflow files (actionlint)
-        # One fixed version, used only if its checksum matches (from the release's checksums.txt).
         # -shellcheck= : the scripts get their own shellcheck run (the lint job).
-        env:
-          ACTIONLINT_VERSION: 1.7.12
-          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
         run: |
           f="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
           curl -fsSLo "/tmp/$f" "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/$f"
           echo "$ACTIONLINT_SHA256  /tmp/$f" | sha256sum -c -
           tar -xzf "/tmp/$f" -C /tmp actionlint
           /tmp/actionlint -color -shellcheck=
+      - name: Pinned versions are the newest (actionlint, the Nerd Font)
+        # Dependabot updates the actions, not these. A newer release is a warning on the run;
+        # on the Monday run it fails, so GitHub emails you. How to update: docs/maintenance.md
+        # (Pinned downloads).
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          stale=0
+          newest() {   # newest <repo> <pinned version>
+            local latest
+            latest="$(gh release view --repo "$1" --json tagName --jq .tagName)"
+            if [[ "$latest" == "$2" ]]; then echo "$1: $2 is the newest"
+            else echo "::warning::$1 has a newer release, $latest (this repo uses $2)"; stale=1; fi
+          }
+          newest rhysd/actionlint "v$ACTIONLINT_VERSION"
+          newest ryanoasis/nerd-fonts "$(sed -n 's/^NERD_FONT_VERSION="\(.*\)"$/\1/p' bin/lib.sh)"
+          [[ "$stale" == 0 || "$EVENT" != schedule ]]
       - name: Shared helpers and the app table (scripts/test-helpers.sh)
         run: bash scripts/test-helpers.sh
       - name: No secrets in any file (the pre-commit secret check, on the whole repo)
@@ -110,7 +135,7 @@ jobs:
 
   install:
     name: install.sh on a clean Ubuntu 26.04
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     container: ubuntu:26.04
     defaults:
@@ -211,7 +236,7 @@ jobs:
 
   desktop:
     name: desktop settings go on and come off (no screen)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     container: ubuntu:26.04
     defaults:
@@ -236,7 +261,7 @@ jobs:
 
   choices:
     name: install.sh follows the website's choices
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     container: ubuntu:26.04
     defaults:

@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- Only the site's own files may load or run (no inline scripts or styles, nothing from
+     other sites); data: for the small icons in the CSS. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Dotfiles docs</title>
 <meta name="description" content="How to set up and use ronaldo-kwan's Ubuntu dotfiles: a new computer, the dot command, apps and upkeep.">
 <meta name="theme-color" content="#1e1e2e">
-<script>
-  // The theme before first paint, so the page doesn't flash: a saved choice, else the system's.
-  try { const t = localStorage.getItem("dotfiles-site-theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
-</script>
+<script src="../theme.js"></script>
 <link rel="stylesheet" href="../style.css">
 <link rel="stylesheet" href="docs.css">
 </head>

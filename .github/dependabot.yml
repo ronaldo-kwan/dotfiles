@@ -1,7 +1,8 @@
 # Opens a pull request when an action the workflows use has a new release. The workflows
 # name each action by its commit ID (see docs/maintenance.md), and Dependabot updates both
 # the ID and the version comment after it. The check workflow runs on each pull request.
-# (actionlint's version in check.yml, the Nerd Font and the apps' keys are updated by hand.)
+# (actionlint's version in check.yml, the Nerd Font and the apps' keys are updated by hand;
+# the weekly check run warns when actionlint or the Nerd Font has a newer release.)
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -12,6 +13,17 @@ updates:
     # (configure-pages, upload-pages-artifact and deploy-pages often do) lands together.
     groups:
       actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: CI
+
+  # The website's linter (package.json): ESLint and its two helpers, in one pull request.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      eslint:
         patterns: ["*"]
     commit-message:
       prefix: CI

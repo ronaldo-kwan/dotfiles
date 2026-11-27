@@ -190,10 +190,11 @@ Then restart. If an extension is still off, switch it on in the Extensions app.
 
 ## GitHub checks
 
-[`.github/workflows/check.yml`](../.github/workflows/check.yml) runs on every push to `main` and every pull request (a newer push to the same pull request cancels the run it replaces; each job also stops after a time limit, so a stuck download can't hold it for hours). Before setting up a new computer, run it by hand (`gh workflow run check.yml --repo ronaldo-kwan/dotfiles`, or **Actions → check → Run workflow**), so a maker changing a download link or signing key shows up as a failed run rather than halfway through the setup; see [New computer](new-computer.md#first-check-the-dotfiles-still-work). In a clean Ubuntu 26.04 container it runs:
+[`.github/workflows/check.yml`](../.github/workflows/check.yml) runs on every push to `main`, every pull request, and every Monday (a newer push to the same pull request cancels the run it replaces; each job also stops after a time limit, so a stuck download can't hold it for hours). The Monday run catches a maker that moved a download or changed a signing key within a week, and GitHub emails you when it fails. (GitHub pauses scheduled runs in a repo with no activity for 60 days; **Actions → check → Enable workflow** starts them again.) Every job runs on the `ubuntu-26.04` runner rather than `ubuntu-latest`, so a new runner image only comes in when `check.yml` says so. Before setting up a new computer, run it by hand (`gh workflow run check.yml --repo ronaldo-kwan/dotfiles`, or **Actions → check → Run workflow**), so a maker changing a download link or signing key shows up as a failed run rather than halfway through the setup; see [New computer](new-computer.md#first-check-the-dotfiles-still-work). In a clean Ubuntu 26.04 container it runs:
 
 - [`actionlint`](https://github.com/rhysd/actionlint) on the workflow files themselves (mistyped keys, wrong job names in `needs:`, bad `${{ }}` expressions), so a broken workflow fails here instead of on the day it's needed; one fixed version, checked against its checksum like the fonts below (`ACTIONLINT_VERSION` and `ACTIONLINT_SHA256` in `check.yml`)
-- [`scripts/lint.sh`](../scripts/lint.sh): a syntax check of every script, `shellcheck` at every level (with the settings in [`.shellcheckrc`](../.shellcheckrc)), `pyflakes` on `scripts/build-site.py` and `node --check` on the website's scripts, with Ubuntu 26.04's own versions of each. Run it yourself after `sudo apt install shellcheck pyflakes3 nodejs`
+- [`scripts/lint.sh`](../scripts/lint.sh): a syntax check of every script, `shellcheck` at every level (with the settings in [`.shellcheckrc`](../.shellcheckrc)), `pyflakes` on `scripts/build-site.py` and `node --check` on the website's scripts, with Ubuntu 26.04's own versions of each, and [ESLint](https://eslint.org) on the website's scripts (the versions in `package-lock.json`, with the rules in [`eslint.config.mjs`](../eslint.config.mjs)). Run it yourself after `sudo apt install shellcheck pyflakes3 nodejs npm`; the first run puts ESLint in `node_modules/`
+- that actionlint and the Nerd Font are their newest releases: a newer one is a warning on the run, and fails the Monday run, since Dependabot can't update these two
 - the system check (both copies must agree), and [`scripts/test-helpers.sh`](../scripts/test-helpers.sh): quick checks of the shared helpers in `lib.sh` and of the app table in `install-apps.sh` (run it yourself with `bash scripts/test-helpers.sh`)
 - dry runs of `fresh-install.sh` (every step of setting up a new computer, including `install.sh` and `install-apps.sh`), `post-upgrade.sh` on test files, `install.sh` (which also checks the pinned downloads) and `uninstall.sh --apps`; none may change anything
 - `install.sh` (twice), a dry run of `install-apps.sh`, `post-upgrade.sh` on test files, and `uninstall.sh --apps` (no links, test apps or jobs may be left)
@@ -218,7 +219,7 @@ To move to a newer version, change the address, download the file and put its ch
 curl -fsSL -o /tmp/f "<new address>" && sha256sum /tmp/f
 ```
 
-Nerd Fonts publishes its checksums with each release (`SHA-256.txt`), so you can compare. Then run `DRY_RUN=1 dot install --yes`: it downloads and checks the files without installing them. After the change, `dot check` shows ✘ on each computer until `dot install` has put the new version there.
+The Monday check run tells you when Nerd Fonts has a newer release. Nerd Fonts publishes its checksums with each release (`SHA-256.txt`), so you can compare. Then run `DRY_RUN=1 dot install --yes`: it downloads and checks the files without installing them. After the change, `dot check` shows ✘ on each computer until `dot install` has put the new version there.
 
 The workflows name each action by its commit ID, with the version as a comment (`actions/checkout@3d3c42e… # v7.0.1`), since a tag like `v7` can be moved to other code. Dependabot ([`.github/dependabot.yml`](../.github/dependabot.yml)) looks for new releases every week and opens one pull request that moves them all, ID and comment; the check workflow runs on it, so merge it once it's green, after reading the release notes of any new major version. To update one by hand instead, find its newest release and that release's commit ID:
 
@@ -229,10 +230,14 @@ gh api repos/actions/checkout/commits/v7.0.1 --jq .sha
 
 Then replace the commit ID and the version comment on every line that uses it (`grep -rn 'actions/checkout@' .github/workflows`), and read the release notes for a new major version. The actions are `actions/checkout`, `actions/configure-pages`, `actions/upload-pages-artifact` and `actions/deploy-pages`. Pushing runs both workflows on the new versions.
 
+actionlint is pinned the same way as the fonts: `ACTIONLINT_VERSION` and `ACTIONLINT_SHA256` in `check.yml`, from the release's `checksums.txt`. ESLint is in `package.json` and `package-lock.json`, and Dependabot updates those too, in a pull request of its own.
+
+GitHub also guards the repo itself (**Settings → Rules → Rulesets**): `main` can't be force-pushed or deleted, and release tags (`v*`) can't be moved or deleted, so `DOTFILES_REF=v2.0.0` always sets up the same code. Dependabot alerts and security updates are on, so a security advisory for anything Dependabot watches shows up under **Security** with a pull request that fixes it.
+
 The result shows on the repo's [Actions](https://github.com/ronaldo-kwan/dotfiles/actions) tab. To run the lint checks locally:
 
 ```bash
-sudo apt install shellcheck pyflakes3 nodejs
+sudo apt install shellcheck pyflakes3 nodejs npm
 bash ~/code/github/dotfiles/scripts/lint.sh
 ```
 
@@ -248,7 +253,7 @@ The website ([ronaldo-kwan.github.io/dotfiles](https://ronaldo-kwan.github.io/do
 
 `bootstrap.sh` saves the choices in `~/.config/dotfiles/choices` (`-name` lines are skipped items), and every script follows them from then on, including `dot check`, which shows unchosen parts as "not chosen". Delete that file to go back to everything.
 
-The site's app lists come from the repo: `scripts/build-site.py` reads `install-apps.sh` and `setup/`. So does the docs site ([ronaldo-kwan.github.io/dotfiles/docs](https://ronaldo-kwan.github.io/dotfiles/docs/), source in `site/docs/`): it turns `README.md` (from *What's inside* to *Use it yourself*) and the pages in `docs/` into HTML, and builds the `dot` page from the `COMMANDS` table and help in `dot` itself, so the docs never say something the repo doesn't. The installer and the docs share their look and the light/dark switch (`site/style.css`, `site/common.js`). The `website` workflow ([`.github/workflows/pages.yml`](../.github/workflows/pages.yml)) rebuilds and publishes it on every push to `main` that touches any of them. On a pull request it only builds the site, so a mistake shows up before merging and nothing is published.
+The site's app lists come from the repo: `scripts/build-site.py` reads `install-apps.sh` and `setup/`. So does the docs site ([ronaldo-kwan.github.io/dotfiles/docs](https://ronaldo-kwan.github.io/dotfiles/docs/), source in `site/docs/`): it turns `README.md` (from *What's inside* to *Use it yourself*) and the pages in `docs/` into HTML, and builds the `dot` page from the `COMMANDS` table and help in `dot` itself, so the docs never say something the repo doesn't. The installer and the docs share their look and the light/dark switch (`site/style.css`, `site/common.js`, and `site/theme.js`, which puts the saved theme on before the page is drawn). Both pages carry a Content-Security-Policy that lets only the site's own files load or run, so no inline `<script>`, `<style>` or `style="…"`: put code and styles in the `.js` and `.css` files. The `website` workflow ([`.github/workflows/pages.yml`](../.github/workflows/pages.yml)) rebuilds and publishes it on every push to `main` that touches any of them. On a pull request it only builds the site, so a mistake shows up before merging and nothing is published.
 
 If a deploy fails, use **Re-run failed jobs** on the run: the build and the deploy are separate jobs, so only the deploy runs again, with the site the build already uploaded. Don't use **Re-run all jobs**: the build would upload the site a second time, and the deploy stops when it finds two. If the build itself failed, start a new run instead (**Run workflow** on the `website` workflow, or `gh workflow run pages.yml`).
 
