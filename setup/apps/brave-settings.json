@@ -34,6 +34,41 @@
  "browser.theme": {
   "follows_system_colors": false
  },
+ "custom_links": {
+  "initialized": true,
+  "list": [
+   {
+    "isMostVisited": false,
+    "title": "canvas",
+    "url": "http://canvas.uts.edu.au/"
+   },
+   {
+    "isMostVisited": false,
+    "title": "Outlook",
+    "url": "https://outlook.cloud.microsoft/mail/"
+   },
+   {
+    "isMostVisited": false,
+    "title": "Admin",
+    "url": "https://uts-web.t1cloud.com/T1SMDefault/WebApps/eStudent/SM/UTSMsaNews.aspx?r=UTS.EST.WEB02&f=UTS.EST.SPLASH.WEB"
+   },
+   {
+    "isMostVisited": false,
+    "title": "career",
+    "url": "https://careerhub.uts.edu.au/"
+   },
+   {
+    "isMostVisited": false,
+    "title": "Coles",
+    "url": "https://colesgroup.sharepoint.com/sites/mycoles/Pages/default.aspx?wt.si=login"
+   },
+   {
+    "isMostVisited": false,
+    "title": "GitHub",
+    "url": "https://github.com/ronaldo-kwan/"
+   }
+  ]
+ },
  "extensions": [
   {
    "id": "nngceckbapebfimnlniiiahkandclblb",
@@ -52,6 +87,7 @@
  "https_only_mode_enabled": false,
  "intl.selected_languages": "en-US,en",
  "ntp.custom_links_visible": true,
+ "ntp.shortcust_visible": true,
  "search_engine": {
   "keyword": ":g",
   "name": "Google",
