@@ -118,6 +118,10 @@ The same pages, with search, are also on the [docs website](https://ronaldo-kwan
 
 Built with [GNU Stow](https://www.gnu.org/software/stow/) and [gum](https://github.com/charmbracelet/gum). Colours by [Catppuccin](https://catppuccin.com); the wallpaper is from [catppuccin-wallpapers](https://github.com/zhichaoh/catppuccin-wallpapers) (MIT; see [`licenses/wallpaper.txt`](licenses/wallpaper.txt)). The bat, eza and fzf colours are Catppuccin's own themes ([`licenses/catppuccin.txt`](licenses/catppuccin.txt)).
 
+## Security
+
+Found a security problem? Please report it privately: see [SECURITY.md](SECURITY.md).
+
 ## Licence
 
 [MIT](LICENSE). The Catppuccin themes keep their own MIT licence.

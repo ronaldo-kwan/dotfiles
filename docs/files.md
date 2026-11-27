@@ -122,6 +122,7 @@ Written by `dot push` and restored by `install.sh`, except `apt-packages.txt`, w
 | `.githooks/pre-commit` | The [secret check](maintenance.md#secret-check-before-commits) |
 | `.shellcheckrc` | `shellcheck`'s settings for every script (and why each one is there) |
 | `package.json`, `package-lock.json`, `eslint.config.mjs` | ESLint for the website's scripts (`scripts/lint.sh` runs it; `node_modules/` isn't saved). Nothing here goes on the computers |
+| `SECURITY.md` | How to report a security problem privately (GitHub's private vulnerability reporting is on) |
 | `.editorconfig` | How editors write the files: UTF-8, Unix line endings, spaces, a newline at the end |
 | `.github/workflows/check.yml` | The [GitHub checks](maintenance.md#github-checks) |
 | `.github/workflows/pages.yml` | Builds and publishes the website |
