@@ -49,11 +49,7 @@ while read -r _ local_id _ remote_id; do
   # empties the node_modules it's given.
   git archive "$local_id" | tar -x -C "$tmp"
   (
-    # The checks make git repos of their own: none of this repo's git settings for them. Nor
-    # the settings of whatever is pushing (dot push from dot check's fixes: its answers and
-    # its progress panel), so they check the same way however the push started.
-    unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX \
-      YES_ALL UI_DEPTH UI_PANEL_FILE UI_LOG DRY_RUN DOTFILES_CHOICES DOTFILES_SKIP
+    unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX   # (git init below: not this repo)
     cd "$tmp" && git init -q && git add -A   # lint.sh lists the website's scripts with git
     echo "Checking what you're pushing (${local_id:0:7}):"
     # Both at once (lint.sh spreads shellcheck over the cores too); each one's output goes to
@@ -68,7 +64,12 @@ while read -r _ local_id _ remote_id; do
       else tail -40 "$1"; fi
     }
     declare -A pid
-    for c in "${checks[@]}"; do bash "$c" > "$tmp.${c##*/}.out" 2>&1 & pid[$c]=$!; done
+    # Each in a clean environment, as in GitHub's checks: only these few settings, none from
+    # whatever is pushing (dot check's fixes pass on their answers, their progress panel and
+    # their own settings, which made the tests fail when a push came from there).
+    clean_env=(env -i HOME="$HOME" PATH="$PATH" USER="${USER:-}" LANG="${LANG:-C.UTF-8}"
+               TERM="${TERM:-dumb}" TMPDIR="${TMPDIR:-/tmp}" XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-}")
+    for c in "${checks[@]}"; do "${clean_env[@]}" bash "$c" > "$tmp.${c##*/}.out" 2>&1 & pid[$c]=$!; done
     [[ -t 1 ]] && printf '  … %s' "${checks[*]}"   # in a terminal, replaced by the results
     ok=0 first=1
     for c in "${checks[@]}"; do

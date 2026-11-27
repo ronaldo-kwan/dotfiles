@@ -16,7 +16,7 @@ export LC_ALL=C.UTF-8
 # Nothing from whatever started this, either: its answers (YES_ALL) and its progress panel
 # (UI_PANEL_FILE, UI_DEPTH), which the terminal tests below would draw too: run from dot
 # check's fixes (a dot push and its checks), that panel made a 40-column test 161 wide.
-unset DOTFILES_CHOICES DOTFILES_SKIP DRY_RUN YES_ALL UI_DEPTH UI_PANEL_FILE
+unset DOTFILES_CHOICES DOTFILES_SKIP DRY_RUN YES_ALL UI_DEPTH UI_PANEL_FILE FIX_ASK
 mkdir -p "$HOME"
 # shellcheck source=bin/lib.sh
 source "$ROOT/bin/lib.sh"

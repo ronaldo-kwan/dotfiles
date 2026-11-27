@@ -547,8 +547,11 @@ if has_fix save; then
   else push_args+=(--no-snapshot); fi   # you said no: saving mustn't refresh them either
 fi
 if [[ -n "$(repo_state "$DOTFILES")" ]] || [[ -d "$VAULT/.git" && -n "$(repo_state "$VAULT")" ]]; then
-  FIX_ASK=ask_no fix_step push "Save to GitHub" "Commit and push this to GitHub (dot push)? Enter = no" \
+  # (Set, not put in front of the call: that would hand it to everything dot push starts.)
+  FIX_ASK=ask_no
+  fix_step push "Save to GitHub" "Commit and push this to GitHub (dot push)? Enter = no" \
     "$DOTFILES/dot" "${push_args[@]}"
+  FIX_ASK=ask
 fi
 summary
 printf '\n  %sCheck again: dot check%s\n' "$C_DIM" "$C_N"
