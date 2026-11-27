@@ -11,10 +11,10 @@
 #   4. runs install.sh, reinstalling GNOME extensions for the new GNOME version
 #   5. checks the NVIDIA driver and runs check.sh
 #
-#   ~/Documents/code/github/dotfiles/bin/post-upgrade.sh                  one question: Yes to everything, or ask each
-#   ~/Documents/code/github/dotfiles/bin/post-upgrade.sh --yes            Yes to everything without asking
-#   ~/Documents/code/github/dotfiles/bin/post-upgrade.sh --sources-only   only step 1
-#   DRY_RUN=1 ~/Documents/code/github/dotfiles/bin/post-upgrade.sh --yes  only shows what every step would do
+#   ~/code/github/dotfiles/bin/post-upgrade.sh                  one question: Yes to everything, or ask each
+#   ~/code/github/dotfiles/bin/post-upgrade.sh --yes            Yes to everything without asking
+#   ~/code/github/dotfiles/bin/post-upgrade.sh --sources-only   only step 1
+#   DRY_RUN=1 ~/code/github/dotfiles/bin/post-upgrade.sh --yes  only shows what every step would do
 # For testing: SOURCES_DIR=<folder> SUDO= bin/post-upgrade.sh --sources-only
 # (SUDO is only for step 1; the updates in step 2 always use sudo)
 
@@ -56,7 +56,7 @@ reenable_sources() {
       else
         run $SUDO rm -f "$SOURCES_DIR"/obsproject-*
         echo "    OBS's PPA doesn't support $CODENAME yet; OBS stays at Ubuntu's version."
-        echo "    Run this again in a few weeks (or ~/Documents/code/github/dotfiles/bin/post-upgrade.sh --sources-only)."
+        echo "    Run this again in a few weeks (or ~/code/github/dotfiles/bin/post-upgrade.sh --sources-only)."
       fi
     else
       did "old OBS PPA removed (add-apt-repository not run here)"
@@ -121,5 +121,5 @@ summary; ok=$?
 "$DOTFILES/bin/check.sh" || true
 printf '\n%sNext%s\n' "$C_B" "$C_N"
 note "Restart. If a GNOME extension is still off afterwards, switch it on in the Extensions app."
-note "If the NVIDIA driver wasn't running, run ~/Documents/code/github/dotfiles/bin/post-upgrade.sh again after the restart."
+note "If the NVIDIA driver wasn't running, run ~/code/github/dotfiles/bin/post-upgrade.sh again after the restart."
 exit "$ok"

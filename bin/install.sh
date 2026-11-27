@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Set up this computer from ~/Documents/code/github/dotfiles. Safe to run more than once.
+# Set up this computer from ~/code/github/dotfiles. Safe to run more than once.
 #
 # Needs (install first, see README):
 #   sudo apt install git gh gum curl stow starship eza bat fzf zoxide fastfetch ble.sh ghostty btop lazygit flatpak
@@ -7,9 +7,9 @@
 # Does NOT use sudo. Steps that need sudo or a sign-in are listed at the end.
 # If one step fails, the others still run, and failures are listed at the end.
 #
-#   ~/Documents/code/github/dotfiles/bin/install.sh                 asks first
-#   ~/Documents/code/github/dotfiles/bin/install.sh --yes           without asking
-#   DRY_RUN=1 ~/Documents/code/github/dotfiles/bin/install.sh --yes  only shows what it would change (downloads are checked)
+#   ~/code/github/dotfiles/bin/install.sh                 asks first
+#   ~/code/github/dotfiles/bin/install.sh --yes           without asking
+#   DRY_RUN=1 ~/code/github/dotfiles/bin/install.sh --yes  only shows what it would change (downloads are checked)
 
 set -uo pipefail
 
@@ -445,10 +445,10 @@ json.dump(data, open(path, "w"))
 }
 
 # 10. Safety checks ---------------------------------------------------------------------
-# Secret check before commits (in ~/Documents/code/github/dotfiles and the vault), and a weekly reminder
+# Secret check before commits (in ~/code/github/dotfiles and the vault), and a weekly reminder
 # (Sunday evening, or the next login) when settings changed since the last dot save or
 # changes aren't committed. The reminder only notifies; it never commits.
-# The reminder's unit runs ~/Documents/code/github/dotfiles/bin/check.sh. Dotfiles kept somewhere else (DOTFILES_DIR
+# The reminder's unit runs ~/code/github/dotfiles/bin/check.sh. Dotfiles kept somewhere else (DOTFILES_DIR
 # in bootstrap.sh) get a drop-in next to it that points it at the real folder.
 reminder_folder() {
   if [[ "$DOTFILES" == "$DEFAULT_DOTFILES" ]]; then
@@ -458,7 +458,7 @@ reminder_folder() {
   if [[ "$DRY_RUN" == 1 ]]; then echo "    would point the weekly reminder at ${DOTFILES/#$HOME/\~}"; return 0; fi
   mkdir -p "$(dirname "$REMINDER_DROPIN")"
   # (In unit files % starts a specifier, so a literal one is written %%.)
-  printf '# Written by install.sh: the dotfiles are in %s, not ~/Documents/code/github/dotfiles.\n[Service]\nExecStart=\nExecStart="%s/bin/check.sh" --notify\n' \
+  printf '# Written by install.sh: the dotfiles are in %s, not ~/code/github/dotfiles.\n[Service]\nExecStart=\nExecStart="%s/bin/check.sh" --notify\n' \
     "$DOTFILES" "${DOTFILES//%/%%}" > "$REMINDER_DROPIN"
   did "weekly reminder runs ${DOTFILES/#$HOME/\~}/bin/check.sh"
 }
@@ -527,7 +527,7 @@ run_steps \
 summary; ok=$?
 if [[ "$UI_NESTED" == 0 && "$DRY_RUN" != 1 ]]; then
   printf '\n%sStill to do yourself%s\n' "$C_B" "$C_N"
-  note "Run ~/Documents/code/github/dotfiles/bin/install-apps.sh (apps, NVIDIA driver, weekly updates), then this again for VS Code's extensions and Obsidian"
+  note "Run ~/code/github/dotfiles/bin/install-apps.sh (apps, NVIDIA driver, weekly updates), then this again for VS Code's extensions and Obsidian"
   note "Log out and back in (starts the GNOME extensions), then open a new terminal"
   note "Sign in to your apps (Steam, browsers, Discord, Backups/Google Drive)"
 fi

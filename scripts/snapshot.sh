@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Write the snapshot files (what's installed and how the desktop is set up) into a
-# setup folder. Used by `dot save` and `dot push` (into ~/Documents/code/github/dotfiles/setup) and by check.sh (into a
+# setup folder. Used by `dot save` and `dot push` (into ~/code/github/dotfiles/setup) and by check.sh (into a
 # temporary copy, to see whether the saved snapshots are out of date).
-#   scripts/snapshot.sh [setup-folder]     default: ~/Documents/code/github/dotfiles/setup
+#   scripts/snapshot.sh [setup-folder]     default: ~/code/github/dotfiles/setup
 # setup/apt-packages.txt is written by hand, so it's not touched here.
 # With website choices (~/.config/dotfiles/choices), only the chosen parts are refreshed:
 # a computer with just the terminal mustn't overwrite the saved desktop settings or apps.

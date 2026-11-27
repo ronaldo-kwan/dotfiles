@@ -13,7 +13,7 @@ DOTFILES_LIB_LOADED=1
 DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # lib.sh is in bin/
 # Where bootstrap.sh puts the dotfiles, and where the weekly reminder's unit looks.
 # (bootstrap.sh, bash/.bashrc and the unit can't load this file, so they spell it out too.)
-DEFAULT_DOTFILES="$HOME/Documents/code/github/dotfiles"
+DEFAULT_DOTFILES="$HOME/code/github/dotfiles"
 SETUP="$DOTFILES/setup"
 STOW_DIR="$DOTFILES/home"   # the Stow packages: folders whose files are linked into your home folder
 FAILED=()

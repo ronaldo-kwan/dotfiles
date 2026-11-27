@@ -10,12 +10,12 @@
 # Apps, Flatpaks and the system jobs stay unless you add --apps (they need sudo, and you
 # may have had some before): then it lists them, you untick any to keep, and it removes
 # the rest after one password. Apps' own settings and data stay, so reinstalling one
-# brings it back as it was. The NVIDIA driver and Backups always stay. ~/Documents/code/github/dotfiles stays.
+# brings it back as it was. The NVIDIA driver and Backups always stay. ~/code/github/dotfiles stays.
 #
-#   ~/Documents/code/github/dotfiles/bin/uninstall.sh                 asks first
-#   ~/Documents/code/github/dotfiles/bin/uninstall.sh --apps          also the apps (a checklist)
-#   ~/Documents/code/github/dotfiles/bin/uninstall.sh --apps --yes    everything, without asking
-#   DRY_RUN=1 ~/Documents/code/github/dotfiles/bin/uninstall.sh --apps --yes   only shows what it would do (all of it)
+#   ~/code/github/dotfiles/bin/uninstall.sh                 asks first
+#   ~/code/github/dotfiles/bin/uninstall.sh --apps          also the apps (a checklist)
+#   ~/code/github/dotfiles/bin/uninstall.sh --apps --yes    everything, without asking
+#   DRY_RUN=1 ~/code/github/dotfiles/bin/uninstall.sh --apps --yes   only shows what it would do (all of it)
 
 set -uo pipefail
 # shellcheck source=bin/lib.sh
@@ -40,7 +40,7 @@ reminder_off() {
   fi
 }
 
-# 2. Remove the links into ~/Documents/code/github/dotfiles (only those: a file of yours with the same name
+# 2. Remove the links into ~/code/github/dotfiles (only those: a file of yours with the same name
 #    stays), then put back what was there before.
 unlink_configs() {
   local f src target n=0 links=0 gone
@@ -365,6 +365,6 @@ if (( ! APPS_TOO )); then
 else
   note "Kept on purpose: the NVIDIA driver (removing it can leave you without a screen) and Backups"
 fi
-note "VS Code theme, if VS Code stays: code --uninstall-extension \$(cat ~/Documents/code/github/dotfiles/setup/vscode-extensions.txt)"
-note "The dotfiles folder: rm -rf ~/Documents/code/github/dotfiles"
+note "VS Code theme, if VS Code stays: code --uninstall-extension \$(cat ~/code/github/dotfiles/setup/vscode-extensions.txt)"
+note "The dotfiles folder: rm -rf ~/code/github/dotfiles"
 exit "$ok"

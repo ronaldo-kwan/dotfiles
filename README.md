@@ -58,13 +58,13 @@ Everything goes through one command, `dot`. On its own, **`dot` opens a menu** t
 | `dot push` | Refreshes the snapshots in `setup/` (apps, extensions, dock, desktop settings), shows what will be saved, and asks before committing and pushing, your Obsidian notes too. The message says what changed ("Update desktop settings"), or give your own: `dot push "Add Steam"`. `--dry-run` only shows it |
 | `dot pull` | Gets changes you saved on another computer, then offers to apply them |
 | `dot check` | Health check: links, tools, apps, extensions, firewall, signing, backups, unsaved changes. If something's wrong, offers to fix each problem in order (asks first) |
-| `dot cd` · `dot edit` | Go to `~/Documents/code/github/dotfiles` · open it in VS Code |
+| `dot cd` · `dot edit` | Go to `~/code/github/dotfiles` · open it in VS Code |
 | `dot install` · `dot apps` · `dot fresh` | Run the setup scripts again (each is safe to rerun) |
 | `dot uninstall` | Undo it: your own config files back, Ubuntu's desktop look, extensions and fonts removed. `--apps` also removes the apps you pick ([details](docs/new-computer.md#undoing-it)) |
 | `update` | Update Ubuntu packages now (it also happens weekly by itself) |
 
 > [!NOTE]
-> Config files like `~/.bashrc` are links into `~/Documents/code/github/dotfiles`, so editing either place edits the same file.
+> Config files like `~/.bashrc` are links into `~/code/github/dotfiles`, so editing either place edits the same file.
 
 ### When to run what
 

@@ -1,5 +1,5 @@
 [Unit]
-Description=Weekly reminder to save settings to ~/Documents/code/github/dotfiles
+Description=Weekly reminder to save settings to ~/code/github/dotfiles
 
 [Timer]
 OnCalendar=Sun 19:00

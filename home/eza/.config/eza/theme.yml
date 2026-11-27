@@ -1,6 +1,6 @@
 # Catppuccin Mocha for eza (ls, ll, tree), blue accent like the desktop.
 # From github.com/catppuccin/eza, themes/mocha/catppuccin-mocha-blue.yml
-# (commit 70f805f6cc27fa5b91750b75afb4296a0ec7fec9), MIT: see licenses/catppuccin.txt in ~/Documents/code/github/dotfiles.
+# (commit 70f805f6cc27fa5b91750b75afb4296a0ec7fec9), MIT: see licenses/catppuccin.txt in ~/code/github/dotfiles.
 colourful: true
 
 filekinds:

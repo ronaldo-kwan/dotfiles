@@ -9,9 +9,9 @@
 #
 # Uses sudo. Asks before each app, and skips apps that are already installed.
 #
-#   ~/Documents/code/github/dotfiles/bin/install-apps.sh            asks once: Yes to everything, or ask before each app
-#   ~/Documents/code/github/dotfiles/bin/install-apps.sh --yes      Yes to everything without asking (--all and -y too)
-#   DRY_RUN=1 ~/Documents/code/github/dotfiles/bin/install-apps.sh  only show what would happen
+#   ~/code/github/dotfiles/bin/install-apps.sh            asks once: Yes to everything, or ask before each app
+#   ~/code/github/dotfiles/bin/install-apps.sh --yes      Yes to everything without asking (--all and -y too)
+#   DRY_RUN=1 ~/code/github/dotfiles/bin/install-apps.sh  only show what would happen
 
 set -uo pipefail
 
@@ -600,7 +600,7 @@ done
 summary; ok=$?
 if [[ "$DRY_RUN" != 1 && "$UI_NESTED" == 0 ]]; then
   echo
-  note "Installed VS Code? Run ~/Documents/code/github/dotfiles/bin/install.sh again to add its extensions."
+  note "Installed VS Code? Run ~/code/github/dotfiles/bin/install.sh again to add its extensions."
   note "Installed Steam? Its first start downloads the rest of Steam, then you sign in."
 fi
 exit "$ok"

@@ -50,7 +50,7 @@ After Ubuntu is installed, open a terminal (<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <
 bash <(wget -qO- https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/bootstrap.sh)
 ```
 
-1. `bootstrap.sh` first checks the system, then installs git, gum and gh, downloads the dotfiles to `~/Documents/code/github/dotfiles` and starts `fresh-install.sh`. The repo is public, so no GitHub sign-in is needed.
+1. `bootstrap.sh` first checks the system, then installs git, gum and gh, downloads the dotfiles to `~/code/github/dotfiles` and starts `fresh-install.sh`. The repo is public, so no GitHub sign-in is needed.
    - On another Ubuntu version, an Ubuntu-based system (Mint, Pop!_OS) or a desktop other than GNOME, it says why and asks before changing anything (<kbd>Enter</kbd> = no). To try it there without the question, put `DOTFILES_ANY_SYSTEM=1` in front of the command. On anything else it stops.
 2. The first time, it asks your **name and email for git commits**. <kbd>Enter</kbd> keeps the suggestion from `setup/git-identity`. They're saved in `~/.config/git/user.gitconfig`, on this computer only.
 3. It asks **how questions should be answered**. Press <kbd>Enter</kbd> on **Yes to everything**, type your password once, and walk away.
@@ -62,8 +62,8 @@ A command from [the website](https://ronaldo-kwan.github.io/dotfiles/) ends with
 
 ```bash
 sudo apt install git gum
-git clone https://github.com/ronaldo-kwan/dotfiles ~/Documents/code/github/dotfiles
-~/Documents/code/github/dotfiles/bin/fresh-install.sh
+git clone https://github.com/ronaldo-kwan/dotfiles ~/code/github/dotfiles
+~/code/github/dotfiles/bin/fresh-install.sh
 ```
 
 `gum` draws the menus. If it's missing, `fresh-install.sh` installs it first, asking for your password before the first question.
@@ -74,7 +74,7 @@ git clone https://github.com/ronaldo-kwan/dotfiles ~/Documents/code/github/dotfi
 
 - **Yes to everything** installs every app, updates the firmware if the charger is plugged in, accepts the Microsoft fonts licence the codecs need, and restarts at the end after a 15-second countdown (<kbd>Ctrl</kbd> + <kbd>C</kbd> to stay). The scripts it runs get the same answer and don't ask again.
 - **Let me choose** gives Yes/No buttons for each step, and one checklist of the apps: everything pre-ticked, <kbd>Space</kbd> unticks, <kbd>Enter</kbd> starts.
-- To skip even this question, run `~/Documents/code/github/dotfiles/bin/fresh-install.sh --yes`.
+- To skip even this question, run `~/code/github/dotfiles/bin/fresh-install.sh --yes`.
 
 ### What it does
 
@@ -144,11 +144,11 @@ Each script can also run on its own, for example on a computer that's already se
 
 | Script | Needs sudo | What it does |
 |---|---|---|
-| `~/Documents/code/github/dotfiles/bin/install.sh` (`dot install`) | No | Links the config files (keeping existing ones as `.orig`; later, saved app settings it replaces go to `.prev`, so the `.orig` from before the dotfiles is never overwritten), installs the Roboto Mono fonts, VS Code extensions, Flatpak apps and GNOME extensions for this GNOME version, and restores the desktop look, shortcuts, settings, dock, wallpaper, app settings and the Obsidian vault. Switches on the secret check and the weekly reminder. Extensions start after you log out and back in. `DRY_RUN=1 dot install --yes` only shows what it would change |
-| `~/Documents/code/github/dotfiles/bin/install-apps.sh` (`dot apps`) | Yes | Apps and system parts; see [Apps](apps.md) |
-| `~/Documents/code/github/dotfiles/bin/fresh-install.sh` (`dot fresh`) | Yes | All of the above, plus the system and firmware update. `DRY_RUN=1 dot fresh --yes` only shows what it would do |
-| `~/Documents/code/github/dotfiles/bin/check.sh` (`dot check`) | No | Shows what's missing. Changes nothing |
-| `~/Documents/code/github/dotfiles/bin/uninstall.sh` (`dot uninstall`) | No | Undoes `install.sh`; see [Undoing it](#undoing-it) |
+| `~/code/github/dotfiles/bin/install.sh` (`dot install`) | No | Links the config files (keeping existing ones as `.orig`; later, saved app settings it replaces go to `.prev`, so the `.orig` from before the dotfiles is never overwritten), installs the Roboto Mono fonts, VS Code extensions, Flatpak apps and GNOME extensions for this GNOME version, and restores the desktop look, shortcuts, settings, dock, wallpaper, app settings and the Obsidian vault. Switches on the secret check and the weekly reminder. Extensions start after you log out and back in. `DRY_RUN=1 dot install --yes` only shows what it would change |
+| `~/code/github/dotfiles/bin/install-apps.sh` (`dot apps`) | Yes | Apps and system parts; see [Apps](apps.md) |
+| `~/code/github/dotfiles/bin/fresh-install.sh` (`dot fresh`) | Yes | All of the above, plus the system and firmware update. `DRY_RUN=1 dot fresh --yes` only shows what it would do |
+| `~/code/github/dotfiles/bin/check.sh` (`dot check`) | No | Shows what's missing. Changes nothing |
+| `~/code/github/dotfiles/bin/uninstall.sh` (`dot uninstall`) | No | Undoes `install.sh`; see [Undoing it](#undoing-it) |
 
 ## Undoing it
 
@@ -183,7 +183,7 @@ Only what the dotfiles added is on the list. The install scripts write down each
 | The login screen's look | Removes its settings, background and profile, so the login screen is Ubuntu's again |
 | Ubuntu's Snap Firefox | Puts it back |
 
-Apps' own settings and data (your Steam games, browser profiles) stay in your home folder, so reinstalling one brings it back as it was. The NVIDIA driver always stays: removing it can leave you without a screen. To see everything it would do without changing anything: `DRY_RUN=1 dot uninstall --apps --yes`. `~/Documents/code/github/dotfiles` itself stays; delete it with `rm -rf ~/Documents/code/github/dotfiles`.
+Apps' own settings and data (your Steam games, browser profiles) stay in your home folder, so reinstalling one brings it back as it was. The NVIDIA driver always stays: removing it can leave you without a screen. To see everything it would do without changing anything: `DRY_RUN=1 dot uninstall --apps --yes`. `~/code/github/dotfiles` itself stays; delete it with `rm -rf ~/code/github/dotfiles`.
 
 ## Manual setup
 
@@ -212,7 +212,7 @@ After linking the config files below (including the `fontconfig` package), give 
 
 ```bash
 for a in $(flatpak list --app --columns=application); do
-  mkdir -p ~/.var/app/$a/config/fontconfig && cp ~/Documents/code/github/dotfiles/fontconfig/.config/fontconfig/fonts.conf ~/.var/app/$a/config/fontconfig/
+  mkdir -p ~/.var/app/$a/config/fontconfig && cp ~/code/github/dotfiles/fontconfig/.config/fontconfig/fonts.conf ~/.var/app/$a/config/fontconfig/
 done
 ```
 
@@ -223,15 +223,15 @@ Stow won't replace files that already exist, so move them aside first:
 ```bash
 mv ~/.bashrc ~/.bashrc.orig
 mv ~/.gitconfig ~/.gitconfig.orig 2>/dev/null
-stow --dir ~/Documents/code/github/dotfiles/home --target ~ --no-folding \
+stow --dir ~/code/github/dotfiles/home --target ~ --no-folding \
   bash git starship ghostty btop lazygit bat eza fzf fastfetch terminal-default vscode claude systemd fontconfig
 ```
 
 ### VS Code extensions and Flatpak apps
 
 ```bash
-xargs -n1 code --install-extension < ~/Documents/code/github/dotfiles/setup/vscode-extensions.txt
-xargs flatpak install -y flathub < ~/Documents/code/github/dotfiles/setup/flatpaks.txt
+xargs -n1 code --install-extension < ~/code/github/dotfiles/setup/vscode-extensions.txt
+xargs flatpak install -y flathub < ~/code/github/dotfiles/setup/flatpaks.txt
 ```
 
 ### Desktop look, shortcuts, extension settings and dock
@@ -239,18 +239,18 @@ xargs flatpak install -y flathub < ~/Documents/code/github/dotfiles/setup/flatpa
 The shortcuts replace any custom shortcuts already on the computer.
 
 ```bash
-dconf load /org/gnome/ < ~/Documents/code/github/dotfiles/setup/gnome-desktop.dconf
-dconf load /org/gnome/settings-daemon/plugins/media-keys/ < ~/Documents/code/github/dotfiles/setup/gnome-shortcuts.dconf
-dconf load /org/gnome/shell/extensions/ < ~/Documents/code/github/dotfiles/setup/gnome-extension-settings.dconf
-dconf load / < ~/Documents/code/github/dotfiles/setup/desktop-settings.dconf
-gsettings set org.gnome.shell favorite-apps "$(cat ~/Documents/code/github/dotfiles/setup/dock-favorites.txt)"
+dconf load /org/gnome/ < ~/code/github/dotfiles/setup/gnome-desktop.dconf
+dconf load /org/gnome/settings-daemon/plugins/media-keys/ < ~/code/github/dotfiles/setup/gnome-shortcuts.dconf
+dconf load /org/gnome/shell/extensions/ < ~/code/github/dotfiles/setup/gnome-extension-settings.dconf
+dconf load / < ~/code/github/dotfiles/setup/desktop-settings.dconf
+gsettings set org.gnome.shell favorite-apps "$(cat ~/code/github/dotfiles/setup/dock-favorites.txt)"
 ```
 
 ### Wallpaper
 
 ```bash
 mkdir -p ~/Pictures/Wallpapers/current
-cp ~/Documents/code/github/dotfiles/setup/wallpaper/catppuccin-tropic-island-night-16x9.jpg ~/Pictures/Wallpapers/current/
+cp ~/code/github/dotfiles/setup/wallpaper/catppuccin-tropic-island-night-16x9.jpg ~/Pictures/Wallpapers/current/
 W="file://$HOME/Pictures/Wallpapers/current/catppuccin-tropic-island-night-16x9.jpg"
 gsettings set org.gnome.desktop.background picture-uri "$W"
 gsettings set org.gnome.desktop.background picture-uri-dark "$W"
@@ -263,8 +263,8 @@ The login screen's look is system-wide and needs sudo, so it's simplest with `do
 ### Secret check and weekly reminder
 
 ```bash
-git -C ~/Documents/code/github/dotfiles config core.hooksPath ~/Documents/code/github/dotfiles/.githooks
-git -C ~/Documents/"Obsidian Vault" config core.hooksPath ~/Documents/code/github/dotfiles/.githooks
+git -C ~/code/github/dotfiles config core.hooksPath ~/code/github/dotfiles/.githooks
+git -C ~/Documents/"Obsidian Vault" config core.hooksPath ~/code/github/dotfiles/.githooks
 systemctl --user enable --now dotfiles-reminder.timer
 ```
 

@@ -13,7 +13,7 @@ Day-to-day use after the setup: saving changes, checking the computer, and what 
 
 ## Saving changes
 
-Edit files at their usual place (for example `~/.bashrc`) or in `~/Documents/code/github/dotfiles`; both are the same file. Then save the change to GitHub:
+Edit files at their usual place (for example `~/.bashrc`) or in `~/code/github/dotfiles`; both are the same file. Then save the change to GitHub:
 
 ```bash
 dot push                       # the message says what changed: "Update desktop settings and bash config"
@@ -22,7 +22,7 @@ dot push --dry-run             # only show what would be saved (-n)
 dot push --yes                 # don't ask (-y)
 ```
 
-It refreshes the snapshots, lists what will be saved in `~/Documents/code/github/dotfiles` and your Obsidian notes (message "Update notes"), and asks first. With gum you can also change the message there. Then it commits everything (`git add -A`) and pushes; the [secret check](#secret-check-before-commits) runs before each commit. If GitHub has commits this computer doesn't, it stops before changing anything and asks you to `dot pull` first.
+It refreshes the snapshots, lists what will be saved in `~/code/github/dotfiles` and your Obsidian notes (message "Update notes"), and asks first. With gum you can also change the message there. Then it commits everything (`git add -A`) and pushes; the [secret check](#secret-check-before-commits) runs before each commit. If GitHub has commits this computer doesn't, it stops before changing anything and asks you to `dot pull` first.
 
 **The snapshots.** The files in `setup/` are snapshots of extensions, apps, shortcuts, the dock and desktop settings like the theme, so they don't update themselves: `dot push` refreshes them with `scripts/snapshot.sh` first. To see what changed without committing anything, run `dot push --dry-run`.
 
@@ -38,18 +38,18 @@ Changes you push from one computer don't reach the others by themselves. On the 
 dot pull
 ```
 
-1. **Gets the new commits** for `~/Documents/code/github/dotfiles` and your notes, and lists them. It only fast-forwards, so it never merges or overwrites anything.
+1. **Gets the new commits** for `~/code/github/dotfiles` and your notes, and lists them. It only fast-forwards, so it never merges or overwrites anything.
 2. **Offers to apply them** with `dot install`: new config links, extensions, desktop and app settings. Config files that were already linked are up to date straight away.
 3. **Offers `dot apps`** if the app lists changed (`install-apps.sh` or `setup/apt-packages.txt`).
 
 > [!TIP]
 > If you also changed settings on this computer, run `dot push` first. Applying the pulled settings replaces this computer's desktop settings with the ones in the repo.
 
-If both computers have new commits, `dot pull` stops and tells you what to run (`git -C ~/Documents/code/github/dotfiles pull --rebase`, then `dot push`). `dot check` and the [weekly reminder](#weekly-reminder) tell you when GitHub has commits this computer doesn't.
+If both computers have new commits, `dot pull` stops and tells you what to run (`git -C ~/code/github/dotfiles pull --rebase`, then `dot push`). `dot check` and the [weekly reminder](#weekly-reminder) tell you when GitHub has commits this computer doesn't.
 
 ## The `dot` menu
 
-`dot` on its own opens a menu: arrow keys to move, <kbd>Enter</kbd> to run, <kbd>Esc</kbd> to quit. It checks GitHub first (5 seconds at most), then shows for `~/Documents/code/github/dotfiles` and your notes whether anything is unsaved, not pushed or new on GitHub, and when you last pushed. The cursor starts on what needs doing: **Get changes** if GitHub has new commits, **Save to GitHub** if something is unsaved, otherwise **Health check**. The setup scripts are under **Set up and repair**. After each action it says whether it worked; <kbd>Enter</kbd> goes back to the menu, <kbd>q</kbd> quits. Without `gum`, `dot` prints the same status lines and the list of commands.
+`dot` on its own opens a menu: arrow keys to move, <kbd>Enter</kbd> to run, <kbd>Esc</kbd> to quit. It checks GitHub first (5 seconds at most), then shows for `~/code/github/dotfiles` and your notes whether anything is unsaved, not pushed or new on GitHub, and when you last pushed. The cursor starts on what needs doing: **Get changes** if GitHub has new commits, **Save to GitHub** if something is unsaved, otherwise **Health check**. The setup scripts are under **Set up and repair**. After each action it says whether it worked; <kbd>Enter</kbd> goes back to the menu, <kbd>q</kbd> quits. Without `gum`, `dot` prints the same status lines and the list of commands.
 
 Every command explains itself: `dot help <command>` or `dot <command> --help` (which never starts the script). A mistyped command gets a suggestion (`dot psuh` → *Did you mean: dot push?*), and old names say what replaced them (`dot notes` → `dot push`; `dot save` still works, as `dot push --dry-run`). `dot` exits with 0 when it worked, 1 when something failed and 2 when the command line was wrong.
 
@@ -61,7 +61,7 @@ DOT_PLAIN=1 dot apps
 
 ## Health check
 
-`dot check` (or `~/Documents/code/github/dotfiles/bin/check.sh`) checks that this computer still matches the repo. Each ✘ line ends with what fixes it (→ `dot apps`, → `dot push`, ...), and if anything is wrong it offers to [fix it](#fixing-problems). It changes nothing unless you say yes.
+`dot check` (or `~/code/github/dotfiles/bin/check.sh`) checks that this computer still matches the repo. Each ✘ line ends with what fixes it (→ `dot apps`, → `dot push`, ...), and if anything is wrong it offers to [fix it](#fixing-problems). It changes nothing unless you say yes.
 
 <details>
 <summary>Everything it checks</summary>
@@ -107,14 +107,14 @@ A systemd user timer runs `check.sh --notify` on Sunday at 19:00, or at your nex
 - settings changed since your last `dot push`,
 - you installed Ubuntu apps that aren't in `setup/apt-packages.txt`,
 - automatic backups are off,
-- `~/Documents/code/github/dotfiles` or your notes have changes that aren't committed or pushed, or
+- `~/code/github/dotfiles` or your notes have changes that aren't committed or pushed, or
 - GitHub has commits from another computer (run `dot pull`).
 
 It never commits anything.
 
 ```bash
 systemctl --user list-timers dotfiles-reminder.timer   # when it runs next
-~/Documents/code/github/dotfiles/bin/check.sh --notify                            # run it now
+~/code/github/dotfiles/bin/check.sh --notify                            # run it now
 systemctl --user disable --now dotfiles-reminder.timer  # switch it off
 ```
 
@@ -130,13 +130,13 @@ systemctl --user disable --now dotfiles-reminder.timer  # switch it off
 To install one by hand:
 
 ```bash
-sed "s/@USER@/$(id -un)/" ~/Documents/code/github/dotfiles/system/etc/cron.weekly/system-update > /tmp/system-update
+sed "s/@USER@/$(id -un)/" ~/code/github/dotfiles/system/etc/cron.weekly/system-update > /tmp/system-update
 sudo install -m 755 /tmp/system-update /etc/cron.weekly/system-update
 ```
 
 ## Secret check before commits
 
-[`.githooks/pre-commit`](../.githooks/pre-commit) runs before every commit in `~/Documents/code/github/dotfiles` and in your notes repo (`install.sh` points both at it with `git config core.hooksPath`). It stops the commit if something being committed looks like a secret:
+[`.githooks/pre-commit`](../.githooks/pre-commit) runs before every commit in `~/code/github/dotfiles` and in your notes repo (`install.sh` points both at it with `git config core.hooksPath`). It stops the commit if something being committed looks like a secret:
 
 - **Files that hold keys or sign-ins:** `.env`, `*.pem`, `*.key`, SSH keys, `.git-credentials`, browser cookie and login files, password databases
 - **Token formats:** GitHub, Anthropic, OpenAI, AWS, Google, Slack, GitLab, and private keys
@@ -168,11 +168,11 @@ rm ~/.config/git/signing.gitconfig          # stop signing
 > A new Ubuntu release (for example 26.04 → 28.04) switches off every app's own update source, so Chrome, VS Code, Claude, ChatGPT, Proton VPN, ONLYOFFICE and OBS would quietly stop updating. After the upgrade and its restart, run `dot upgrade`.
 
 ```bash
-dot upgrade                  # same as ~/Documents/code/github/dotfiles/bin/post-upgrade.sh
+dot upgrade                  # same as ~/code/github/dotfiles/bin/post-upgrade.sh
 DRY_RUN=1 dot upgrade --yes  # only shows what it would do
 ```
 
-1. **Switches the update sources back on.** OBS's PPA is made for each release, so it's added again for the new one. If OBS doesn't support the new release yet, it says so; run `~/Documents/code/github/dotfiles/bin/post-upgrade.sh --sources-only` again a few weeks later.
+1. **Switches the update sources back on.** OBS's PPA is made for each release, so it's added again for the new one. If OBS doesn't support the new release yet, it says so; run `~/code/github/dotfiles/bin/post-upgrade.sh --sources-only` again a few weeks later.
 2. **Updates everything** (apt and Flatpak).
 3. **Runs `install-apps.sh`:** anything missing comes back, the Snap Firefox is removed again if the upgrade brought it back, the NVIDIA driver and Steam's 32-bit library match, and the weekly and monthly jobs are put back.
 4. **Runs `install.sh`,** downloading GNOME extensions again in the versions for the new GNOME.
@@ -250,7 +250,7 @@ If a deploy fails, use **Re-run failed jobs** on the run: the build and the depl
 
 [`docs/images/desktop.webp`](images/desktop.webp) is taken from the `ubuntu-dotfiles-test` virtual machine in GNOME Boxes, so it shows a fresh install rather than this computer.
 
-1. Start `ubuntu-dotfiles-test` in Boxes, log in, open Ghostty in `~/Documents/code/github/dotfiles` and run `fastfetch && ls`. Close anything else.
+1. Start `ubuntu-dotfiles-test` in Boxes, log in, open Ghostty in `~/code/github/dotfiles` and run `fastfetch && ls`. Close anything else.
 2. With the Boxes window still open, capture the machine's screen (Boxes comes with `virsh`):
 
    ```bash

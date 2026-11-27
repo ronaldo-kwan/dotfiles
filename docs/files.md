@@ -91,7 +91,7 @@ The folders in `home/` are laid out for [GNU Stow](https://www.gnu.org/software/
 
 | File | What it is |
 |---|---|
-| `bin/lib.sh` | Helpers shared by the scripts (questions, gum, the progress panel, steps, spinner, summary, clock check, apt-get, dry runs, reading the `setup/` lists), plus the lists of terminal tools and stow packages and the places outside `~/Documents/code/github/dotfiles` the scripts use (notes vault, wallpaper, fonts, which dconf file goes where) |
+| `bin/lib.sh` | Helpers shared by the scripts (questions, gum, the progress panel, steps, spinner, summary, clock check, apt-get, dry runs, reading the `setup/` lists), plus the lists of terminal tools and stow packages and the places outside `~/code/github/dotfiles` the scripts use (notes vault, wallpaper, fonts, which dconf file goes where) |
 
 ## Snapshots (`setup/`)
 
