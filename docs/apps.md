@@ -67,6 +67,16 @@ If a maker changes its download link, update the script; the table shows the man
 
 To change one, edit the file and run `dot apps`; `dot check` shows ✘ until the computer has the saved version. `dot uninstall --apps` removes the file with Brave.
 
+### Defaults you can change
+
+[`system/etc/brave/policies/recommended/dotfiles.json`](../system/etc/brave/policies/recommended/dotfiles.json) goes in `/etc/brave/policies/recommended/`: settings Brave starts with, which you can still change in its settings (they're not locked).
+
+| Setting | Value | Why |
+|---|---|---|
+| `DefaultSearchProviderEnabled`, `DefaultSearchProviderName`, `DefaultSearchProviderKeyword`, `DefaultSearchProviderSearchURL`, `DefaultSearchProviderSuggestURL` | Google (`google.com/search`), with Google's suggestions as you type | Google as the search engine in the address bar. A policy rather than a saved setting, because Brave guards its search engine setting against changes from outside. Type `google.com` and a space in the address bar to search it on purpose; suggestions send what you type to Google as you type it |
+
+Private windows keep Brave's own choice for them (Brave Search, unless you change it in Settings → Search engine).
+
 ### Your own Brave settings
 
 What you change in Brave's own settings (not the locked ones above) is saved by `dot push`, like your desktop settings, into [`setup/apps/brave-settings.json`](../setup/apps/brave-settings.json). `dot check` and the weekly reminder show it as unsaved when Brave's settings differ from the saved ones, and `install.sh` puts them back on a new computer, or after `dot pull`.

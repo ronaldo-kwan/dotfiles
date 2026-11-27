@@ -121,10 +121,13 @@ def restore(saved_file, prefs_file):
             d[last].update(v)   # a group: its saved settings, keeping what Brave adds itself
         else:
             d[last] = v
-    os.makedirs(os.path.dirname(prefs_file), exist_ok=True)
+    # Readable by you only, as Brave writes it (it holds more than these settings).
+    os.makedirs(os.path.dirname(prefs_file), mode=0o700, exist_ok=True)
     tmp = prefs_file + ".dotfiles-new"
-    with open(tmp, "w") as f:
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
         json.dump(prefs, f, separators=(",", ":"))
+    os.chmod(tmp, 0o600)   # (os.open's mode is only used for a new file)
     os.replace(tmp, prefs_file)
 
 

@@ -5,5 +5,18 @@
  "intl.selected_languages": "en-US,en",
  "spellcheck.dictionaries": [
   "en-US"
- ]
+ ],
+ "webkit.webprefs": {
+  "fonts": {
+   "fixed": {
+    "Zyyy": "Roboto Mono"
+   },
+   "sansserif": {
+    "Zyyy": "Roboto"
+   },
+   "standard": {
+    "Zyyy": "Roboto"
+   }
+  }
+ }
 }

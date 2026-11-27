@@ -230,12 +230,14 @@ done
 t "lets an ordinary file through" hook_file notes/rclone.md
 
 echo "Brave Origin's settings (system/etc/brave)"
-policy="$ROOT/system/etc/brave/policies/managed/dotfiles.json"
-t "the policy file is valid JSON" python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$policy"
-# Every setting in it is explained in docs/apps.md (Brave ignores a misspelt one silently).
-undocumented="$(python3 -c 'import json, sys; [print(k) for k in json.load(open(sys.argv[1]))]' "$policy" \
-  | while read -r k; do grep -q "\`$k\`" "$ROOT/docs/apps.md" || echo "$k"; done)"
-t "every setting is in docs/apps.md" same "$undocumented" ""
+for level in managed recommended; do
+  policy="$ROOT/system/etc/brave/policies/$level/dotfiles.json"
+  t "the $level policy file is valid JSON" python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$policy"
+  # Every setting in it is explained in docs/apps.md (Brave ignores a misspelt one silently).
+  undocumented="$(python3 -c 'import json, sys; [print(k) for k in json.load(open(sys.argv[1]))]' "$policy" \
+    | while read -r k; do grep -q "\`$k\`" "$ROOT/docs/apps.md" || echo "$k"; done)"
+  t "every $level setting is in docs/apps.md" same "$undocumented" ""
+done
 
 echo "Brave Origin's own settings (scripts/brave-settings.py)"
 bs() { python3 -I "$ROOT/scripts/brave-settings.py" "$@"; }
@@ -277,6 +279,7 @@ echo '{"signin.allowed": true, "brave.dark_mode": 1}' > "$T/brave/odd.json"
 bs restore "$T/brave/odd.json" "$T/brave/odd-prefs.json"
 t "puts back only allowlisted settings from a saved file" python3 -c '
 import json, sys; d = json.load(open(sys.argv[1])); assert d == {"brave": {"dark_mode": 1}}, d' "$T/brave/odd-prefs.json"
+t "the settings file it writes is readable by you only" same "$(stat -c %a "$T/brave/old.json") $(stat -c %a "$T/brave/new/Default/Preferences")" "600 600"
 t "a profile saved, put back and saved again is the same" same "$(bs save "$T/brave/new/Default/Preferences")" "$(cat "$T/brave/saved.json")"
 
 echo "Signing-key files (install-apps.sh key_ok)"

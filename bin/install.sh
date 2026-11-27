@@ -364,7 +364,7 @@ restore_app_settings() {
   # Brave Origin's own settings (scripts/brave-settings.py: an allowlist, merged into its
   # profile). Brave rewrites its settings file while open and on closing, so only when closed.
   if [[ -f "$saved/brave-settings.json" ]] && chosen app:brave-origin; then
-    if pgrep -f /opt/brave.com/brave-origin/brave >/dev/null; then
+    if pgrep -f '^/opt/brave.com/brave-origin/brave' >/dev/null; then
       skip "Brave Origin is open; close it and run install.sh again to put back its settings"
     elif [[ "$DRY_RUN" == 1 ]]; then
       echo "    would put back Brave Origin's saved settings in ${BRAVE_PREFS/#$HOME/\~}"

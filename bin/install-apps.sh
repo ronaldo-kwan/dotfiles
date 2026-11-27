@@ -20,9 +20,11 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, skip, ask, run, apt_get,
 
 # Where apt keeps update sources and their signing keys
 APT_SOURCES=/etc/apt/sources.list.d APT_KEYS=/usr/share/keyrings
-# Brave Origin's settings: a policy file in system/etc/, put in /etc/ as it is (Brave reads
-# /etc/brave/policies/managed/, as regular Brave does). What each setting does: docs/apps.md.
+# Brave Origin's settings: policy files in system/etc/, put in /etc/ as they are (Brave reads
+# /etc/brave/policies/, as regular Brave does). managed/: locked; recommended/: defaults you
+# can change in Brave (Google as the search engine). What each setting does: docs/apps.md.
 BRAVE_POLICY=brave/policies/managed/dotfiles.json
+BRAVE_RECOMMENDED=brave/policies/recommended/dotfiles.json
 
 # --- What it sets up -------------------------------------------------------------------
 # One line per entry, in order:
@@ -56,7 +58,7 @@ APPS=(
 # uninstall.sh --apps removes these; check.sh counts the packages as saved.
 declare -gA APP_PARTS=(
   [app:chrome]="google-chrome-stable|$APT_SOURCES/google-chrome.sources $APT_SOURCES/google-chrome.list $APT_KEYS/google-chrome.gpg"
-  [app:brave-origin]="brave-origin|$APT_SOURCES/brave-browser-release.sources $APT_KEYS/brave-browser-archive-keyring.gpg /etc/$BRAVE_POLICY"
+  [app:brave-origin]="brave-origin|$APT_SOURCES/brave-browser-release.sources $APT_KEYS/brave-browser-archive-keyring.gpg /etc/$BRAVE_POLICY /etc/$BRAVE_RECOMMENDED"
   [app:code]="code|$APT_SOURCES/vscode.sources $APT_SOURCES/vscode.list $APT_KEYS/microsoft.gpg"
   [app:claude]="claude-desktop|$APT_SOURCES/claude-desktop.list $APT_KEYS/claude-desktop-archive-keyring.asc"
   [app:claude-code]="claude-code|$APT_SOURCES/claude-code.list $APT_KEYS/claude-code.asc"
@@ -82,10 +84,13 @@ check_ubuntu_apps() {
 }
 check_brave_origin() {
   installed brave-origin || return 1
-  if ! cmp -s "$DOTFILES/system/etc/$BRAVE_POLICY" "/etc/$BRAVE_POLICY"; then
-    echo "    installed, but without the saved settings (/etc/$BRAVE_POLICY)"
-    return 1
-  fi
+  local f
+  for f in "$BRAVE_POLICY" "$BRAVE_RECOMMENDED"; do
+    if ! cmp -s "$DOTFILES/system/etc/$f" "/etc/$f"; then
+      echo "    installed, but without the saved settings (/etc/$f)"
+      return 1
+    fi
+  done
 }
 check_onlyoffice() {
   installed onlyoffice-desktopeditors || return 1
@@ -352,8 +357,11 @@ Architectures: amd64 arm64
 Signed-By: $APT_KEYS/brave-browser-archive-keyring.gpg" || return 1
     apt_get install -y brave-origin
   fi
-  run sudo install -D -m 644 "$DOTFILES/system/etc/$BRAVE_POLICY" "/etc/$BRAVE_POLICY"
-  echo "    settings: /etc/$BRAVE_POLICY (see them at brave://policy)"
+  local f
+  for f in "$BRAVE_POLICY" "$BRAVE_RECOMMENDED"; do
+    run sudo install -D -m 644 "$DOTFILES/system/etc/$f" "/etc/$f"
+  done
+  echo "    settings: /etc/brave/policies/ (see them at brave://policy)"
 }
 
 install_vscode() {
