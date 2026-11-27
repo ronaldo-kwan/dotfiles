@@ -77,6 +77,12 @@
   "kActionShowDownloads"
  ],
  "translate.enabled": true,
+ "translate_allowlists": {
+  "de": "en",
+  "ja": "en",
+  "zh-CN": "en"
+ },
+ "translate_recent_target": "en",
  "webkit.webprefs": {
   "fonts": {
    "fixed": {
