@@ -1,10 +1,10 @@
 [Default Applications]
-text/html=google-chrome.desktop
-x-scheme-handler/http=google-chrome.desktop
-x-scheme-handler/https=google-chrome.desktop
-x-scheme-handler/about=google-chrome.desktop
-x-scheme-handler/unknown=google-chrome.desktop
-application/xhtml+xml=google-chrome.desktop
+text/html=brave-origin.desktop
+x-scheme-handler/http=brave-origin.desktop
+x-scheme-handler/https=brave-origin.desktop
+x-scheme-handler/about=brave-origin.desktop
+x-scheme-handler/unknown=brave-origin.desktop
+application/xhtml+xml=brave-origin.desktop
 text/calendar=org.gnome.Calendar.desktop
 video/3gp=org.gnome.Showtime.desktop
 video/3gpp=org.gnome.Showtime.desktop
@@ -79,10 +79,10 @@ application/json=com.microsoft.VSCode.desktop
 text/csv=onlyoffice-desktopeditors.desktop
 
 [Added Associations]
-x-scheme-handler/http=com.google.Chrome.desktop;google-chrome.desktop;
-application/xhtml+xml=com.google.Chrome.desktop;google-chrome.desktop;
-text/html=com.google.Chrome.desktop;google-chrome.desktop;
-x-scheme-handler/https=com.google.Chrome.desktop;google-chrome.desktop;
+x-scheme-handler/http=com.brave.Origin.desktop;brave-origin.desktop;com.google.Chrome.desktop;google-chrome.desktop;
+application/xhtml+xml=com.brave.Origin.desktop;brave-origin.desktop;com.google.Chrome.desktop;google-chrome.desktop;
+text/html=com.brave.Origin.desktop;brave-origin.desktop;com.google.Chrome.desktop;google-chrome.desktop;
+x-scheme-handler/https=com.brave.Origin.desktop;brave-origin.desktop;com.google.Chrome.desktop;google-chrome.desktop;
 text/calendar=org.gnome.Calendar.desktop;
 video/3gp=org.gnome.Showtime.desktop;
 video/3gpp=org.gnome.Showtime.desktop;
