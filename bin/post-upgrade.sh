@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run once after upgrading Ubuntu to a new release (for example 26.04 -> 28.04),
-# then restart. The upgrade switches off every app's own update source (Chrome,
-# VS Code, Claude, Proton VPN, ONLYOFFICE, OBS), so those apps would silently stop
+# then restart. The upgrade switches off every app's own update source (Chrome, Brave
+# Origin, VS Code, Claude, Proton VPN, ONLYOFFICE, OBS), so those apps would silently stop
 # updating. This script:
 #   1. switches those update sources back on (OBS's PPA is added again for the new release)
 #   2. updates everything (apt and Flatpak)

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Install apps that need sudo: Chrome, VS Code, Claude Desktop, Claude Code, Proton VPN,
-# OBS Studio, ONLYOFFICE, Steam, and the Ubuntu apps listed in
+# Install apps that need sudo: Chrome, Brave Origin, VS Code, Claude Desktop, Claude Code,
+# Proton VPN, OBS Studio, ONLYOFFICE, Steam, and the Ubuntu apps listed in
 # setup/apt-packages.txt. Each one comes from its maker's official download
 # source (or Ubuntu's own), which then keeps it updated through `sudo apt upgrade`.
 # It can also remove Ubuntu's Snap Firefox (this setup uses the Flatpak one),
@@ -29,6 +29,7 @@ APT_SOURCES=/etc/apt/sources.list.d APT_KEYS=/usr/share/keyrings
 # are offered as single apps.
 APPS=(
   "app:chrome|Google Chrome|google-chrome-stable|install_chrome"
+  "app:brave-origin|Brave Origin|brave-origin|install_brave_origin"
   "app:code|VS Code|code|install_vscode"
   "app:claude|Claude Desktop|claude-desktop|install_claude"
   "app:claude-code|Claude Code (the claude command)|claude-code|install_claude_code"
@@ -52,6 +53,7 @@ APPS=(
 # uninstall.sh --apps removes these; check.sh counts the packages as saved.
 declare -gA APP_PARTS=(
   [app:chrome]="google-chrome-stable|$APT_SOURCES/google-chrome.sources $APT_SOURCES/google-chrome.list $APT_KEYS/google-chrome.gpg"
+  [app:brave-origin]="brave-origin|$APT_SOURCES/brave-browser-release.sources $APT_KEYS/brave-browser-archive-keyring.gpg"
   [app:code]="code|$APT_SOURCES/vscode.sources $APT_SOURCES/vscode.list $APT_KEYS/microsoft.gpg"
   [app:claude]="claude-desktop|$APT_SOURCES/claude-desktop.list $APT_KEYS/claude-desktop-archive-keyring.asc"
   [app:claude-code]="claude-code|$APT_SOURCES/claude-code.list $APT_KEYS/claude-code.asc"
@@ -241,16 +243,18 @@ added_candidates() {
 # Download a file (also done in dry-run mode, to check the link still works).
 fetch() { curl -fsSL --retry 3 -o "$1" "$2"; }
 
-# key_ok <key file> <expected fingerprint>: the file must hold exactly one key, and
-# it must be that one. (apt trusts every key in a signing-key file, so a file with an
-# extra key added would otherwise pass a check of only the first one.)
+# key_ok <key file> <expected fingerprint>...: the file must hold exactly these keys, no
+# more and no fewer. (apt trusts every key in a signing-key file, so a file with an extra
+# key added would otherwise pass a check of only the expected ones.) Most makers sign with
+# one key; Brave's file holds its three release keys.
 key_ok() {
-  local keys n fpr
-  keys="$(gpg --show-keys --with-colons "$1" 2>/dev/null)"
-  n="$(grep -c '^pub' <<< "$keys")"
-  fpr="$(awk -F: '$1=="fpr"{print $10; exit}' <<< "$keys")"
-  [[ "$n" == 1 && "$fpr" == "$2" ]] && return 0
-  echo "    the signing key file holds $n key(s) (first: ${fpr:-none}); expected only $2. Not installing." >&2
+  local file="$1" found want; shift
+  # Each key's own fingerprint: the fpr line right after its pub line (not its subkeys').
+  found="$(gpg --show-keys --with-colons "$file" 2>/dev/null \
+    | awk -F: '$1=="pub"{p=1; next} $1=="fpr"&&p{print $10; p=0}' | sort)"
+  want="$(printf '%s\n' "$@" | sort)"
+  [[ -n "$found" && "$found" == "$want" ]] && return 0
+  echo "    the signing key file holds $(grep -c . <<< "$found") key(s) (${found//$'\n'/, }); expected only $*. Not installing." >&2
   return 1
 }
 
@@ -261,16 +265,19 @@ package_in() {
     END{print f, s}' "$1"
 }
 
-# signed_source <name> <key> <fingerprint> <repo URL> <suite>: fetch a maker's key (a URL,
-# or a key file kept in setup/keys/), check it's exactly the one with that fingerprint, and
-# check the source's package list (InRelease) is signed with it. Leaves the key as
-# $TMP/<name>.key (as given) and $TMP/<name>.gpg (binary), and only the signed part of the
+# signed_source <name> <key> <fingerprints> <repo URL> <suite>: fetch a maker's key (a URL,
+# or a key file kept in setup/keys/), check it holds exactly the key(s) with those
+# fingerprints (space-separated when there are several), and
+# check the source's package list (InRelease) is signed with one of them. Leaves the key as
+# $TMP/<name>.key (as given) and $TMP/<name>.gpg (binary; gpg --dearmor passes a key that's
+# already binary through as it is), and only the signed part of the
 # list in $TMP/<name>.Release. Done in dry runs too, so a maker changing its key or its
 # source fails GitHub's weekly check instead of a new computer.
 signed_source() {
   local name="$1" key="$2" fpr="$3" repo="${4%/}" suite="$5"
+  local fprs; read -ra fprs <<< "$fpr"
   if [[ "$key" == http* ]]; then fetch "$TMP/$name.key" "$key"; else cp "$key" "$TMP/$name.key"; fi
-  key_ok "$TMP/$name.key" "$fpr" || return 1
+  key_ok "$TMP/$name.key" "${fprs[@]}" || return 1
   gpg --dearmor < "$TMP/$name.key" > "$TMP/$name.gpg"
   fetch "$TMP/$name.InRelease" "$repo/dists/$suite/InRelease"
   if ! gpgv --keyring "$TMP/$name.gpg" --output "$TMP/$name.Release" "$TMP/$name.InRelease" >/dev/null 2>&1; then
@@ -312,6 +319,26 @@ Components: main
 Architectures: amd64
 Signed-By: $APT_KEYS/google-chrome.gpg"
   apt_get install -y google-chrome-stable
+}
+
+# Brave signs its Linux release source with these keys, all three in the keyring file it
+# publishes (and lists on brave.com/signing-keys): the 2022 key, which signs it now, and
+# two from 2025 for when it moves to a new one.
+BRAVE_KEYS="DBF1A116C220B8C7164F98230686B78420038257 47D32A74E9A9E013A4B4926C68D513D36A73CD96 B2A3DCA350E67256740DF904DE4EC67BE4B0DCA0"
+
+install_brave_origin() {
+  # Brave Origin: Brave without Leo AI, Rewards, the wallet, the VPN and News (free on
+  # Linux). From Brave's own release source, the one regular Brave uses too: the same
+  # file names and contents as Brave's install steps (brave.com/origin/linux), so it
+  # matches if Brave was set up from there before.
+  add_source brave-browser-release.sources brave-browser-archive-keyring.gpg \
+    https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg "$BRAVE_KEYS" "Types: deb
+URIs: https://brave-browser-apt-release.s3.brave.com
+Suites: stable
+Components: main
+Architectures: amd64 arm64
+Signed-By: $APT_KEYS/brave-browser-archive-keyring.gpg"
+  apt_get install -y brave-origin
 }
 
 install_vscode() {
@@ -513,10 +540,10 @@ done
 title="Apps and system jobs"; [[ "$DRY_RUN" == 1 ]] && title+=" (dry run: installs nothing)"
 header "$title" \
   "Apps from their makers' official sources, kept updated by apt:" \
-  "Chrome, VS Code, Claude Desktop, Claude Code, ChatGPT, Proton VPN," \
-  "OBS, ONLYOFFICE, Steam and Ubuntu apps; the NVIDIA driver, weekly" \
-  "updates, monthly clean-up, the login screen's look, the firewall" \
-  "and no Snap Firefox." \
+  "Chrome, Brave Origin, VS Code, Claude Desktop, Claude Code, ChatGPT," \
+  "Proton VPN, OBS, ONLYOFFICE, Steam and Ubuntu apps; the NVIDIA driver," \
+  "weekly updates, monthly clean-up, the login screen's look, the" \
+  "firewall and no Snap Firefox." \
   "Uses sudo. Yes to everything also accepts the Microsoft fonts licence."
 # shellcheck disable=SC2034  # read by step_begin in lib.sh
 STEP_TOTAL=${#APPS[@]}

@@ -38,6 +38,7 @@ GROUP_DEFAULT_OFF = {"claude-md"}
 # choice; the others belong to a group or the Ubuntu apps list).
 APP_DESCRIPTIONS = {
     "app:chrome": "Google's browser, from Google's own update source",
+    "app:brave-origin": "Brave without the AI, crypto wallet, VPN or rewards (free on Linux)",
     "app:code": "Microsoft's code editor, with the Catppuccin theme",
     "app:claude": "Anthropic's desktop app",
     "app:claude-code": "Anthropic's AI coding assistant for the terminal (the claude command)",

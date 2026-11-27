@@ -86,7 +86,7 @@ git clone https://github.com/ronaldo-kwan/dotfiles ~/code/github/dotfiles
 | 2. Update firmware | BIOS, SSD and devices with `fwupdmgr`, only if the charger is plugged in |
 | 3. Terminal tools | Starship, eza, bat, fzf, zoxide, ble.sh, Ghostty, btop, lazygit and more; adds Flathub |
 | 4. `install.sh` | Configs, fonts, Flatpak apps, GNOME extensions (including the frosted glass), desktop and app settings (on the same laptop, its display scale too), the lock screen, the secret check, the weekly reminder |
-| 5. `install-apps.sh` | Chrome, VS Code, Claude Desktop, Claude Code, ChatGPT, Proton VPN, OBS, ONLYOFFICE, Steam, Ubuntu apps, the NVIDIA driver, weekly updates, monthly clean-up, the login screen's look, the firewall, and no Snap Firefox ([details](apps.md)) |
+| 5. `install-apps.sh` | Chrome, Brave Origin, VS Code, Claude Desktop, Claude Code, ChatGPT, Proton VPN, OBS, ONLYOFFICE, Steam, Ubuntu apps, the NVIDIA driver, weekly updates, monthly clean-up, the login screen's look, the firewall, and no Snap Firefox ([details](apps.md)) |
 | 6. `install.sh` again | VS Code's extensions and Obsidian, now that those apps exist |
 
 ### What you see
@@ -176,7 +176,7 @@ Only what the dotfiles added is on the list. The install scripts write down each
 
 | On the list | What removing it does |
 |---|---|
-| Apps from their makers (Chrome, VS Code, Claude, ChatGPT, Proton VPN, OBS, ONLYOFFICE, Steam) | Removes the app and its update source and key |
+| Apps from their makers (Chrome, Brave Origin, VS Code, Claude, ChatGPT, Proton VPN, OBS, ONLYOFFICE, Steam) | Removes the app and its update source and key |
 | Ubuntu apps from `setup/apt-packages.txt`, terminal tools | Removes them, except ones Ubuntu's own desktop includes (like Backups) and general tools (git, curl, gum, gh) |
 | Flatpak apps from `setup/flatpaks.txt` | Removes each, then runtimes nothing uses |
 | Weekly updates and monthly clean-up, the firewall | Deletes the jobs; switches the firewall off |

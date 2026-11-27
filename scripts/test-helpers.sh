@@ -229,6 +229,27 @@ for f in rclone.conf sub/credentials.json .npmrc .pypirc .pgpass work.ovpn; do
 done
 t "lets an ordinary file through" hook_file notes/rclone.md
 
+echo "Signing-key files (install-apps.sh key_ok)"
+load_fn bin/install-apps.sh key_ok
+# Three throwaway keys, made here (no network): A and B are "the maker's", X is someone else's.
+export GNUPGHOME="$T/gnupg"; mkdir -m 700 "$GNUPGHOME"
+for k in A B X; do
+  gpg --batch --quiet --passphrase '' --quick-gen-key "Test $k <$k@test.invalid>" ed25519 sign never 2>/dev/null
+  gpg --batch --quiet --export "$k@test.invalid" > "$T/key$k.gpg"
+done
+fpr_of() { gpg --show-keys --with-colons "$1" 2>/dev/null | awk -F: '$1=="fpr"{print $10; exit}'; }
+fA="$(fpr_of "$T/keyA.gpg")" fB="$(fpr_of "$T/keyB.gpg")"
+cat "$T/keyA.gpg" "$T/keyB.gpg" > "$T/keyAB.gpg"; cat "$T/keyAB.gpg" "$T/keyX.gpg" > "$T/keyABX.gpg"
+gpg --batch --quiet --armor --export A@test.invalid > "$T/keyA.asc"
+t "one key, the expected one" key_ok "$T/keyA.gpg" "$fA"
+t "an armoured key file works too" key_ok "$T/keyA.asc" "$fA"
+t "several keys, exactly the expected ones (in any order)" key_ok "$T/keyAB.gpg" "$fB" "$fA"
+t "stops a file with an extra key" not key_ok "$T/keyABX.gpg" "$fA" "$fB" 2>/dev/null
+t "stops a file missing an expected key" not key_ok "$T/keyA.gpg" "$fA" "$fB" 2>/dev/null
+t "stops someone else's key" not key_ok "$T/keyX.gpg" "$fA" 2>/dev/null
+t "stops a file that isn't a key" not key_ok "$ROOT/README.md" "$fA" 2>/dev/null
+gpgconf --kill gpg-agent 2>/dev/null; unset GNUPGHOME   # (its agent would outlive the test)
+
 echo "Saved files put back (install.sh put_file)"
 load_fn bin/install.sh put_file
 mkdir -p "$T/put"; echo saved > "$T/put/src"; echo mine > "$T/put/conf"

@@ -30,13 +30,14 @@ It first asks whether to answer Yes to everything. Choose **Let me choose** to g
 
 ## Where each app comes from
 
-Each app comes from its maker's official source, so `sudo apt upgrade` keeps it updated. For Chrome, VS Code, Claude Desktop, Claude Code, ChatGPT and ONLYOFFICE, the maker's signing key is checked against a fixed fingerprint, and the source's package list must be signed with it, before the source is added (in dry runs too, so the GitHub check notices a changed key). Proton's setup package is checked the same way: Proton's package list must be signed with its key (fixed fingerprint), and the setup package must match the checksum that list gives. If ONLYOFFICE is installed without its update source (for example from a downloaded `.deb`), the script offers to add the source.
+Each app comes from its maker's official source, so `sudo apt upgrade` keeps it updated. For Chrome, Brave Origin, VS Code, Claude Desktop, Claude Code, ChatGPT and ONLYOFFICE, the maker's signing key is checked against a fixed fingerprint (Brave's key file holds its three release keys, and must hold exactly those), and the source's package list must be signed with it, before the source is added (in dry runs too, so the GitHub check notices a changed key). Proton's setup package is checked the same way: Proton's package list must be signed with its key (fixed fingerprint), and the setup package must match the checksum that list gives. If ONLYOFFICE is installed without its update source (for example from a downloaded `.deb`), the script offers to add the source.
 
 If a maker changes its download link, update the script; the table shows the manual way.
 
 | App | Where to get it | Package |
 |---|---|---|
 | Google Chrome | Google's apt source, `dl.google.com/linux/chrome-stable/deb` (the same source Chrome's own `.deb` from google.com/chrome sets up) | `google-chrome-stable` |
+| Brave Origin | Brave's apt source, `brave-browser-apt-release.s3.brave.com` (key from the same address, `brave-browser-archive-keyring.gpg`; the same source and files as brave.com/origin/linux, and regular Brave's). Free on Linux | `brave-origin` |
 | VS Code | Microsoft's apt source, `packages.microsoft.com/repos/code` (the same source VS Code's own `.deb` from code.visualstudio.com sets up) | `code` |
 | Claude Desktop | claude.ai/download | `claude-desktop` |
 | Claude Code | Anthropic's apt source, `downloads.claude.ai/claude-code/apt/stable` (key from `downloads.claude.ai/keys/claude-code.asc`) | `claude-code` |

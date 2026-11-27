@@ -55,7 +55,7 @@ has_nvidia() { grep -qiE '(vga|3d|display).*nvidia' <<< "$(lspci 2>/dev/null)"; 
 # --- Choices: what to set up (picked on the website, or everything) ----------------------
 # DOTFILES_CHOICES lists what to set up, separated by spaces. Groups: terminal desktop
 # notes safety updates firewall nvidia firmware claude-md nosnapfirefox; single apps:
-# app:chrome app:code app:claude app:claude-code app:chatgpt app:protonvpn app:obs
+# app:chrome app:brave-origin app:code app:claude app:claude-code app:chatgpt app:protonvpn app:obs
 # app:onlyoffice app:steam,
 # pkg:<Ubuntu package> and flatpak:<Flatpak ID>. Empty or unset means everything.
 # DOTFILES_SKIP is the opposite: everything except these (shorter when you untick little).
