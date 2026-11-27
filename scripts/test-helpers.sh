@@ -229,6 +229,27 @@ for f in rclone.conf sub/credentials.json .npmrc .pypirc .pgpass work.ovpn; do
 done
 t "lets an ordinary file through" hook_file notes/rclone.md
 
+echo "What a fix would change (lib.sh diff_lines, check.sh preview_pull)"
+printf 'diff --git a/setup/x.json b/setup/x.json\nindex 1..2 100644\n--- a/setup/x.json\n+++ b/setup/x.json\n@@ -1 +1 @@\n-"font": "Arial"\n+"font": "Roboto"\n' > "$T/d.diff"
+t "shows the file, then what was removed and added" same "$(diff_lines 10 x < "$T/d.diff")" \
+  "$(printf '  setup/x.json:\n    - "font": "Arial"\n    + "font": "Roboto"')"
+seq 1 60 | sed 's/^/+line /' | { echo 'diff --git a/f b/f'; cat; } > "$T/long.diff"
+t "cuts a long change, and says how to see all of it" same "$(diff_lines 5 'git diff' < "$T/long.diff" | tail -n 1)" \
+  "  … and 56 more lines (git diff to see all)"
+t "shows nothing for no change" same "$(diff_lines 5 x < /dev/null)" ""
+# Two clones of one repo: "laptop" is two commits behind "desktop".
+git init -q --bare "$T/remote.git"
+git clone -q "$T/remote.git" "$T/laptop" 2>/dev/null
+gt() { git -C "$1" -c user.name=t -c user.email=t@t -c commit.gpgsign=false "${@:2}"; }
+echo a > "$T/laptop/a" && gt "$T/laptop" add a && gt "$T/laptop" commit -qm first && gt "$T/laptop" push -q origin HEAD 2>/dev/null
+git clone -q "$T/remote.git" "$T/desktop" 2>/dev/null
+for m in "Add Steam" "Update dock"; do echo "$m" >> "$T/desktop/a"; gt "$T/desktop" commit -qam "$m"; done
+gt "$T/desktop" push -q 2>/dev/null; git -C "$T/laptop" fetch -q
+load_fn bin/check.sh preview_pull
+pulled="$(DOTFILES="$T/laptop" VAULT="$T/none" preview_pull)"
+t "lists the commits waiting on GitHub" grep -q 'Add Steam' <<< "$pulled"
+t "says how much they change" grep -q '1 file changed, 2 insertions' <<< "$pulled"
+
 echo "Brave Origin's settings (system/etc/brave)"
 for level in managed recommended; do
   policy="$ROOT/system/etc/brave/policies/$level/dotfiles.json"
@@ -381,12 +402,14 @@ trap_kept() {
     quiet test true >/dev/null 2>&1 </dev/null; [[ -n "$(trap -p TERM)" ]]' _ "$ROOT"
 }
 t "quiet() keeps the progress panel's TERM trap" trap_kept
-fix_fails() {
-  bash -c 'source "$1/bin/lib.sh"; source <(sed -n "/^fix_step() {/,/^}/p" "$1/bin/check.sh"); YES_ALL=1
+fix_run() {   # fix_run <command>: one dot check fix of a "demo" problem, answered yes
+  bash -c 'source "$1/bin/lib.sh"; for f in fix_why fix_step; do source <(sed -n "/^$f() {/,/^}/p" "$1/bin/check.sh"); done
+    YES_ALL=1; declare -A FIX_WHY=([demo]=$'"'"'the demo is broken\n'"'"')
     half() { false; echo "    KEPT-GOING"; }
-    fix_step "A fix" "Fix it?" half; [[ "${FAILED[*]}" == "A fix" ]]' _ "$ROOT" | not grep -q KEPT-GOING
+    fix_step demo "A fix" "Fix it?" "$2"; [[ "${FAILED[*]}" == "A fix" ]] && echo MARKED-FAILED' _ "$ROOT" "$1"
 }
-t "a dot check fix stops at its first error and is marked failed" fix_fails
+t "a dot check fix stops at its first error and is marked failed" same "$(fix_run half | grep -cE 'KEPT-GOING|MARKED-FAILED')" 1
+t "it shows the fix's problems before asking" grep -q '✘ the demo is broken' <<< "$(fix_run true)"
 # SUDO=false: the edit of the source file fails (for any user, root too).
 mkdir -p "$T/src"; printf 'Types: deb\nEnabled: no\n' > "$T/src/app.sources"
 src_rc=0; (cd "$ROOT" && SOURCES_DIR="$T/src" SUDO=false ./bin/post-upgrade.sh --sources-only >/dev/null 2>&1) || src_rc=$?

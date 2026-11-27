@@ -22,12 +22,13 @@ MODE=full
 case "${1:-}" in --notify) MODE=notify ;; --fix) MODE=fix ;; esac
 PROBLEMS=0
 FIXES=" "          # fix keys collected by bad(), in no particular order
+declare -A FIX_WHY=()   # each fix key's ✘ lines, shown before its fix is offered
 MISSING_TOOLS=()
 ok()   { printf '  %s✔%s %s\n' "$C_OK" "$C_N" "$*"; }
 # bad "message" [fix]: a ✘ line; the fix (a key below) is shown and collected for the fixes.
 bad() {
   local hint=''
-  [[ -n "${2:-}" ]] && { hint="$(fix_hint "$2")"; FIXES+="$2 "; }
+  [[ -n "${2:-}" ]] && { hint="$(fix_hint "$2")"; FIXES+="$2 "; FIX_WHY[$2]+="$1"$'\n'; }
   printf '  %s✘%s %s%s\n' "$C_ERR" "$C_N" "$1" "${hint:+ $C_DIM→ $hint$C_N}"
   PROBLEMS=$((PROBLEMS + 1))
 }
@@ -344,10 +345,67 @@ fi
 # In this order: tools before scripts that need them, apps before install.sh (VS Code
 # extensions, Obsidian), and saving to GitHub last, after anything that changed files.
 has_fix() { [[ "$FIXES" == *" $1 "* ]]; }
-# fix_step "title" "question" command...: one fix as its own step; answering n skips it.
+# What a fix would change, shown before it's offered: preview_<key> if there is one, else
+# the ✘ lines it fixes (fix_why).
+fix_why() {
+  local l
+  [[ -n "${FIX_WHY[$1]:-}" ]] || return 0
+  printf '    %sThis fixes:%s\n' "$C_DIM" "$C_N"
+  while IFS= read -r l; do [[ -n "$l" ]] && printf '      %s✘%s %s\n' "$C_ERR" "$C_N" "$l"; done <<< "${FIX_WHY[$1]}"
+  return 0
+}
+preview_pull() {   # the commits waiting on GitHub (repo_behind fetched them above)
+  local d log files
+  for d in "$DOTFILES" "$VAULT"; do
+    [[ -d "$d/.git" ]] || continue
+    log="$(git -C "$d" log --format='%h %s (%cr)' 'HEAD..@{u}' 2>/dev/null)"
+    [[ -n "$log" ]] || continue
+    files="$(git -C "$d" diff --shortstat 'HEAD...@{u}' 2>/dev/null)"
+    printf '    %s%s%s gets:%s\n' "$C_B" "${d/#$HOME/\~}" "$C_N" "${files:+ (${files# })}"
+    head -n 15 <<< "$log" | sed 's/^/      /'
+    (( $(wc -l <<< "$log") > 15 )) && printf '      %s… and %s more%s\n' "$C_DIM" $(( $(wc -l <<< "$log") - 15 )) "$C_N"
+  done
+  return 0
+}
+indent() { local l; while IFS= read -r l; do printf '%s%s\n' "$1" "$l"; done; }   # indent <prefix>: each line of stdin
+preview_push() {   # what dot push would save, without changing anything yet
+  local d tmp files snap unpushed
+  for d in "$DOTFILES" "$VAULT"; do
+    [[ -d "$d/.git" ]] || continue
+    files="$(git -C "$d" status --short 2>/dev/null)"
+    unpushed="$(git -C "$d" log --format='%h %s' '@{u}..' 2>/dev/null)"
+    snap=''
+    if [[ "$d" == "$DOTFILES" ]]; then
+      # The snapshots dot push would refresh: written into a copy (as stale_snapshots does)
+      tmp="$(mktemp -d)"; cp -r "$SETUP" "$tmp/setup"
+      bash "$DOTFILES/scripts/snapshot.sh" "$tmp/setup" >/dev/null 2>&1
+      snap="$(cd "$DOTFILES" && diff -ru -U0 setup "$tmp/setup" 2>/dev/null \
+        | sed "s|$tmp/setup|setup|g" | diff_lines 30 "dot push --dry-run")"
+      rm -rf "$tmp"
+    fi
+    [[ -n "$files$unpushed$snap" ]] || continue
+    printf '    %s%s%s would get:\n' "$C_B" "${d/#$HOME/\~}" "$C_N"
+    if [[ -n "$snap" ]]; then
+      printf '    %sSnapshots refreshed from this computer:%s\n' "$C_DIM" "$C_N"; indent '  ' <<< "$snap"
+    fi
+    if [[ -n "$files" ]]; then
+      printf '    %sChanged files:%s\n' "$C_DIM" "$C_N"; head -n 12 <<< "$files" | sed 's/^/      /'
+      [[ "$d" == "$DOTFILES" ]] && git -C "$d" diff HEAD -U0 --no-color --no-ext-diff 2>/dev/null \
+        | diff_lines 30 "git -C ${d/#$HOME/\~} diff" | sed 's/^/  /'
+    fi
+    if [[ -n "$unpushed" ]]; then
+      printf '    %sCommits not on GitHub yet:%s\n' "$C_DIM" "$C_N"; indent '      ' <<< "$unpushed"
+    fi
+  done
+  printf '    %s(dot push writes the message from what changed, then commits and pushes)%s\n' "$C_DIM" "$C_N"
+  return 0
+}
+# fix_step <key> "title" "question" command...: one fix as its own step. Shows what it
+# would change, then asks; answering n skips it.
 fix_step() {
-  local title="$1" q="$2"; shift 2
+  local key="$1" title="$2" q="$3"; shift 3
   step_begin "$title"
+  if declare -F "preview_$key" >/dev/null; then "preview_$key"; else fix_why "$key"; fi
   if ! ask "$q"; then step_end skip "you chose not to"; return; fi
   # Not `( set -e; ... ) && ...`: after && bash ignores set -e inside the ( ), so a fix
   # that failed halfway would carry on and could still show ✔. Like run_step in lib.sh.
@@ -387,25 +445,25 @@ open_backups() {
 export UI_DEPTH="$UI_NESTED"   # the scripts below get their full look
 
 # Pull first, so everything below works on the latest version.
-has_fix pull    && fix_step "Changes from GitHub" "Run dot pull?" "$DOTFILES/dot" pull
-has_fix tools   && fix_step "Terminal tools" "Install ${MISSING_TOOLS[*]}?" \
+has_fix pull    && fix_step pull "Changes from GitHub" "Run dot pull?" "$DOTFILES/dot" pull
+has_fix tools   && fix_step tools "Terminal tools" "Install ${MISSING_TOOLS[*]}?" \
                      apt_get install -y "${MISSING_TOOLS[@]}"
-has_fix apps    && fix_step "Apps, firewall, scheduled jobs" "Run dot apps?" "$DOTFILES/bin/install-apps.sh"
-has_fix install && fix_step "Links, extensions, settings, safety checks" "Run dot install?" "$DOTFILES/bin/install.sh" --yes
-has_fix ssh     && fix_step "SSH key and signed commits" "Run dot ssh?" "$DOTFILES/scripts/ssh-setup.sh"
-has_fix addapt  && fix_step "Ubuntu apps not saved" "Add ${unsaved[*]} to setup/apt-packages.txt?" add_unsaved
+has_fix apps    && fix_step apps "Apps, firewall, scheduled jobs" "Run dot apps?" "$DOTFILES/bin/install-apps.sh"
+has_fix install && fix_step install "Links, extensions, settings, safety checks" "Run dot install?" "$DOTFILES/bin/install.sh" --yes
+has_fix ssh     && fix_step ssh "SSH key and signed commits" "Run dot ssh?" "$DOTFILES/scripts/ssh-setup.sh"
+has_fix addapt  && fix_step addapt "Ubuntu apps not saved" "Add ${unsaved[*]} to setup/apt-packages.txt?" add_unsaved
 # Apps from other sources can't go in apt-packages.txt (a new computer lacks their source).
 has_fix addother && warn "Not added: ${unsaved_other[*]} only come from their makers' own sources. Add each to install-apps.sh with its source (docs/apps.md), or write -name in setup/apt-packages.txt."
-has_fix record  && fix_step "What the dotfiles added" "Say which apps the dotfiles installed (so uninstall keeps yours)?" adopt_record
-has_fix backups && fix_step "Automatic backups" "Open Backups to turn them on?" open_backups
-has_fix ghkeys  && fix_step "GitHub CLI permissions" "Remove its permission to add SSH keys (approve in the browser)?" \
+has_fix record  && fix_step record "What the dotfiles added" "Say which apps the dotfiles installed (so uninstall keeps yours)?" adopt_record
+has_fix backups && fix_step backups "Automatic backups" "Open Backups to turn them on?" open_backups
+has_fix ghkeys  && fix_step ghkeys "GitHub CLI permissions" "Remove its permission to add SSH keys (approve in the browser)?" \
                      gh auth refresh -h github.com --remove-scopes "$GH_KEY_SCOPES"
 has_fix restart && warn "The NVIDIA driver needs a restart (and with Secure Boot, the blue MOK screen)."
 has_fix nvidiakernel && warn "NVIDIA: $(fix_hint nvidiakernel)"
 # Save last, after anything above that changed files. dot push refreshes the snapshots
 # and saves your notes too.
 if has_fix save || [[ -n "$(repo_state "$DOTFILES")" ]] || [[ -d "$VAULT/.git" && -n "$(repo_state "$VAULT")" ]]; then
-  fix_step "Save to GitHub" "Refresh the snapshots and save to GitHub (dot push)?" "$DOTFILES/dot" push --yes
+  fix_step push "Save to GitHub" "Save this to GitHub (dot push)?" "$DOTFILES/dot" push --yes
 fi
 summary
 printf '\n  %sCheck again: dot check%s\n' "$C_DIM" "$C_N"

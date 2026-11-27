@@ -452,6 +452,25 @@ apt_get_as() {
 }
 
 # repo_state <dir>: prints "uncommitted", "unpushed", "uncommitted and unpushed", or nothing
+# diff_lines <max lines> <how to see all>: a unified diff (stdin) as the lines that changed,
+# file by file ("  file:", "    - old", "    + new"), cut to <max lines>. Used by dot push's
+# and dot check's previews, so you see what a save would change before saying yes.
+diff_lines() {
+  local max="$1" all="$2" out n red='' green=''
+  [[ -n "$C_N" ]] && red=$'\e[31m' green=$'\e[32m'
+  out="$(awk -v r="$red" -v g="$green" -v d="$C_DIM" -v o="$C_N" '
+    /^diff / { f = $NF; sub(/^[ab]\//, "", f); print "  " d f ":" o; next }
+    /^(index|---|\+\+\+|@@|new file|deleted file|similarity|rename|old mode|new mode|Only in)/ { next }
+    /^Binary files/ { print "    " d "(binary file)" o; next }
+    /^-/ { print "    " r "- " substr($0, 2, 110) o; next }
+    /^\+/ { print "    " g "+ " substr($0, 2, 110) o; next }')"
+  [[ -n "$out" ]] || return 0
+  n=$(wc -l <<<"$out")
+  head -n "$max" <<<"$out"
+  (( n > max )) && printf '  %s… and %s more lines (%s to see all)%s\n' "$C_DIM" $((n - max)) "$all" "$C_N"
+  return 0
+}
+
 repo_state() {
   local d="$1" s=()
   [[ -n "$(git -C "$d" status --porcelain 2>/dev/null)" ]] && s+=(uncommitted)

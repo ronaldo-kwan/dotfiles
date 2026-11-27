@@ -89,7 +89,13 @@ Apps that only come from their maker's own update source, a PPA or a downloaded 
 
 ### Fixing problems
 
-When `dot check` finds problems, it asks whether to fix them (`dot check --fix` skips that question). Then it offers each fix in a sensible order, asking first (<kbd>Enter</kbd> = yes, <kbd>n</kbd> = skip):
+When `dot check` finds problems, it asks whether to fix them (`dot check --fix` skips that question). Then it offers each fix in a sensible order, and before each question it shows what that fix would change (<kbd>Enter</kbd> = yes, <kbd>n</kbd> = skip, and nothing has changed yet):
+
+- **`dot pull`:** the commits waiting on GitHub, and how many files they change
+- **`dot push`:** the snapshot settings it would save, line by line (from a fresh copy, so looking doesn't change `setup/`), the changed files with their changed lines, and commits not on GitHub yet
+- **Every other fix:** the ✘ problems it fixes, for example "Brave Origin: installed, but without the saved settings"
+
+The fixes, in order:
 
 1. `dot pull`, if GitHub has new commits
 2. Missing tools

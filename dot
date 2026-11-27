@@ -277,7 +277,17 @@ preview() {
   fi
   head -n 12 <<<"$files" | sed 's/^/  /'
   (( n > 12 )) && printf '  %s… and %s more%s\n' "$C_DIM" $((n - 12)) "$C_N"
+  [[ "$d" == "$DOTFILES" ]] && changed_lines "$d"
   return 0
+}
+
+# changed_lines <folder>: the lines that changed in files git already has (new files are
+# in the list above), up to 40. Only for the dotfiles: notes can be long.
+changed_lines() {
+  local out
+  out="$(git -C "$1" diff HEAD -U0 --no-color --no-ext-diff 2>/dev/null | diff_lines 40 "git -C ${1/#$HOME/\~} diff")"
+  [[ -n "$out" ]] || return 0
+  printf '  %sWhat changed:%s\n%s\n' "$C_DIM" "$C_N" "$out"
 }
 
 # save_repo <folder> <message>: commit what's changed (if anything) and push.
