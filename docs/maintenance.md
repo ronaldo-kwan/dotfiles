@@ -208,6 +208,22 @@ Then restart. If an extension is still off, switch it on in the Extensions app.
 - the desktop settings, for real in a container without a screen ([`scripts/test-desktop.sh`](../scripts/test-desktop.sh)): `install.sh` must load every saved setting, the dock and the wallpaper, and `uninstall.sh` must put them all back to Ubuntu's defaults
 - the website's choices: `install.sh` with only some parts chosen must link only those, and `dot check` must show the rest as "not chosen"
 
+### A test in a virtual machine
+
+A container has no real desktop, no restart and no first sign-in. For the whole thing, as on a new computer, [`scripts/test-vm.sh`](../scripts/test-vm.sh) does it in a GNOME Boxes virtual machine, with nothing to click:
+
+```bash
+bash scripts/test-vm.sh
+```
+
+1. The first time, it installs a fresh Ubuntu 26.04 by itself (about 20 minutes) and keeps it as a snapshot, "clean". It uses the newest Ubuntu 26.04 desktop ISO in Boxes' folder (`~/.var/app/org.gnome.Boxes/data/gnome-boxes/isos/`), checked against Ubuntu's checksums, and offers to download one if there's none.
+2. Each test goes back to that snapshot, signs in, and runs the website's command in a terminal: what's on GitHub, so push first (it warns about commits that aren't).
+3. The setup ends with a restart. After it, `dot check` runs in a new terminal.
+
+It passes when the setup ends with "✔ All done" and `dot check` finds nothing wrong except what a new computer can't have until you do it by hand (signed commits, the Obsidian vault, automatic backups, Brave's extensions: `EXPECTED` in the script). Each run's output, the command it used and a screenshot are kept in `~/.cache/dotfiles-vm/runs/`. To test what you'd pick on the website, put it in front: `DOTFILES_CHOICES='terminal desktop' bash scripts/test-vm.sh` (also `DOTFILES_SKIP` and `DOTFILES_REF`). The git name and email are filled in as on the website's form, with a test identity (`Dotfiles Test`) unless you give `DOTFILES_GIT_NAME` and `DOTFILES_GIT_EMAIL`: left empty, the setup would ask for them at the start, with no one there to press Enter.
+
+The machine shows in Boxes as **Dotfiles test** (`bash scripts/test-vm.sh open` starts and shows it). In it, the user is `tester` with the password `dotfiles`, signed in automatically and allowed sudo without a password, so the test needs no one at the keyboard. The script sends commands in through the guest agent (`qemu-guest-agent`, which the install adds), so the machine needs no SSH. It's yours to look around in after a test; the next test starts from the snapshot again. `bash scripts/test-vm.sh create` makes a new fresh Ubuntu, for example after a new point release of the ISO, and `bash scripts/test-vm.sh delete` removes the machine and its disk.
+
 ### Pinned downloads
 
 The fonts aren't in this repo. `install.sh` downloads one fixed version of each and uses it only if its checksum matches, so every computer gets the same files and a changed file is never used:

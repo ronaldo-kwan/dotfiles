@@ -249,12 +249,21 @@ restore_gnome_settings() {
     else fill_home "$f" | dconf load "${e#*|}"; fi
   done
   run gsettings set org.gnome.shell favorite-apps "$(cat "$SETUP/dock-favorites.txt")"
-  # Ptyxis keeps its colours in a profile with a different ID on each computer.
+  # Ptyxis keeps its colours in a profile with a different ID on each computer. It only
+  # makes one the first time it's opened, so on a new computer there's none yet: make it
+  # here (32 hex digits, as Ptyxis does), and Ptyxis uses it from its first start.
   if [[ -f "$SETUP/desktop-settings.dconf" ]]; then
     palette="$(sed -n 's/^# ptyxis-palette=//p' "$SETUP/desktop-settings.dconf")"
   fi
-  uuid="$(dconf read /org/gnome/Ptyxis/default-profile-uuid | tr -d "'")"
-  if [[ -n "$palette" && -n "$uuid" ]]; then
+  if [[ -n "$palette" ]]; then
+    uuid="$(dconf read /org/gnome/Ptyxis/default-profile-uuid | tr -d "'")"
+    # Profiles but none marked default: Ptyxis uses the first.
+    [[ -n "$uuid" ]] || uuid="$(dconf read /org/gnome/Ptyxis/profile-uuids | sed -n "s/^\['\([0-9a-f]\{32\}\)'.*/\1/p")"
+    if [[ -z "$uuid" ]]; then
+      uuid="$(tr -d '-' < /proc/sys/kernel/random/uuid)"
+      run dconf write /org/gnome/Ptyxis/profile-uuids "['$uuid']"
+      run dconf write /org/gnome/Ptyxis/default-profile-uuid "'$uuid'"
+    fi
     run dconf write "/org/gnome/Ptyxis/Profiles/$uuid/palette" "$palette"
   fi
   did "restored"

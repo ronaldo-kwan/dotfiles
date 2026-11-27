@@ -370,9 +370,11 @@ ask_or_quit() { ask "$1" || { echo "Nothing changed."; exit 0; }; }
 
 # keep_sudo: ask for the password once, then keep sudo signed in until this script
 # ends, so a long run (big downloads) doesn't stop halfway to ask again.
+# Not asked when sudo already works without one (sudo without a password, or signed in a
+# moment ago): Ubuntu 26.04's sudo (sudo-rs) asks on `sudo -v` even then.
 keep_sudo() {
   [[ -n "${SUDO_KEPT:-}" ]] && return 0
-  sudo -v || return 1
+  sudo -n true 2>/dev/null || sudo -v || return 1
   SUDO_KEPT=1
   local parent=$$
   ( while kill -0 "$parent" 2>/dev/null; do sudo -n true; sleep 50; done ) </dev/null >/dev/null 2>&1 &

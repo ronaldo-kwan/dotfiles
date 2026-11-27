@@ -49,9 +49,21 @@ echo "  checked $n saved settings"
 [[ "$(gsettings get org.gnome.desktop.background picture-uri)" == "$wall_uri" ]] || bad "wallpaper not set"
 cmp -s "$SETUP/wallpaper/${WALLPAPER##*/}" "$WALLPAPER" || bad "wallpaper file not copied"
 [[ -L "$HOME/.config/fontconfig/fonts.conf" ]] || bad "fontconfig settings not linked"
+# Ptyxis's colours: here, as on a new computer, Ptyxis has never been opened, so it has
+# no profile yet; install.sh makes one with the saved palette.
+ptyxis_profile() { dconf read /org/gnome/Ptyxis/default-profile-uuid | tr -d "'"; }
+saved_palette="$(sed -n 's/^# ptyxis-palette=//p' "$SETUP/desktop-settings.dconf")"
+profile="$(ptyxis_profile)"
+if [[ -n "$saved_palette" ]]; then
+  [[ -n "$profile" && "$(dconf read "/org/gnome/Ptyxis/Profiles/$profile/palette")" == "$saved_palette" ]] \
+    || bad "Ptyxis has no profile with the saved colours ($saved_palette)"
+  [[ "$(dconf read /org/gnome/Ptyxis/profile-uuids)" == "['$profile']" ]] || bad "Ptyxis's profile isn't in its list"
+fi
 
 echo "== install.sh again (must change nothing and still pass)"
 "$ROOT/bin/install.sh" --yes >/dev/null || bad "install.sh failed the second time"
+[[ "$(ptyxis_profile)" == "$profile" && "$(dconf read /org/gnome/Ptyxis/profile-uuids)" == "${profile:+['$profile']}" ]] \
+  || bad "install.sh made Ptyxis another profile the second time"
 
 echo "== uninstall.sh"
 "$ROOT/bin/uninstall.sh" --yes || bad "uninstall.sh failed"

@@ -97,6 +97,18 @@ git init -q "$T/repo" && git -C "$T/repo" -c user.name=t -c user.email=t@e commi
 t "repo_state of a clean repo without upstream" same "$(repo_state "$T/repo")" ""
 touch "$T/repo/new"
 t "repo_state with a new file" same "$(repo_state "$T/repo")" "uncommitted"
+# keep_sudo, with a fake sudo that logs what it's asked: `sudo -n true` succeeds when sudo
+# needs no password (exit code from $NOPASS_RC), `sudo -v` would ask for one.
+mkdir -p "$T/fakesudo"
+printf '#!/bin/sh\necho "$*" >> "%s"\n[ "$1" = -n ] && exit "${NOPASS_RC:-1}"\nexit 0\n' "$T/sudo.log" > "$T/fakesudo/sudo"
+chmod +x "$T/fakesudo/sudo"
+sudo_asks() {   # sudo_asks <NOPASS_RC>: keep_sudo's first sudo command, and whether it ran sudo -v
+  : > "$T/sudo.log"
+  PATH="$T/fakesudo:$PATH" NOPASS_RC="$1" bash -c 'source "$1/bin/lib.sh"; keep_sudo' _ "$ROOT" || echo failed
+  printf '%s; ' "$(head -1 "$T/sudo.log")"; grep -qx -- -v "$T/sudo.log" && echo "asked" || echo "not asked"
+}
+t "keep_sudo: no password question when sudo needs none (sudo-rs asks on -v even then)" same "$(sudo_asks 0)" "-n true; not asked"
+t "keep_sudo: asks for the password when sudo needs one" same "$(sudo_asks 1)" "-n true; asked"
 
 echo "Progress panel (in a terminal)"
 # The pinned step list only shows in a real terminal, which GitHub's checks don't have, so
@@ -682,6 +694,33 @@ printf '# answered\n' > "$T/state/remind-answered"
 reminder="$(remind "$T/state/remind-answered")"
 t "... but not once the record is answered" not grep -q "which apps you had before" <<< "$reminder"
 t "... nor for a few backups (3)" not grep -q "backups of files the dotfiles replaced" <<< "$reminder"
+
+echo "The virtual machine test (scripts/test-vm.sh)"
+# Only its pieces that need no machine: the command it pastes, the machine's description
+# and the installer's answers. (Run in a bash of their own: sourcing it redefines ok().)
+vm() { bash -c 'source "$1/scripts/test-vm.sh"; WORK="$2" ISO=/x.iso ANSWERS_PORT=1234; shift 2; "$@"' _ "$ROOT" "$T/vm" "$@"; }
+vm_boot="bash <(wget -qO- https://raw.githubusercontent.com/ronaldo-kwan/dotfiles/main/bootstrap.sh) --yes"
+t "test-vm: the website's command for what's on GitHub, with a test git identity" same \
+  "$(vm website_command)" "DOTFILES_GIT_NAME=Dotfiles\\ Test DOTFILES_GIT_EMAIL=tester@dotfiles-test.invalid $vm_boot"
+t "test-vm: the website's choices go in front, and your own git identity wins" same \
+  "$(DOTFILES_CHOICES='terminal desktop' DOTFILES_GIT_NAME=A DOTFILES_GIT_EMAIL=a@b vm website_command)" \
+  "DOTFILES_CHOICES=terminal\\ desktop DOTFILES_GIT_NAME=A DOTFILES_GIT_EMAIL=a@b $vm_boot"
+xml_ok() { python3 -I -c 'import sys, xml.etree.ElementTree as E; E.fromstring(sys.stdin.read())' <<< "$1"; }
+vm_install="$(vm domain_xml install)" vm_normal="$(vm domain_xml normal 1-2-3)"
+t "test-vm: the machine's description is valid XML (install and normal)" bash -c "$(declare -f xml_ok); xml_ok \"\$1\" && xml_ok \"\$2\"" _ "$vm_install" "$vm_normal"
+t "test-vm: the installer boots with autoinstall and the answers' address" \
+  grep -qF "<cmdline>autoinstall ds=nocloud-net;s=http://10.0.2.2:1234/ ---" <<< "$vm_install"
+t "test-vm: afterwards it boots the disk, keeping its ID" bash -c '[[ "$1" != *"<kernel>"* && "$1" == *"<uuid>1-2-3</uuid>"* ]]' _ "$vm_normal"
+vm answers "$T/vm/answers"
+t "test-vm: the answers are cloud-config with a hashed password" \
+  bash -c 'head -1 "$1" | grep -qx "#cloud-config" && grep -q "password: '"'"'\$6\\$" "$1" && ! grep -q dotfiles\$ "$1"' _ "$T/vm/answers/user-data"
+if python3 -c 'import yaml' 2>/dev/null; then
+  t "test-vm: the answers are valid YAML, with what the test needs" python3 -I -c '
+import sys, yaml
+a = yaml.safe_load(open(sys.argv[1]))["autoinstall"]
+assert a["identity"]["username"] == "tester" and a["shutdown"] == "poweroff", a
+assert any("qemu-guest-agent" in c for c in a["late-commands"]) and len(a["late-commands"]) == 4, a["late-commands"]' "$T/vm/answers/user-data"
+fi
 
 echo "App table (install-apps.sh)"
 t "every app: entry has its APP_PARTS" bash -c '

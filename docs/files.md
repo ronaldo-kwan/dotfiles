@@ -89,6 +89,7 @@ The folders in `home/` are laid out for [GNU Stow](https://www.gnu.org/software/
 | `scripts/brave-settings.py` | Saves and puts back Brave Origin's own settings: an allowlist from its profile, never the account, tabs or per-site parts (used by `dot push`, `dot check` and `install.sh`) |
 | `scripts/lint.sh` | Looks for mistakes in the scripts without running them: syntax, `shellcheck`, `pyflakes`, `node --check` and ESLint; GitHub's checks run it |
 | `scripts/test-desktop.sh` | Loads the saved desktop settings and resets them again, checking each one; only runs in GitHub's checks (it changes desktop settings) |
+| `scripts/test-vm.sh` | Tests the whole setup like a new computer, in a GNOME Boxes virtual machine: a fresh Ubuntu, the website's command, the restart, then `dot check` ([how](maintenance.md#a-test-in-a-virtual-machine)) |
 
 ### Shared
 
