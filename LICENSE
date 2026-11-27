@@ -19,15 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----------------------------------------------------------------------------------
-
-Third-party files in this repository keep their own licences:
-
-- Catppuccin themes, MIT License, Copyright (c) Catppuccin
-  (https://github.com/catppuccin):
-    btop/.config/btop/themes/catppuccin_mocha.theme
-    setup/apps/obsidian/themes/Catppuccin/
-    setup/apps/qBittorrent/themes/catppuccin-mocha.qbtheme
-- The wallpaper is not stored here; install.sh downloads it from
-  https://github.com/zhichaoh/catppuccin-wallpapers (MIT License).

@@ -1,10 +1,14 @@
-The Catppuccin themes in this repo come from github.com/catppuccin (bat, eza and fzf; see
-the comment at the top of each file for the exact file and commit):
-  bat/.config/bat/themes/Catppuccin Mocha.tmTheme   catppuccin/bat, commit 6810349b28055dce54076712fc05fc68da4b8ec0
-  eza/.config/eza/theme.yml                         catppuccin/eza, commit 70f805f6cc27fa5b91750b75afb4296a0ec7fec9
-  fzf/.config/fzf/fzfrc (the colours)               catppuccin/fzf, commit 7508f8141286fb95249100a2b5325960320dcf32
-They're used under the MIT licence below. catppuccin/fzf's copy of it reads
-"Copyright (c) 2022 Catppuccin"; bat's and eza's read 2021, as below.
+The Catppuccin themes in this repo come from Catppuccin (github.com/catppuccin) and are
+used under the MIT licence below:
+  home/bat/.config/bat/themes/Catppuccin Mocha.tmTheme     catppuccin/bat, commit 6810349b28055dce54076712fc05fc68da4b8ec0
+  home/eza/.config/eza/theme.yml                           catppuccin/eza, commit 70f805f6cc27fa5b91750b75afb4296a0ec7fec9
+  home/fzf/.config/fzf/fzfrc (the colours)                 catppuccin/fzf, commit 7508f8141286fb95249100a2b5325960320dcf32
+  home/btop/.config/btop/themes/catppuccin_mocha.theme     Catppuccin Mocha for btop
+  setup/apps/obsidian/themes/Catppuccin/                   Catppuccin for Obsidian (version 0.4.52)
+  setup/apps/qBittorrent/themes/catppuccin-mocha.qbtheme   Catppuccin Mocha for qBittorrent
+The comment at the top of the bat, eza and fzf files gives the exact file and commit.
+catppuccin/fzf's copy of the licence reads "Copyright (c) 2022 Catppuccin"; bat's and
+eza's read 2021, as below.
 
 MIT License
 

@@ -124,4 +124,4 @@ Found a security problem? Please report it privately: see [SECURITY.md](SECURITY
 
 ## Licence
 
-[MIT](LICENSE). The Catppuccin themes keep their own MIT licence.
+[MIT](LICENSE). The Catppuccin themes and the wallpaper keep their own MIT licences, in [`licenses/`](licenses/).

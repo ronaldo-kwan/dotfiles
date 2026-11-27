@@ -19,6 +19,10 @@ For example:
 
 This is a personal project, kept up in spare time, so there's no promised response time. A real problem gets fixed first, and you're welcome to be credited in the advisory.
 
+## Disclosure
+
+Please keep the details of a vulnerability private until a fix is out, or for 90 days after your report, whichever comes first, so people who ran the install command can update before it's public. The fix is then published as a GitHub security advisory for this repo, with what was affected and what to do.
+
 ## Problems in the apps themselves
 
 A problem in Chrome, VS Code, Steam or another app this setup installs belongs with that app's maker; these dotfiles only install it from the maker's own source.
