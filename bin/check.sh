@@ -144,6 +144,10 @@ dotfiles_backups() {   # prints each backup's path
 }
 BACKUPS_PILED_UP=5   # the weekly reminder mentions backups from this many on
 
+# GitHub is the slow part (about half a second per call): fetch both repos in the
+# background now, so they're done by the time the end of the check needs them.
+repo_prefetch "$DOTFILES" "$VAULT"
+
 if [[ "$MODE" == notify ]]; then
   msgs=()
   mapfile -t stale < <(stale_snapshots)
@@ -159,6 +163,7 @@ if [[ "$MODE" == notify ]]; then
   (( ${#backups[@]} >= BACKUPS_PILED_UP )) && msgs+=("${#backups[@]} backups of files the dotfiles replaced (.orig, .prev). See them: dot check")
   for d in "$DOTFILES" "$VAULT"; do
     [[ -d "$d/.git" ]] || continue
+    repo_wait "$d"
     s="$(repo_state "$d")"
     [[ -n "$s" ]] && msgs+=("${d/#$HOME/\~} has $s changes.")
     n="$(repo_behind "$d")"
@@ -178,6 +183,15 @@ Nothing was committed. Details: dot check"
 fi
 
 # --- Full check -------------------------------------------------------------------------
+# The GitHub CLI's sign-in, asked in the background too (two calls to GitHub): prints
+# "admin" if it can add SSH keys, "limited" if not, nothing if gh isn't signed in.
+gh_state() {
+  have gh && gh auth status >/dev/null 2>&1 || return 0
+  if gh_key_admin; then echo admin; else echo limited; fi
+}
+GH_STATE_FILE="$(mktemp)"
+gh_state >"$GH_STATE_FILE" 2>/dev/null & GH_PID=$!
+
 if [[ "$MODE" == fix ]]; then
   header "Health check and fix" "Checks this computer against ~/code/github/dotfiles, then offers to fix what's wrong."
 else
@@ -286,10 +300,12 @@ if ! chosen safety; then :
 elif [[ -f "$HOME/.config/git/signing.gitconfig" && -f "$HOME/.ssh/id_ed25519.pub" ]]; then
   ok "commits signed with this computer's SSH key"
 else bad "commits aren't signed" ssh; fi
-if have gh && gh auth status >/dev/null 2>&1; then
-  if gh_key_admin; then bad "the GitHub CLI can still add SSH keys to your account" ghkeys
-  else ok "the GitHub CLI can't add SSH keys to your account"; fi
-fi
+wait "$GH_PID" 2>/dev/null
+case "$(cat "$GH_STATE_FILE")" in
+  admin)   bad "the GitHub CLI can still add SSH keys to your account" ghkeys ;;
+  limited) ok "the GitHub CLI can't add SSH keys to your account" ;;
+esac
+rm -f "$GH_STATE_FILE"
 case "$(backups_state)" in
   on)  ok "automatic backups (every $(gsettings get org.gnome.DejaDup periodic-period) days)" ;;
   off) bad "automatic backups are off" backups ;;
@@ -331,6 +347,7 @@ if (( ${#stale[@]} )); then
 else ok "snapshots match this computer"; fi
 for d in "$DOTFILES" "$VAULT"; do
   [[ -d "$d/.git" ]] || continue
+  repo_wait "$d"
   s="$(repo_state "$d")"
   if [[ -z "$s" ]]; then ok "${d/#$HOME/\~}: everything committed and pushed"
   else bad "${d/#$HOME/\~}: $s changes" push; fi
