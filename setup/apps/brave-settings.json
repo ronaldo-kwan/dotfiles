@@ -22,7 +22,7 @@
   "always_hide_tab_close_button": false,
   "tree_tabs_enabled": false,
   "vertical_tabs_collapsed": true,
-  "vertical_tabs_enabled": false,
+  "vertical_tabs_enabled": true,
   "vertical_tabs_expanded_state_per_window": false,
   "vertical_tabs_hide_completely_when_collapsed": false,
   "vertical_tabs_show_scrollbar": false,
