@@ -7,15 +7,24 @@ lists (Shields and permissions for each site you've changed, which amount to par
 browsing history). So only the settings named in KEEP are saved, and of those, nothing that
 changes by itself (counters, timestamps, migration markers).
 
-  brave-settings.py save <Preferences>             the kept settings, as JSON, to stdout
+  brave-settings.py save <Preferences> [<saved.json>]   the kept settings, as JSON, to stdout
+      (the saved file: to keep its search engine when this profile hasn't picked one)
   brave-settings.py restore <saved.json> <Preferences>
       put them into the profile (creating it if Brave hasn't run yet); Brave must be closed
+  brave-settings.py policy <saved.json>
+      the saved search engine as a Brave policy (recommended: you can still change it), or
+      nothing if none is saved. install-apps.sh puts it in /etc/brave/policies/recommended/.
 
 Whole groups are saved and put back as Brave wrote them, not single values: Brave works some
 settings out from others (the bookmarks bar's old on/off from its newer visibility_state),
 so one changed without the other is undone when Brave starts. Paths inside your home folder
 are stored as @HOME@. Used by save-app-settings.sh (dot push, and dot check to spot unsaved
 changes) and install.sh (restore_app_settings).
+
+The search engine for normal windows can't be put back that way: Brave guards it against
+changes from outside (written in, it's replaced with Google), so the engine you picked is
+saved as "search_engine" (name, keyword and addresses, as Brave has them) and put back as a
+recommended policy. The one for private windows isn't guarded, so it's an ordinary setting.
 """
 import json
 import os
@@ -58,7 +67,10 @@ KEEP = [
     "https_first_balanced_mode_enabled",
     "webkit.webprefs",                       # fonts and font sizes
     "profile.default_content_setting_values",  # the defaults for every site (not per site)
+    "brave.default_private_search_provider_guid",  # private windows' engine (built-in ones
+                                                   # have the same ID on every computer)
 ]
+SEARCH = "search_engine"   # normal windows' engine: put back as a policy, not into Preferences
 
 # Inside a kept group: what Brave changes by itself, or what belongs to this computer only.
 SKIP = re.compile(r"(^|_)(p3a|time|count|migrat\w*|last|seen|version|window_placement"
@@ -88,10 +100,28 @@ def home_in(v):
     return json.loads(json.dumps(v).replace("@HOME@", json.dumps(os.path.expanduser("~"))[1:-1]))
 
 
-def save(prefs_file):
+def search_engine(prefs):
+    """The engine picked in Brave's settings, or None if it's Brave's default or a policy's
+    (then Brave records none in the profile)."""
+    t = get(prefs, "default_search_provider_data.template_url_data")
+    if not isinstance(t, dict) or not t.get("url"):
+        return None
+    out = {"name": t.get("short_name", ""), "keyword": t.get("keyword", ""), "url": t["url"]}
+    if t.get("suggestions_url"):
+        out["suggest_url"] = t["suggestions_url"]
+    return out
+
+
+def save(prefs_file, previous_file=None):
     with open(prefs_file) as f:
         prefs = json.load(f)
     kept = {}
+    engine = search_engine(prefs)
+    if engine is None and previous_file and os.path.exists(previous_file):
+        with open(previous_file) as f:   # none picked here: keep the one saved before
+            engine = json.load(f).get(SEARCH)
+    if engine:
+        kept[SEARCH] = engine
     for path in KEEP:
         v = get(prefs, path)
         if v is None:
@@ -131,9 +161,26 @@ def restore(saved_file, prefs_file):
     os.replace(tmp, prefs_file)
 
 
+def policy(saved_file):
+    with open(saved_file) as f:
+        engine = json.load(f).get(SEARCH)
+    if not engine:
+        return
+    out = {"DefaultSearchProviderEnabled": True,
+           "DefaultSearchProviderName": engine["name"],
+           "DefaultSearchProviderKeyword": engine["keyword"],
+           "DefaultSearchProviderSearchURL": engine["url"]}
+    if engine.get("suggest_url"):
+        out["DefaultSearchProviderSuggestURL"] = engine["suggest_url"]
+    json.dump(out, sys.stdout, indent=2, sort_keys=True)
+    print()
+
+
 if __name__ == "__main__":
-    if len(sys.argv) == 3 and sys.argv[1] == "save":
-        save(sys.argv[2])
+    if len(sys.argv) in (3, 4) and sys.argv[1] == "save":
+        save(*sys.argv[2:])
+    elif len(sys.argv) == 3 and sys.argv[1] == "policy":
+        policy(sys.argv[2])
     elif len(sys.argv) == 4 and sys.argv[1] == "restore":
         restore(sys.argv[2], sys.argv[3])
     else:

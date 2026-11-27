@@ -38,7 +38,8 @@ fi
 #     tab page, languages, downloads, HTTPS mode, fonts, the defaults for every site), not
 #     the rest of its Preferences: account, sync, open tabs and the per-site lists stay here.
 if chosen app:brave-origin && [[ -f "$BRAVE_PREFS" ]]; then
-  python3 -I "$DOTFILES/scripts/brave-settings.py" save "$BRAVE_PREFS" > "$OUT/brave-settings.json.new" \
+  # (The saved file goes in too: its search engine stays if this profile hasn't picked one.)
+  python3 -I "$DOTFILES/scripts/brave-settings.py" save "$BRAVE_PREFS" "$OUT/brave-settings.json" > "$OUT/brave-settings.json.new" \
     && mv "$OUT/brave-settings.json.new" "$OUT/brave-settings.json"
   rm -f "$OUT/brave-settings.json.new"
 fi

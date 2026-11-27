@@ -251,14 +251,13 @@ t "lists the commits waiting on GitHub" grep -q 'Add Steam' <<< "$pulled"
 t "says how much they change" grep -q '1 file changed, 2 insertions' <<< "$pulled"
 
 echo "Brave Origin's settings (system/etc/brave)"
-for level in managed recommended; do
-  policy="$ROOT/system/etc/brave/policies/$level/dotfiles.json"
-  t "the $level policy file is valid JSON" python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$policy"
-  # Every setting in it is explained in docs/apps.md (Brave ignores a misspelt one silently).
-  undocumented="$(python3 -c 'import json, sys; [print(k) for k in json.load(open(sys.argv[1]))]' "$policy" \
-    | while read -r k; do grep -q "\`$k\`" "$ROOT/docs/apps.md" || echo "$k"; done)"
-  t "every $level setting is in docs/apps.md" same "$undocumented" ""
-done
+# (The recommended policy is made from your saved search engine: tested further down.)
+policy="$ROOT/system/etc/brave/policies/managed/dotfiles.json"
+t "the managed policy file is valid JSON" python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$policy"
+# Every setting in it is explained in docs/apps.md (Brave ignores a misspelt one silently).
+undocumented="$(python3 -c 'import json, sys; [print(k) for k in json.load(open(sys.argv[1]))]' "$policy" \
+  | while read -r k; do grep -q "\`$k\`" "$ROOT/docs/apps.md" || echo "$k"; done)"
+t "every managed setting is in docs/apps.md" same "$undocumented" ""
 
 echo "Brave Origin's own settings (scripts/brave-settings.py)"
 bs() { python3 -I "$ROOT/scripts/brave-settings.py" "$@"; }
@@ -301,6 +300,33 @@ bs restore "$T/brave/odd.json" "$T/brave/odd-prefs.json"
 t "puts back only allowlisted settings from a saved file" python3 -c '
 import json, sys; d = json.load(open(sys.argv[1])); assert d == {"brave": {"dark_mode": 1}}, d' "$T/brave/odd-prefs.json"
 t "the settings file it writes is readable by you only" same "$(stat -c %a "$T/brave/old.json") $(stat -c %a "$T/brave/new/Default/Preferences")" "600 600"
+# Search engines: private windows' is an ordinary setting; normal windows' becomes a policy.
+cat > "$T/brave/search.json" <<JSON
+{"brave": {"default_private_search_provider_guid": "485bf7d3-0215-45af-87dc-538868000501"},
+ "default_search_provider": {"guid": "485bf7d3-0215-45af-87dc-538868000550"},
+ "default_search_provider_data": {"template_url_data": {"short_name": "Brave", "keyword": ":br",
+   "url": "https://search.brave.com/search?q={searchTerms}", "suggestions_url": "https://search.brave.com/api/suggest?q={searchTerms}",
+   "last_visited": "1", "usage_count": 7}}}
+JSON
+bs save "$T/brave/search.json" > "$T/brave/search-saved.json"
+t "saves private windows' engine as a setting" grep -q '"brave.default_private_search_provider_guid": "485bf7d3-0215-45af-87dc-538868000501"' "$T/brave/search-saved.json"
+t "saves normal windows' engine: name, keyword and addresses only" python3 -c '
+import json, sys; e = json.load(open(sys.argv[1]))["search_engine"]
+assert e == {"name": "Brave", "keyword": ":br", "url": "https://search.brave.com/search?q={searchTerms}",
+             "suggest_url": "https://search.brave.com/api/suggest?q={searchTerms}"}, e' "$T/brave/search-saved.json"
+t "turns it into a recommended policy" python3 -c '
+import json, sys; p = json.load(sys.stdin)
+assert p["DefaultSearchProviderName"] == "Brave" and p["DefaultSearchProviderEnabled"] is True
+assert p["DefaultSearchProviderSearchURL"].startswith("https://search.brave.com/")' < <(bs policy "$T/brave/search-saved.json")
+t "no saved engine, no policy" same "$(bs policy "$T/brave/saved.json")" ""
+bs restore "$T/brave/search-saved.json" "$T/brave/search-restored.json"
+t "never writes normal windows' engine into Brave's settings (Brave would replace it)" python3 -c '
+import json, sys; d = json.load(open(sys.argv[1]))
+assert "default_search_provider_data" not in d and "default_search_provider" not in d and "search_engine" not in d
+assert d["brave"]["default_private_search_provider_guid"].endswith("501")' "$T/brave/search-restored.json"
+echo '{"brave": {"dark_mode": 1}}' > "$T/brave/none-picked.json"
+t "a profile that picked none keeps the saved engine" same \
+  "$(bs save "$T/brave/none-picked.json" "$T/brave/search-saved.json" | python3 -c 'import json, sys; print(json.load(sys.stdin)["search_engine"]["name"])')" Brave
 t "a profile saved, put back and saved again is the same" same "$(bs save "$T/brave/new/Default/Preferences")" "$(cat "$T/brave/saved.json")"
 
 echo "Signing-key files (install-apps.sh key_ok)"

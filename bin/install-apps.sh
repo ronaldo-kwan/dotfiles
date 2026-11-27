@@ -20,11 +20,17 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # say, skip, ask, run, apt_get,
 
 # Where apt keeps update sources and their signing keys
 APT_SOURCES=/etc/apt/sources.list.d APT_KEYS=/usr/share/keyrings
-# Brave Origin's settings: policy files in system/etc/, put in /etc/ as they are (Brave reads
-# /etc/brave/policies/, as regular Brave does). managed/: locked; recommended/: defaults you
-# can change in Brave (Google as the search engine). What each setting does: docs/apps.md.
+# Brave Origin's settings, as policies (Brave reads /etc/brave/policies/, as regular Brave
+# does). managed/: locked, from system/etc/ as it is. recommended/: the search engine you
+# picked in Brave, saved by dot push in setup/apps/brave-settings.json (scripts/brave-settings.py
+# policy), which you can still change in Brave. What each setting does: docs/apps.md.
 BRAVE_POLICY=brave/policies/managed/dotfiles.json
 BRAVE_RECOMMENDED=brave/policies/recommended/dotfiles.json
+# brave_search_policy: the recommended policy for the saved search engine (empty: none saved)
+brave_search_policy() {
+  [[ -f "$SETUP/apps/brave-settings.json" ]] || return 0
+  python3 -I "$DOTFILES/scripts/brave-settings.py" policy "$SETUP/apps/brave-settings.json"
+}
 
 # --- What it sets up -------------------------------------------------------------------
 # One line per entry, in order:
@@ -84,13 +90,19 @@ check_ubuntu_apps() {
 }
 check_brave_origin() {
   installed brave-origin || return 1
-  local f
-  for f in "$BRAVE_POLICY" "$BRAVE_RECOMMENDED"; do
-    if ! cmp -s "$DOTFILES/system/etc/$f" "/etc/$f"; then
-      echo "    installed, but without the saved settings (/etc/$f)"
-      return 1
-    fi
-  done
+  local want
+  if ! cmp -s "$DOTFILES/system/etc/$BRAVE_POLICY" "/etc/$BRAVE_POLICY"; then
+    echo "    installed, but without the saved settings (/etc/$BRAVE_POLICY)"
+    return 1
+  fi
+  want="$(brave_search_policy)"
+  if [[ -n "$want" ]] && ! cmp -s <(printf '%s\n' "$want") "/etc/$BRAVE_RECOMMENDED"; then
+    echo "    installed, but without the saved search engine (/etc/$BRAVE_RECOMMENDED)"
+    return 1
+  elif [[ -z "$want" && -e "/etc/$BRAVE_RECOMMENDED" ]]; then
+    echo "    a search engine policy is set, but none is saved (/etc/$BRAVE_RECOMMENDED)"
+    return 1
+  fi
 }
 check_onlyoffice() {
   installed onlyoffice-desktopeditors || return 1
@@ -357,10 +369,15 @@ Architectures: amd64 arm64
 Signed-By: $APT_KEYS/brave-browser-archive-keyring.gpg" || return 1
     apt_get install -y brave-origin
   fi
-  local f
-  for f in "$BRAVE_POLICY" "$BRAVE_RECOMMENDED"; do
-    run sudo install -D -m 644 "$DOTFILES/system/etc/$f" "/etc/$f"
-  done
+  run sudo install -D -m 644 "$DOTFILES/system/etc/$BRAVE_POLICY" "/etc/$BRAVE_POLICY"
+  local search; search="$(brave_search_policy)"
+  if [[ -n "$search" ]]; then
+    printf '%s\n' "$search" > "$TMP/brave-search.json"
+    run sudo install -D -m 644 "$TMP/brave-search.json" "/etc/$BRAVE_RECOMMENDED"
+    echo "    search engine: $(python3 -I -c 'import json, sys; print(json.load(open(sys.argv[1]))["DefaultSearchProviderName"])' "$TMP/brave-search.json") (yours, from dot push; change it in Brave's settings)"
+  elif [[ -e "/etc/$BRAVE_RECOMMENDED" ]]; then
+    run sudo rm -f "/etc/$BRAVE_RECOMMENDED"   # none saved any more: Brave's own default
+  fi
   echo "    settings: /etc/brave/policies/ (see them at brave://policy)"
 }
 

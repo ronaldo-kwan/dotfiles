@@ -67,15 +67,14 @@ If a maker changes its download link, update the script; the table shows the man
 
 To change one, edit the file and run `dot apps`; `dot check` shows ✘ until the computer has the saved version. `dot uninstall --apps` removes the file with Brave.
 
-### Defaults you can change
+### Your search engines
 
-[`system/etc/brave/policies/recommended/dotfiles.json`](../system/etc/brave/policies/recommended/dotfiles.json) goes in `/etc/brave/policies/recommended/`: settings Brave starts with, which you can still change in its settings (they're not locked).
+The search engines you pick in Brave's settings (**Settings → Search engine**, for normal and for private windows) are saved by `dot push` with your other Brave settings, and follow you to a new computer:
 
-| Setting | Value | Why |
-|---|---|---|
-| `DefaultSearchProviderEnabled`, `DefaultSearchProviderName`, `DefaultSearchProviderKeyword`, `DefaultSearchProviderSearchURL`, `DefaultSearchProviderSuggestURL` | Google (`google.com/search`), with Google's suggestions as you type | Google as the search engine in the address bar. A policy rather than a saved setting, because Brave guards its search engine setting against changes from outside. Type `google.com` and a space in the address bar to search it on purpose; suggestions send what you type to Google as you type it |
+- **Private windows:** saved and put back like the settings below. Brave's built-in engines (Google, Brave, DuckDuckGo, Bing and the rest) have the same ID on every computer; one you added yourself is only on this one, so another computer would use Brave's default there.
+- **Normal windows:** Brave guards this one against changes from outside (written into its settings file, it's replaced with Google), so `dot push` saves the engine itself (its name and addresses, as Brave has them) and `dot apps` makes it a *recommended* policy in `/etc/brave/policies/recommended/`: Brave starts with it, and you can still change it. Brave shows "Your administrator recommends a specific value" next to it. A computer where you haven't picked one keeps the saved one when you `dot push`.
 
-Private windows keep Brave's own choice for them (Brave Search, unless you change it in Settings → Search engine).
+Suggestions as you type go to the engine you picked (turn off **Improve search suggestions** to keep them on the computer).
 
 ### Your own Brave settings
 
