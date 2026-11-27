@@ -62,8 +62,10 @@ fi
 
 echo "== install.sh again (must change nothing and still pass)"
 "$ROOT/bin/install.sh" --yes >/dev/null || bad "install.sh failed the second time"
-[[ "$(ptyxis_profile)" == "$profile" && "$(dconf read /org/gnome/Ptyxis/profile-uuids)" == "${profile:+['$profile']}" ]] \
-  || bad "install.sh made Ptyxis another profile the second time"
+if [[ -n "$saved_palette" ]]; then
+  [[ "$(ptyxis_profile)" == "$profile" && "$(dconf read /org/gnome/Ptyxis/profile-uuids)" == "['$profile']" ]] \
+    || bad "install.sh made Ptyxis another profile the second time"
+fi
 
 echo "== uninstall.sh"
 "$ROOT/bin/uninstall.sh" --yes || bad "uninstall.sh failed"

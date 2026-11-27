@@ -230,7 +230,8 @@ define() { # define <xml file>
 # checksums; offers to download it (about 6 GB) if there's none.
 find_iso() {
   local name sums="$BOXES/isos/SHA256SUMS"
-  ISO="$(ls -1 "$BOXES"/isos/ubuntu-26.04*-desktop-amd64.iso 2>/dev/null | sort -V | tail -1)"
+  local isos=("$BOXES"/isos/ubuntu-26.04*-desktop-amd64.iso)
+  ISO=""; [[ -e "${isos[0]}" ]] && ISO="$(printf '%s\n' "${isos[@]}" | sort -V | tail -1)"
   if [[ -z "$ISO" ]]; then
     mkdir -p "$BOXES/isos"
     curl -fsSL -o "$sums" "$UBUNTU_RELEASES/SHA256SUMS" || die "couldn't reach $UBUNTU_RELEASES"
@@ -292,9 +293,11 @@ EOF
 create() {
   local t0=$SECONDS pid uuid
   header "Test machine: a fresh Ubuntu 26.04" "Installs by itself in GNOME Boxes ($VM). About 20 minutes."
-  have flatpak && flatpak info org.gnome.Boxes >/dev/null 2>&1 || die "GNOME Boxes isn't installed: flatpak install flathub org.gnome.Boxes"
+  if ! have flatpak || ! flatpak info org.gnome.Boxes >/dev/null 2>&1; then
+    die "GNOME Boxes isn't installed: flatpak install flathub org.gnome.Boxes"
+  fi
   [[ -w /dev/kvm ]] || die "no access to /dev/kvm (is virtualisation on in the BIOS?)"
-  have python3 && have openssl || die "needs python3 and openssl"
+  local tool; for tool in python3 openssl; do have "$tool" || die "needs $tool"; done
   if exists; then
     ask "Replace the test machine $VM (its disk and snapshot)?" || exit 0
     delete_vm
@@ -370,7 +373,7 @@ website_command() {
 test_run() {
   local run cmd rc setup_ok=0 check_rc line bad=() t0=$SECONDS
   header "Dotfiles test in a virtual machine" "A fresh Ubuntu, the website's command, a restart, then dot check."
-  exists && has_clean || create
+  if ! exists || ! has_clean; then create; fi
   # What's tested is GitHub's: say if this computer has something it doesn't.
   local unpushed; unpushed="$(git -C "$ROOT" log --oneline '@{u}..' 2>/dev/null | wc -l)"
   (( unpushed )) && warn "$unpushed commit(s) here aren't on GitHub, so they aren't tested (dot push first)"
@@ -399,7 +402,7 @@ bash -c $(printf '%q' "script -qefc $(printf '%q' "$inner") ~/dotfiles-test.log;
   # started again from where it was, and the output carries on.
   while :; do
     guest follow "/home/$GUEST_USER/dotfiles-test.log" "$run/setup.log" "$SETUP_TIMEOUT"; rc=$?
-    (( rc == 100 )) && resume_if_saved || break
+    if (( rc != 100 )) || ! resume_if_saved; then break; fi
     wait_until "$BOOT_TIMEOUT" "carrying on" guest ping || die "no answer after starting it again; look at it in Boxes"
   done
   echo
