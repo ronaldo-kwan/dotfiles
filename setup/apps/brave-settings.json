@@ -86,6 +86,26 @@
  "https_first_balanced_mode_enabled": true,
  "https_only_mode_enabled": false,
  "intl.selected_languages": "en-US,en",
+ "local_state": {
+  "brave.ad_block.checked_all_default_regions": true,
+  "brave.ad_block.regional_filters": {
+   "2F3DCE16-A19A-493C-A88F-2E110FBD37D6": {
+    "enabled": true
+   },
+   "49958da7-f532-4a84-a765-9501729b8e75": {
+    "enabled": true
+   },
+   "67E792D4-AE03-4D1A-9EDE-80E01C81F9B8": {
+    "enabled": true
+   },
+   "690FF3B4-8B6B-4709-8505-FEC6643D7BD9": {
+    "enabled": true
+   },
+   "E2FA7D98-0BD5-493E-8AF4-950604ADE9CB": {
+    "enabled": true
+   }
+  }
+ },
  "ntp.custom_links_visible": true,
  "ntp.shortcust_visible": true,
  "profile.default_content_setting_values": {
