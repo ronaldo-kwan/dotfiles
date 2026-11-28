@@ -513,7 +513,7 @@ import json, sys; d = json.load(open(sys.argv[1]))["local_state"]
 assert d == {"brave.ad_block.checked_all_default_regions": True, "brave.ad_block.cookie_list_setting_touched": True,
              "brave.ad_block.custom_filters": "||ads.example.org^",
              "brave.ad_block.regional_filters": {"AAAA": {"enabled": True}, "BBBB": {"enabled": False}},
-             "brave.ad_block.list_subscriptions": {"https://lists.example.org/mine.txt": {"enabled": True}}}, d' "$T/brave/ls-saved.json"
+             "brave.ad_block.list_subscriptions": {"https://lists.example.org/mine.txt": {"enabled": True, "name": "Mine"}}}, d' "$T/brave/ls-saved.json"
 t "and nothing else from it" not grep -qE 'secret|debug_mode|last_update|title' "$T/brave/ls-saved.json"
 t "no Local State, nothing saved from it" not grep -q local_state "$T/brave/saved.json"
 # Back into a Local State Brave already has: its other parts, and a subscription's download
@@ -540,7 +540,29 @@ bs restore "$T/brave/ls-odd.json" "$T/brave/ls4/Default/Preferences"
 t "puts back only allowlisted Local State settings from a saved file" python3 -c '
 import json, sys; d = json.load(open(sys.argv[1])); assert d == {"brave": {"ad_block": {"custom_filters": "a"}}}, d' "$T/brave/ls4/Local State"
 t "no saved content filtering, Local State untouched" not test -e "$T/brave/new/Local State"
-t "content filtering saved, put back and saved again is the same" same "$(bs save "$T/brave/ls3/Default/Preferences")" "$(cat "$T/brave/ls-saved.json")"
+# (Less the names: a subscription's comes back once Brave downloads it again.)
+t "content filtering saved, put back and saved again is the same" same "$(bs save "$T/brave/ls3/Default/Preferences")" \
+  "$(python3 -c '
+import json, sys; d = json.load(open(sys.argv[1]))
+for lists in d["local_state"].values():
+    for e in lists.values() if isinstance(lists, dict) else []:
+        e.pop("name", None)
+json.dump(d, sys.stdout, indent=1, sort_keys=True); print()' "$T/brave/ls-saved.json")"
+# Names: from Brave's list catalog (the newest, if there are two), and a subscription's title.
+mkdir -p "$T/brave/ls/comp/1.0.1" "$T/brave/ls/comp/1.0.2"
+echo '[{"uuid": "AAAA", "title": "Old name"}]' > "$T/brave/ls/comp/1.0.1/list_catalog.json"
+echo '[{"uuid": "AAAA", "title": "List A", "desc": "x"}, {"uuid": "ZZZZ", "title": "Not on"}]' > "$T/brave/ls/comp/1.0.2/list_catalog.json"
+touch -d '1 hour ago' "$T/brave/ls/comp/1.0.1/list_catalog.json"
+bs save "$T/brave/ls/Default/Preferences" > "$T/brave/ls-named.json"
+t "saves each filter list's name next to its ID" python3 -c '
+import json, sys; d = json.load(open(sys.argv[1]))["local_state"]
+assert d["brave.ad_block.regional_filters"] == {"AAAA": {"enabled": True, "name": "List A"}, "BBBB": {"enabled": False}}, d
+assert d["brave.ad_block.list_subscriptions"] == {"https://lists.example.org/mine.txt": {"enabled": True, "name": "Mine"}}, d' "$T/brave/ls-named.json"
+bs restore "$T/brave/ls-named.json" "$T/brave/ls5/Default/Preferences"
+t "and leaves the names out when putting them back" python3 -c '
+import json, sys; ab = json.load(open(sys.argv[1]))["brave"]["ad_block"]
+assert ab["regional_filters"] == {"AAAA": {"enabled": True}, "BBBB": {"enabled": False}}, ab
+assert ab["list_subscriptions"] == {"https://lists.example.org/mine.txt": {"enabled": True}}, ab' "$T/brave/ls5/Local State"
 echo '{"translate_allowlists": {"de": "en"}, "translate_blocked_languages": ["fr"], "translate_recent_target": "en", "translate_site_blocklist_with_time": {"secret.example": "1"}, "translate_accepted_count": {"de": 3}}' > "$T/brave/tr.json"
 t "saves the languages to always and never translate, not sites or counts" python3 -c '
 import json, sys; d = json.load(sys.stdin)

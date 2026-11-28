@@ -48,13 +48,17 @@ which also holds the key your saved passwords are encrypted with. So only the se
 named in LOCAL_KEEP are read from it and saved apart, as "local_state", and written back
 into it, leaving the rest as it is: which filter lists are on or off, your own filters
 (they go in the repo, which is public), and the lists you subscribed to by address (only
-the address and whether it's on: Brave downloads the list again). Developer mode, on the
-same page, is a profile setting Brave guards like the search engine, so it isn't saved.
+the address and whether it's on: Brave downloads the list again). Brave keeps a list only
+by its ID, so each one's name is saved next to it, for you to read: from Brave's list
+catalog (a file it downloads), or a subscribed list's own title. Restore leaves names out.
+Developer mode, on the same page, is a profile setting Brave guards like the search engine,
+so it isn't saved.
 
 Extensions (and themes, which are extensions) from the Chrome Web Store are saved as a list
 of their IDs and names, "extensions", never their data. They aren't installed for you: dot
 check lists the ones a computer is missing and offers to open their store pages, to add them.
 """
+import glob
 import json
 import os
 import re
@@ -129,6 +133,7 @@ LOCAL_KEEP = [
     "brave.ad_block.mobile_notifications_list_setting_touched",
 ]
 LOCAL = "local_state"
+REGIONAL = "brave.ad_block.regional_filters"
 SUBSCRIPTIONS = "brave.ad_block.list_subscriptions"
 SEARCH = "search_engine"   # normal windows' engine: put back as a policy, not into Preferences
 SHIELDS = "shields"        # every site's Shields levels: {"<type>": <setting>} for "*,*"
@@ -162,17 +167,40 @@ def local_state_file(prefs_file):
     return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(prefs_file))), "Local State")
 
 
-def filters(local):
-    """The content filtering settings from Local State (see LOCAL_KEEP)."""
+def list_names(root):
+    """Brave's filter lists by ID: {ID: name}, from the list catalog Brave downloads (a
+    component folder next to the profile's), or {} if there isn't one yet."""
+    catalogs = glob.glob(os.path.join(glob.escape(root), "*", "*", "list_catalog.json"))
+    if not catalogs:
+        return {}
+    try:
+        with open(max(catalogs, key=os.path.getmtime)) as f:   # the newest, if Brave kept two
+            return {e["uuid"]: e["title"] for e in json.load(f)
+                    if isinstance(e, dict) and isinstance(e.get("uuid"), str) and isinstance(e.get("title"), str)}
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
+def filters(local, names=None):
+    """The content filtering settings from Local State (see LOCAL_KEEP): each list only as
+    on or off. With names (saving), each list's name too, for you to read; Brave doesn't keep
+    one, so restore leaves it out."""
     out = {}
     for path in LOCAL_KEEP:
         v = get(local, path)
         if v is None:
             continue
-        if path == SUBSCRIPTIONS and isinstance(v, dict):
-            # Only the address and whether it's on: the rest is Brave's record of downloading it
-            v = {url: {"enabled": e["enabled"]} for url, e in sorted(v.items())
-                 if isinstance(e, dict) and isinstance(e.get("enabled"), bool)}
+        if path in (REGIONAL, SUBSCRIPTIONS) and isinstance(v, dict):
+            # (A subscription's other entries are Brave's record of downloading it.)
+            lists = {}
+            for key, e in sorted(v.items()):
+                if not (isinstance(e, dict) and isinstance(e.get("enabled"), bool)):
+                    continue
+                lists[key] = {"enabled": e["enabled"]}
+                name = (names or {}).get(key) if path == REGIONAL else e.get("title")
+                if names is not None and isinstance(name, str) and name:
+                    lists[key]["name"] = name
+            v = lists
         elif isinstance(v, dict):
             v = clean(v)
         out[path] = v
@@ -293,7 +321,7 @@ def save(prefs_file, previous_file=None):
     local_file = local_state_file(prefs_file)
     if os.path.exists(local_file):
         with open(local_file) as f:
-            local = filters(json.load(f))
+            local = filters(json.load(f), list_names(os.path.dirname(local_file)))
         if local:
             kept[LOCAL] = local
     for path in KEEP:
