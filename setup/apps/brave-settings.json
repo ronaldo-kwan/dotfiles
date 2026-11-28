@@ -90,19 +90,24 @@
   "brave.ad_block.checked_all_default_regions": true,
   "brave.ad_block.regional_filters": {
    "2F3DCE16-A19A-493C-A88F-2E110FBD37D6": {
-    "enabled": true
+    "enabled": true,
+    "name": "Mobile app promo blocker"
    },
    "49958da7-f532-4a84-a765-9501729b8e75": {
-    "enabled": true
+    "enabled": true,
+    "name": "YouTube members-only video blocker"
    },
    "67E792D4-AE03-4D1A-9EDE-80E01C81F9B8": {
-    "enabled": true
+    "enabled": true,
+    "name": "Annoying distractions blocker"
    },
    "690FF3B4-8B6B-4709-8505-FEC6643D7BD9": {
-    "enabled": true
+    "enabled": true,
+    "name": "Newsletter popup blocker"
    },
    "E2FA7D98-0BD5-493E-8AF4-950604ADE9CB": {
-    "enabled": true
+    "enabled": true,
+    "name": "Tracking URL blocker"
    }
   }
  },
