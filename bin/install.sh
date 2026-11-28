@@ -388,7 +388,9 @@ restore_app_settings() {
     elif [[ "$DRY_RUN" == 1 ]]; then
       echo "    would put back Brave Origin's saved settings in ${BRAVE_PREFS/#$HOME/\~}"
     else
-      [[ -f "$BRAVE_PREFS" && ! -f "$BRAVE_PREFS.orig" ]] && cp "$BRAVE_PREFS" "$BRAVE_PREFS.orig"
+      for f in "$BRAVE_PREFS" "$BRAVE_LOCAL_STATE"; do   # (the second: content filtering)
+        if [[ -f "$f" && ! -f "$f.orig" ]]; then cp -p "$f" "$f.orig"; fi
+      done
       python3 -I "$DOTFILES/scripts/brave-settings.py" restore "$saved/brave-settings.json" "$BRAVE_PREFS" "$SETUP/wallpaper" \
         && did "Brave Origin's settings put back (from its next start)"
     fi

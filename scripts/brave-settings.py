@@ -11,7 +11,8 @@ changes by itself (counters, timestamps, migration markers).
       (the saved file: to keep its search engine and startup choice when this profile
       hasn't picked them)
   brave-settings.py restore <saved.json> <Preferences> [<images folder>]
-      put them into the profile (creating it if Brave hasn't run yet); Brave must be closed.
+      put them into the profile, and the content filtering ones into the Local State file
+      above it (creating either if Brave hasn't run yet); Brave must be closed.
       A new tab page background of your own is copied from the images folder (the dotfiles'
       setup/wallpaper/); if it isn't there, the background stays Brave's own.
   brave-settings.py missing <saved.json> <Preferences>
@@ -40,6 +41,15 @@ Shields' levels for every site (trackers and ads: standard or aggressive; finger
 are kept with the per-site ones, as entries for the pattern "*,*" (every site), so they're
 saved apart, as "shields": only those entries, never a site's own. Brave clears the ads one
 on a profile without its migration marker, so that's kept too.
+
+Content filtering (brave://settings/shields/filters) isn't in Preferences but in the
+"Local State" file next to the profile's folder, which Brave shares between profiles and
+which also holds the key your saved passwords are encrypted with. So only the settings
+named in LOCAL_KEEP are read from it and saved apart, as "local_state", and written back
+into it, leaving the rest as it is: which filter lists are on or off, your own filters
+(they go in the repo, which is public), and the lists you subscribed to by address (only
+the address and whether it's on: Brave downloads the list again). Developer mode, on the
+same page, is a profile setting Brave guards like the search engine, so it isn't saved.
 
 Extensions (and themes, which are extensions) from the Chrome Web Store are saved as a list
 of their IDs and names, "extensions", never their data. They aren't installed for you: dot
@@ -105,6 +115,21 @@ KEEP = [
     "brave.default_private_search_provider_guid",  # private windows' engine (built-in ones
                                                    # have the same ID on every computer)
 ]
+# The same, in Local State: content filtering (brave://settings/shields/filters).
+LOCAL_KEEP = [
+    "brave.ad_block.regional_filters",       # filter lists on or off, by Brave's list ID
+    "brave.ad_block.custom_filters",         # your own filters, one per line
+    "brave.ad_block.list_subscriptions",     # lists added by address (address and on/off)
+    # Without these Brave thinks it hasn't set up the lists yet, and switches its defaults
+    # back on (the ones for your region, the cookie notices and mobile notifications lists),
+    # over ones you turned off.
+    "brave.ad_block.checked_all_default_regions",
+    "brave.ad_block.checked_default_region",
+    "brave.ad_block.cookie_list_setting_touched",
+    "brave.ad_block.mobile_notifications_list_setting_touched",
+]
+LOCAL = "local_state"
+SUBSCRIPTIONS = "brave.ad_block.list_subscriptions"
 SEARCH = "search_engine"   # normal windows' engine: put back as a policy, not into Preferences
 SHIELDS = "shields"        # every site's Shields levels: {"<type>": <setting>} for "*,*"
 EVERY_SITE = "*,*"
@@ -130,6 +155,60 @@ def clean(v):
         out = {k: clean(x) for k, x in sorted(v.items()) if not SKIP.search(k)}
         return {k: x for k, x in out.items() if x != {}}
     return v
+
+
+def local_state_file(prefs_file):
+    """Brave's Local State: in the folder above the profile's (…/Brave-Origin/Local State)."""
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(prefs_file))), "Local State")
+
+
+def filters(local):
+    """The content filtering settings from Local State (see LOCAL_KEEP)."""
+    out = {}
+    for path in LOCAL_KEEP:
+        v = get(local, path)
+        if v is None:
+            continue
+        if path == SUBSCRIPTIONS and isinstance(v, dict):
+            # Only the address and whether it's on: the rest is Brave's record of downloading it
+            v = {url: {"enabled": e["enabled"]} for url, e in sorted(v.items())
+                 if isinstance(e, dict) and isinstance(e.get("enabled"), bool)}
+        elif isinstance(v, dict):
+            v = clean(v)
+        out[path] = v
+    return out
+
+
+def merge(d, v):
+    """v into d, one dict inside another: what's saved changes, what's only in d stays (a
+    subscription's download record, a list Brave switched on that wasn't saved)."""
+    for k, x in v.items():
+        if isinstance(x, dict) and isinstance(d.get(k), dict):
+            merge(d[k], x)
+        else:
+            d[k] = x
+
+
+def put(d, path, v, merge_dicts=True):
+    """Set a dotted path in d; a dict merges into the one there (merge) unless told not to."""
+    *parents, last = path.split(".")
+    for k in parents:
+        d = d.setdefault(k, {})
+    if merge_dicts and isinstance(v, dict) and isinstance(d.get(last), dict):
+        merge(d[last], v)
+    else:
+        d[last] = v
+
+
+def write_private(path, data):
+    """Write JSON as Brave does, readable by you only (both files hold more than settings)."""
+    os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
+    tmp = path + ".dotfiles-new"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        json.dump(data, f, separators=(",", ":"))
+    os.chmod(tmp, 0o600)   # (os.open's mode is only used for a new file)
+    os.replace(tmp, path)
 
 
 def home_out(v):
@@ -211,6 +290,12 @@ def save(prefs_file, previous_file=None):
     exts = extensions(prefs)
     if exts:
         kept[EXTENSIONS] = exts
+    local_file = local_state_file(prefs_file)
+    if os.path.exists(local_file):
+        with open(local_file) as f:
+            local = filters(json.load(f))
+        if local:
+            kept[LOCAL] = local
     for path in KEEP:
         v = get(prefs, path)
         if v is None:
@@ -278,13 +363,24 @@ def restore(saved_file, prefs_file, images_dir=None):
             ex.setdefault(t, {})[EVERY_SITE] = {"setting": setting}
         if "cosmeticFilteringV2" in shields:
             prefs.setdefault("brave", {})["cosmetic_filtering_migration"] = True
-    os.makedirs(os.path.dirname(prefs_file), mode=0o700, exist_ok=True)
-    tmp = prefs_file + ".dotfiles-new"
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as f:
-        json.dump(prefs, f, separators=(",", ":"))
-    os.chmod(tmp, 0o600)   # (os.open's mode is only used for a new file)
-    os.replace(tmp, prefs_file)
+    write_private(prefs_file, prefs)
+    # Content filtering, into Local State (created if Brave hasn't run yet): only the
+    # settings named in LOCAL_KEEP, and only as filters() would save them.
+    local_saved = saved.get(LOCAL) if isinstance(saved.get(LOCAL), dict) else {}
+    as_local = {}
+    for path in LOCAL_KEEP:
+        if path in local_saved:
+            put(as_local, path, local_saved[path], merge_dicts=False)
+    wanted = filters(as_local)
+    if wanted:
+        local_file = local_state_file(prefs_file)
+        local = {}
+        if os.path.exists(local_file):
+            with open(local_file) as f:
+                local = json.load(f)
+        for path, v in wanted.items():
+            put(local, path, v)
+        write_private(local_file, local)
 
 
 def policy(saved_file):

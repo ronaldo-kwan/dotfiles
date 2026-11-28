@@ -496,6 +496,51 @@ import json, sys; d = json.load(open(sys.argv[1])); ex = d["profile"]["content_s
 assert ex["shieldsAds"] == {"https://mine.example,*": {"setting": 1}, "*,*": {"setting": 2}}, ex
 assert ex["cosmeticFilteringV2"]["*,*"] == {"setting": {"cosmeticFilteringV2": 1}}
 assert d["brave"]["cosmetic_filtering_migration"] is True' "$T/brave/shields-old.json"
+# Content filtering: from Local State, next to the profile's folder, never the rest of it.
+mkdir -p "$T/brave/ls/Default"
+echo '{"brave": {"dark_mode": 1}}' > "$T/brave/ls/Default/Preferences"
+cat > "$T/brave/ls/Local State" <<'JSON'
+{"os_crypt": {"encrypted_key": "secret-key"}, "profile": {"info_cache": {"Default": {"user_name": "secret@example.org"}}},
+ "brave": {"ad_block": {"checked_all_default_regions": true, "cookie_list_setting_touched": true, "debug_mode": true,
+   "custom_filters": "||ads.example.org^",
+   "regional_filters": {"AAAA": {"enabled": true}, "BBBB": {"enabled": false}},
+   "list_subscriptions": {"https://lists.example.org/mine.txt": {"enabled": true, "title": "Mine", "last_update_attempt": "1", "expires": 7}}},
+   "stats": {"secret": 1}}}
+JSON
+bs save "$T/brave/ls/Default/Preferences" > "$T/brave/ls-saved.json"
+t "saves content filtering from Local State" python3 -c '
+import json, sys; d = json.load(open(sys.argv[1]))["local_state"]
+assert d == {"brave.ad_block.checked_all_default_regions": True, "brave.ad_block.cookie_list_setting_touched": True,
+             "brave.ad_block.custom_filters": "||ads.example.org^",
+             "brave.ad_block.regional_filters": {"AAAA": {"enabled": True}, "BBBB": {"enabled": False}},
+             "brave.ad_block.list_subscriptions": {"https://lists.example.org/mine.txt": {"enabled": True}}}, d' "$T/brave/ls-saved.json"
+t "and nothing else from it" not grep -qE 'secret|debug_mode|last_update|title' "$T/brave/ls-saved.json"
+t "no Local State, nothing saved from it" not grep -q local_state "$T/brave/saved.json"
+# Back into a Local State Brave already has: its other parts, and a subscription's download
+# record, stay; and into one Brave hasn't made yet.
+mkdir -p "$T/brave/ls2/Default"
+cat > "$T/brave/ls2/Local State" <<'JSON'
+{"os_crypt": {"encrypted_key": "kept-key"}, "brave": {"ad_block": {"custom_filters": "old",
+   "regional_filters": {"CCCC": {"enabled": true}, "BBBB": {"enabled": true}},
+   "list_subscriptions": {"https://lists.example.org/mine.txt": {"enabled": false, "last_update_attempt": "9"}}}}}
+JSON
+bs restore "$T/brave/ls-saved.json" "$T/brave/ls2/Default/Preferences"
+t "puts content filtering back into Local State, keeping the rest" python3 -c '
+import json, sys; d = json.load(open(sys.argv[1])); ab = d["brave"]["ad_block"]
+assert d["os_crypt"] == {"encrypted_key": "kept-key"} and ab["custom_filters"] == "||ads.example.org^"
+assert ab["regional_filters"] == {"AAAA": {"enabled": True}, "BBBB": {"enabled": False}, "CCCC": {"enabled": True}}, ab
+assert ab["list_subscriptions"] == {"https://lists.example.org/mine.txt": {"enabled": True, "last_update_attempt": "9"}}, ab
+assert ab["checked_all_default_regions"] is True' "$T/brave/ls2/Local State"
+t "Local State stays readable by you only" same "$(stat -c %a "$T/brave/ls2/Local State")" 600
+bs restore "$T/brave/ls-saved.json" "$T/brave/ls3/Default/Preferences"
+t "creates Local State if Brave hasn't" python3 -c '
+import json, sys; ab = json.load(open(sys.argv[1]))["brave"]["ad_block"]; assert ab["custom_filters"] == "||ads.example.org^"' "$T/brave/ls3/Local State"
+echo '{"local_state": {"os_crypt.encrypted_key": "x", "brave.ad_block.debug_mode": true, "brave.ad_block.custom_filters": "a"}}' > "$T/brave/ls-odd.json"
+bs restore "$T/brave/ls-odd.json" "$T/brave/ls4/Default/Preferences"
+t "puts back only allowlisted Local State settings from a saved file" python3 -c '
+import json, sys; d = json.load(open(sys.argv[1])); assert d == {"brave": {"ad_block": {"custom_filters": "a"}}}, d' "$T/brave/ls4/Local State"
+t "no saved content filtering, Local State untouched" not test -e "$T/brave/new/Local State"
+t "content filtering saved, put back and saved again is the same" same "$(bs save "$T/brave/ls3/Default/Preferences")" "$(cat "$T/brave/ls-saved.json")"
 echo '{"translate_allowlists": {"de": "en"}, "translate_blocked_languages": ["fr"], "translate_recent_target": "en", "translate_site_blocklist_with_time": {"secret.example": "1"}, "translate_accepted_count": {"de": 3}}' > "$T/brave/tr.json"
 t "saves the languages to always and never translate, not sites or counts" python3 -c '
 import json, sys; d = json.load(sys.stdin)
