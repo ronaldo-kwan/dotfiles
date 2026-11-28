@@ -105,6 +105,10 @@
     "enabled": true,
     "name": "Newsletter popup blocker"
    },
+   "AC023D22-AE88-4060-A978-4FEEEC4221693": {
+    "enabled": true,
+    "name": "Cookie notice blocker"
+   },
    "E2FA7D98-0BD5-493E-8AF4-950604ADE9CB": {
     "enabled": true,
     "name": "Tracking URL blocker"
